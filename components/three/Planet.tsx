@@ -20,9 +20,9 @@ const _q = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 
 // Movement feel — tuned for "physical toy planet"
-const ACC = 3.4; // rad/s² from held keys
+const ACC = 2.5; // rad/s² from held keys
 const DAMP = 2.8; // exponential damping → inertia / glide
-const MAX_SPEED = 1.15; // rad/s
+const MAX_SPEED = 0.8; // rad/s — a stroll, not a sprint (panel keeps up)
 const NEAR_ANGLE = 0.32; // rad from the top at which a region counts as "near"
 const ZONE_ANGLE = 0.78; // rad — landmarks this close to the player light up
 
@@ -148,8 +148,8 @@ export default function Planet() {
     };
     const move = (e: PointerEvent) => {
       if (!dragging) return;
-      vel.current.x += (e.clientY - lastY) * 0.0045;
-      vel.current.y += (e.clientX - lastX) * 0.0045;
+      vel.current.x += (e.clientY - lastY) * 0.0035;
+      vel.current.y += (e.clientX - lastX) * 0.0035;
       lastX = e.clientX;
       lastY = e.clientY;
     };
