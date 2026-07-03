@@ -288,5 +288,15 @@
     "twitter": "",
     "telegram": "",
     "checkedAt": "2026-07-03T13:30:24.202Z"
+  },
+  "ripper-pool-x1ripper-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1ripper.xyz",
+    "project": "Ripper Pool",
+    "description": "Maximize your XNT rewards with X1 Ripper Pool! Stake XNT, earn rXNT liquid tokens, and maintain full liquidity while earning staking rewards. Join the most trusted liquid staking protocol with real-time analytics and transparent performance tracking.",
+    "twitter": "https://x.com/X1RipperPool",
+    "telegram": "https://t.me/+dgmlH9ugcp0wZDg0",
+    "checkedAt": "2026-07-03T13:30:54.851Z"
   }
 }

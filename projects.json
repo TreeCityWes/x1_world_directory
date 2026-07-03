@@ -174,5 +174,11 @@
     "domain": "x1xh.vercel.app",
     "builder": "Unknown",
     "blurb": "Token minting for meme coins on X1."
+  },
+  {
+    "category": "Infrastructure",
+    "project": "Ripper Pool",
+    "domain": "x1ripper.xyz",
+    "builder": "Unknown"
   }
 ]
