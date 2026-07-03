@@ -23,6 +23,12 @@ New on disk: `@react-three/postprocessing` (dep), `lib/motion.ts`, `components/t
 ## ⚠️ Deploy — verify FIRST before judging any visual change
 GitHub `main` is at `eeb2686` (pushed, in sync), **but the owner reported seeing no changes on the live site.** The visual-pass agent couldn't access Vercel from its environment. Before concluding any change "didn't work," confirm Vercel is actually building `main`: **Deployments tab → latest commit hash + green status.** If it's red, the prime suspect is **Playwright being a devDependency** — its postinstall pulls ~300 MB of browsers and commonly OOMs/fails Vercel builds. (Everything here passes `npm run build` locally.)
 
+## Status update (main agent, post-handoff)
+- ✅ **Deploy suspect fixed:** `playwright` devDep → `playwright-core` (no browser postinstall on Vercel); scripts updated, local launch verified. Owner should still confirm the Deployments tab goes green on the next push.
+- ✅ **Ion Halo flames** implemented per spec (pool 64, 3/30ms on the ring, rise+shrink, #ffe89e→#ff8c3d→#ff3d3d, additive; torus ring dimmed to a guide).
+- ✅ **Bugs fixed:** vitality is incremental (+25, preserves Cursed statMult & fort bonuses); maxed-out level-ups pay a 30hp heal + gold burst instead of vanishing; Esc mid-run needs a double-press (toast confirm); dealDamage clamps overkill for score/lifesteal.
+- Open: game-in-action beauty pass (#2), atmosphere re-check (#4), 3D color tokens (#5).
+
 ## Open work (prioritized)
 1. **Ion Halo → particle flames** (owner-requested; `GameLayer.tsx`). Current halo is a flat torus + disc — reads as geometry, not fire. Spec: pool `MAX_FLAMES ~64` on `world` (`{ alive, dir: Vector3, life, maxLife }`); emit ~3 every ~30 ms while `halo > 0`, spawning on the ring via `randomDirNear(world.pLocal, halo, halo)`; rise height `(1-age)*0.07`; color-lerp hot `#ffe89e` → `#ff8c3d` → `#ff3d3d`; additive `MeshBasicMaterial`; sync in `syncMeshes`; reset on new run. Knobs: emit count, lifetime 0.35–0.6 s, rise, colors.
 2. **Game-in-action beauty** (the #1 priority; all **non-`GameLayer`**, so no conflict): chase camera (`Rig.tsx` play branch — framing / dynamic tilt toward threat / maybe a subtle FOV punch; currently a near-top-down N64 chase cam), combat HUD (`GameHUD.tsx`), and confirm shurikens/enemies bloom well at threshold `0.9`.

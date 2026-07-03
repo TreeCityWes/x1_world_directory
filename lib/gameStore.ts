@@ -283,7 +283,8 @@ export const useGame = create<GameStore>((set) => ({
   pick: (id) => {
     run.upgrades[id] = (run.upgrades[id] ?? 0) + 1;
     if (id === "vitality") {
-      run.maxHp = 100 + 25 * run.upgrades.vitality;
+      // incremental — preserves Cursed's stat penalty AND fort capture bonuses
+      run.maxHp += 25;
       run.hp = Math.min(run.maxHp, run.hp + 25);
     }
     set({ mode: "play", choices: [], hud: emptyHud() });

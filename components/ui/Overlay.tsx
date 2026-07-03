@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWorld } from "@/lib/store";
 import { useGame } from "@/lib/gameStore";
 import FocusHeader from "@/components/ui/FocusHeader";
@@ -15,6 +15,8 @@ import GameHUD from "@/components/game/GameHUD";
 export default function Overlay() {
   const mode = useGame((s) => s.mode);
   const openMenu = useGame((s) => s.openMenu);
+  const [escArmed, setEscArmed] = useState(false);
+  const escTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -22,8 +24,22 @@ export default function Overlay() {
       const game = useGame.getState();
       if (e.code === "KeyE" && game.mode === "explore" && world.nearId) world.select(world.nearId);
       if (e.code === "Escape") {
-        if (game.mode === "play" || game.mode === "menu" || game.mode === "won") game.quit();
-        else world.select(null);
+        if (game.mode === "play") {
+          // mid-run quits need a confirm: press Esc twice within 1.5s
+          setEscArmed((armed) => {
+            if (armed) {
+              game.quit();
+              return false;
+            }
+            if (escTimer.current) clearTimeout(escTimer.current);
+            escTimer.current = setTimeout(() => setEscArmed(false), 1500);
+            return true;
+          });
+        } else if (game.mode === "menu" || game.mode === "won") {
+          game.quit();
+        } else {
+          world.select(null);
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -89,6 +105,11 @@ export default function Overlay() {
       </h1>
 
       {mode === "explore" && <FocusHeader />}
+      {escArmed && mode === "play" && (
+        <p className="absolute bottom-32 left-1/2 -translate-x-1/2 rounded-md border border-[#e0563f]/70 bg-space/80 px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[#ff8c6b] backdrop-blur">
+          press esc again to abandon the run
+        </p>
+      )}
       <GameHUD />
 
       <TouchPad />

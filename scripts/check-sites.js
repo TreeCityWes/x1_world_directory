@@ -8,7 +8,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { chromium } = require("playwright-core");
 
 const root = path.join(__dirname, "..");
 const allProjects = JSON.parse(fs.readFileSync(path.join(root, "projects.json"), "utf8"));

@@ -43,6 +43,7 @@ const MAX_GEMS = 90;
 const MAX_KATANAS = 4;
 const MAX_WAKE = 16;
 const MAX_PARTS = 48;
+const MAX_FLAMES = 64;
 
 const CONTACT_BASE = 0.055; // player's angular "radius"
 const SHURIKEN_SPEED = 1.7; // rad/s
@@ -70,6 +71,7 @@ type Enemy = {
 type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
 type Wake = { alive: boolean; dir: THREE.Vector3; life: number };
+type Flame = { alive: boolean; dir: THREE.Vector3; life: number; maxLife: number };
 type Part = {
   alive: boolean;
   dir: THREE.Vector3;
@@ -180,6 +182,8 @@ const world = {
   arcFlash: 0,
   arcPoints: [] as THREE.Vector3[],
   arcDirty: false,
+  flameAt: 0,
+  flames: Array.from({ length: MAX_FLAMES }, (): Flame => ({ alive: false, dir: new THREE.Vector3(), life: 0, maxLife: 1 })),
   wake: Array.from({ length: MAX_WAKE }, (): Wake => ({ alive: false, dir: new THREE.Vector3(), life: 0 })),
   parts: Array.from(
     { length: MAX_PARTS },
@@ -187,6 +191,12 @@ const world = {
   ),
       started: false,
 };
+
+// halo flame gradient: white-hot base -> ember -> red tip
+const FLAME_A = new THREE.Color("#ffe89e");
+const FLAME_B = new THREE.Color("#ff8c3d");
+const FLAME_C = new THREE.Color("#ff3d3d");
+const _col = new THREE.Color();
 
 // the arc-lightning polyline (module singleton, same pattern as ATMOSPHERE)
 const ARC_LINE = new THREE.Line(
@@ -237,6 +247,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const haloRef = useRef<THREE.Mesh | null>(null);
   const haloFillRef = useRef<THREE.Mesh | null>(null);
   const magnetRef = useRef<THREE.Mesh | null>(null);
+  const flameRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   const spawnEnemy = (type: EnemyTypeId) => {
     const [lo, hi] = TYPE_RANGES[type];
@@ -276,14 +287,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     }
   };
 
-  // ALL damage funnels through here: crit roll, lifesteal, damage tally
+  // ALL damage funnels through here: crit roll, lifesteal, damage tally.
+  // Score/lifesteal only count damage that actually landed (no overkill).
   const dealDamage = (e: Enemy, base: number, alwaysCrit = false) => {
     const crit = alwaysCrit || Math.random() < critChance();
     const dmg = base * (crit ? 2 : 1);
+    const applied = Math.max(0, Math.min(e.hp, dmg));
     e.hp -= dmg;
-    run.damage += dmg;
+    run.damage += applied;
     const steal = lifestealPct();
-    if (steal > 0) run.hp = Math.min(run.maxHp, run.hp + dmg * steal);
+    if (steal > 0 && applied > 0) run.hp = Math.min(run.maxHp, run.hp + applied * steal);
     return dmg;
   };
 
@@ -454,8 +467,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           haloMesh.rotateX(Math.PI / 2);
           haloMesh.scale.setScalar(R * Math.sin(h) * pulse);
           (haloMesh.material as THREE.MeshBasicMaterial).opacity = run.upgrades.meltdown
-            ? 0.95
-            : 0.7;
+            ? 0.55
+            : 0.35;
         }
       }
       if (haloFill) {
@@ -468,6 +481,24 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           (haloFill.material as THREE.MeshBasicMaterial).opacity =
             (run.upgrades.meltdown ? 0.22 : 0.13) + Math.sin(run.t * 5) * 0.04;
         }
+      }
+    }
+    // Ion Halo flames: rise off the ring, shrink, cool from white-hot to red
+    for (let i = 0; i < MAX_FLAMES; i++) {
+      const mesh = flameRefs.current[i];
+      const f = world.flames[i];
+      if (!mesh) continue;
+      mesh.visible = f.alive;
+      if (f.alive) {
+        const age = 1 - f.life / f.maxLife; // 0 → 1
+        mesh.position.copy(f.dir).multiplyScalar(R + 0.02 + age * 0.09);
+        mesh.quaternion.setFromUnitVectors(UP, f.dir);
+        mesh.scale.setScalar(0.028 * (1 - age * 0.7));
+        const m = mesh.material as THREE.MeshBasicMaterial;
+        if (age < 0.5) _col.lerpColors(FLAME_A, FLAME_B, age * 2);
+        else _col.lerpColors(FLAME_B, FLAME_C, (age - 0.5) * 2);
+        m.color.copy(_col);
+        m.opacity = 0.85 * (1 - age * age);
       }
     }
     // Coin Magnet: shimmering cyan ring at the exact pickup radius
@@ -512,6 +543,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.arcAt = 0;
       world.arcFlash = 0;
       world.arcDirty = false;
+      world.flameAt = 0;
+      for (const f of world.flames) f.alive = false;
       for (const w of world.wake) w.alive = false;
       for (const p of world.parts) p.alive = false;
       world.bossAtBlock = 0;
@@ -790,6 +823,24 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       }
     }
 
+    // ---- Ion Halo flames: fire licking up from the ring ----
+    if (halo > 0 && run.t >= world.flameAt) {
+      world.flameAt = run.t + 0.03;
+      for (let n = 0; n < 3; n++) {
+        const f = world.flames.find((x) => !x.alive);
+        if (!f) break;
+        f.alive = true;
+        f.dir.copy(randomDirNear(world.pLocal, halo, halo));
+        f.maxLife = 0.35 + Math.random() * 0.25;
+        f.life = f.maxLife;
+      }
+    }
+    for (const f of world.flames) {
+      if (!f.alive) continue;
+      f.life -= dt;
+      if (f.life <= 0) f.alive = false;
+    }
+
     // ---- particles (death bursts) ----
     for (const p of world.parts) {
       if (!p.alive) continue;
@@ -864,6 +915,11 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const choices = rollChoices();
       if (choices.length > 0) {
         store.offerLevelUp(choices);
+      } else {
+        // everything maxed — the level still pays out (heal + burst of glory)
+        run.hp = Math.min(run.maxHp, run.hp + 30);
+        spawnBurst(world.pLocal, "#ffd23d", 10);
+        store.syncHud();
       }
     }
 
@@ -1000,6 +1056,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           side={THREE.DoubleSide}
         />
       </mesh>
+      {/* Ion Halo flames */}
+      {Array.from({ length: MAX_FLAMES }).map((_, i) => (
+        <mesh key={`f${i}`} ref={(el) => { flameRefs.current[i] = el; }} visible={false}>
+          <coneGeometry args={[0.55, 1.6, 5]} />
+          <meshBasicMaterial
+            transparent
+            opacity={0.8}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
       {/* Coin Magnet — pickup-radius shimmer ring (8-segment = dashed look) */}
       <mesh ref={magnetRef} visible={false}>
         <torusGeometry args={[1, 0.008, 6, 8]} />

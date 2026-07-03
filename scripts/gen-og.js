@@ -7,7 +7,7 @@
  */
 const path = require("path");
 const fs = require("fs");
-const { chromium } = require("playwright");
+const { chromium } = require("playwright-core");
 
 const root = path.join(__dirname, "..");
 const url = process.argv[2] || "http://localhost:3000";
