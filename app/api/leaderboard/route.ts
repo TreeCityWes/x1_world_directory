@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ed25519 } from "@noble/curves/ed25519";
+import { ed25519 } from "@noble/curves/ed25519.js";
 import { base58, base64 } from "@scure/base";
 import { nonceValid } from "@/lib/nonce";
 
