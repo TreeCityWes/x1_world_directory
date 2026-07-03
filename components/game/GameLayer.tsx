@@ -9,9 +9,14 @@ import { moveState } from "@/lib/gameState";
 import {
   DIFFICULTIES,
   ENEMY_TYPES,
+  armorMult,
+  critChance,
   currentSpeedMult,
   fireCooldown,
+  haloAngle,
+  lifestealPct,
   magnetAngle,
+  regenRate,
   rollChoices,
   run,
   shurikenDamage,
@@ -167,6 +172,10 @@ const world = {
   knockAt: 0,
   novaAt: 0,
   wakeAt: 0,
+  arcAt: 0,
+  arcFlash: 0,
+  arcPoints: [] as THREE.Vector3[],
+  arcDirty: false,
   wake: Array.from({ length: MAX_WAKE }, (): Wake => ({ alive: false, dir: new THREE.Vector3(), life: 0 })),
   parts: Array.from(
     { length: MAX_PARTS },
@@ -174,6 +183,14 @@ const world = {
   ),
       started: false,
 };
+
+// the arc-lightning polyline (module singleton, same pattern as ATMOSPHERE)
+const ARC_LINE = new THREE.Line(
+  new THREE.BufferGeometry(),
+  new THREE.LineBasicMaterial({ color: "#7dd3fc", transparent: true, opacity: 0.9 }),
+);
+ARC_LINE.visible = false;
+ARC_LINE.frustumCulled = false;
 
 export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Group | null> }) {
   const mode = useGame((s) => s.mode);
@@ -214,6 +231,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const katanaRefs = useRef<(THREE.Mesh | null)[]>([]);
   const wakeRefs = useRef<(THREE.Mesh | null)[]>([]);
   const partRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const haloRef = useRef<THREE.Mesh | null>(null);
 
   const spawnEnemy = (type: EnemyTypeId) => {
     const [lo, hi] = TYPE_RANGES[type];
@@ -249,6 +267,17 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       g.xp = per;
       g.t = 0;
     }
+  };
+
+  // ALL damage funnels through here: crit roll, lifesteal, damage tally
+  const dealDamage = (e: Enemy, base: number, alwaysCrit = false) => {
+    const crit = alwaysCrit || Math.random() < critChance();
+    const dmg = base * (crit ? 2 : 1);
+    e.hp -= dmg;
+    run.damage += dmg;
+    const steal = lifestealPct();
+    if (steal > 0) run.hp = Math.min(run.maxHp, run.hp + dmg * steal);
+    return dmg;
   };
 
   const spawnBurst = (at: THREE.Vector3, color: string, n: number) => {
@@ -389,6 +418,29 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         mesh.scale.setScalar(0.035 * (p.life / 0.45));
       }
     }
+    // Ion Halo ring hugging the surface around the ninja
+    const haloMesh = haloRef.current;
+    if (haloMesh) {
+      const h = haloAngle();
+      const show = h > 0 && world.started;
+      haloMesh.visible = show;
+      if (show) {
+        haloMesh.position.copy(world.pLocal).multiplyScalar(R + 0.02);
+        haloMesh.quaternion.setFromUnitVectors(UP, world.pLocal);
+        haloMesh.rotateX(Math.PI / 2);
+        const pulse = 1 + Math.sin(run.t * 5) * 0.04;
+        haloMesh.scale.setScalar(R * Math.sin(h) * pulse);
+        (haloMesh.material as THREE.MeshBasicMaterial).opacity = run.upgrades.meltdown
+          ? 0.8
+          : 0.45;
+      }
+    }
+    // arc lightning flash
+    ARC_LINE.visible = world.started && run.t < world.arcFlash;
+    if (world.arcDirty) {
+      ARC_LINE.geometry.setFromPoints(world.arcPoints);
+      world.arcDirty = false;
+    }
   }
 
   useFrame((state, rawDt) => {
@@ -407,6 +459,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.knockAt = 0;
       world.novaAt = 0;
       world.wakeAt = 0;
+      world.arcAt = 0;
+      world.arcFlash = 0;
+      world.arcDirty = false;
       for (const w of world.wake) w.alive = false;
       for (const p of world.parts) p.alive = false;
       world.bossAtBlock = 0;
@@ -478,18 +533,28 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       spawnEnemy("boss");
     }
 
+    // regeneration (Uptime) ticks continuously
+    if (regenRate() > 0) run.hp = Math.min(run.maxHp, run.hp + regenRate() * dt);
+
     // ---- enemies: chase + separation + contact damage ----
     const shielded = run.t < run.fx.shield;
+    const halo = haloAngle();
+    const meltdown = !!run.upgrades.meltdown;
     for (const e of world.enemies) {
       if (!e.alive) continue;
       e.t += dt;
       const lunge = e.type === "gremlin" ? 1 + 0.6 * Math.sin(e.t * 5) : 1;
-      rotateToward(e.dir, world.pLocal, e.speed * lunge * dt);
+      const inHalo = halo > 0 && e.dir.angleTo(world.pLocal) < halo + e.radius / R;
+      // Core Meltdown: the halo is a tar pit
+      const slow = inHalo && meltdown ? 0.45 : 1;
+      rotateToward(e.dir, world.pLocal, e.speed * lunge * slow * dt);
+      // Ion Halo burns everything inside
+      if (inHalo) dealDamage(e, (10 + 6 * (run.upgrades.halo ?? 0)) * dt);
       const contact = (CONTACT_BASE * R + e.radius) / R;
       if (e.dir.angleTo(world.pLocal) < contact) {
         moveState.contactSlow = true;
         if (!shielded) {
-          run.hp -= e.dmg * dt;
+          run.hp -= e.dmg * armorMult() * dt;
           run.lastHitAt = run.t;
           // knockback: shove the ninja away from the enemy (world-space tangent)
           if (run.t >= world.knockAt) {
@@ -571,10 +636,47 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       for (const e of world.enemies) {
         if (!e.alive) continue;
         if (s.pos.angleTo(e.dir) < (e.radius + 0.05) / R + 0.02) {
-          e.hp -= s.dmg;
-          run.damage += s.dmg;
+          dealDamage(e, s.dmg);
           s.alive = false;
           break;
+        }
+      }
+    }
+
+    // ---- Arc Node: lightning that chains through the herd ----
+    const arcLv = run.upgrades.arcnode ?? 0;
+    if (arcLv > 0 && run.t >= world.arcAt) {
+      world.arcAt = run.t + 2.2;
+      const chainReaction = !!run.upgrades.chainreaction;
+      const maxTargets = chainReaction ? 99 : 1 + arcLv;
+      const jumpRange = chainReaction ? 0.5 : 0.4;
+      const hit: Enemy[] = [];
+      let from = world.pLocal;
+      for (let hop = 0; hop < maxTargets; hop++) {
+        let best: Enemy | null = null;
+        let bestAng = hop === 0 ? 0.85 : jumpRange;
+        for (const e of world.enemies) {
+          if (!e.alive || hit.includes(e)) continue;
+          const ang = from.angleTo(e.dir);
+          if (ang < bestAng) {
+            bestAng = ang;
+            best = e;
+          }
+        }
+        if (!best) break;
+        hit.push(best);
+        from = best.dir;
+      }
+      if (hit.length > 0) {
+        world.arcFlash = run.t + 0.15;
+        world.arcDirty = true;
+        world.arcPoints = [
+          world.pLocal.clone().multiplyScalar(R + 0.12),
+          ...hit.map((e) => e.dir.clone().multiplyScalar(R + 0.1)),
+        ];
+        for (const e of hit) {
+          dealDamage(e, 16 + 7 * arcLv, chainReaction);
+          spawnBurst(e.dir, "#7dd3fc", 3);
         }
       }
     }
@@ -619,8 +721,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       for (const e of world.enemies) {
         if (!e.alive) continue;
         if (w.dir.angleTo(e.dir) < (e.radius + 0.08) / R + 0.02) {
-          e.hp -= 45 * dt;
-          run.damage += 45 * dt;
+          dealDamage(e, 45 * dt);
         }
       }
     }
@@ -665,8 +766,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       for (const e of world.enemies) {
         if (!e.alive) continue;
         if (kpos.angleTo(e.dir) < (e.radius + 0.06) / R + 0.02) {
-          e.hp -= kdps * dt;
-          run.damage += kdps * dt;
+          dealDamage(e, kdps * dt);
         }
       }
     }
@@ -796,6 +896,19 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <meshStandardMaterial emissiveIntensity={1.8} roughness={0.3} />
         </mesh>
       ))}
+      {/* Ion Halo — the burning aura ring */}
+      <mesh ref={haloRef} visible={false}>
+        <torusGeometry args={[1, 0.015, 8, 48]} />
+        <meshBasicMaterial
+          color="#f0c75e"
+          transparent
+          opacity={0.45}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Arc Node lightning */}
+      <primitive object={ARC_LINE} />
     </group>
   );
 }

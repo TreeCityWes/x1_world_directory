@@ -79,10 +79,20 @@ export const UPGRADES: UpgradeDef[] = [
   { id: "magnet", name: "Coin Magnet", desc: (l) => `+${60 * l}% pickup range`, maxLevel: 3, weight: 7 },
   { id: "vitality", name: "Iron Gi", desc: (l) => `+${25 * l} max hp & heal`, maxLevel: 3, weight: 6 },
   { id: "katana", name: "Orbiting Katana", desc: (l) => `${l} spinning katana${l > 1 ? "s" : ""}`, maxLevel: 2, weight: 4 },
+  // ---- wave-1 weapons: change how you position, not just numbers ----
+  { id: "arcnode", name: "Arc Node", desc: (l) => `lightning chains through ${1 + l} enemies — herd them`, maxLevel: 4, weight: 6 },
+  { id: "halo", name: "Ion Halo", desc: (l) => `burning aura around you, ${(0.16 + 0.03 * l).toFixed(2)} rad wide`, maxLevel: 4, weight: 6 },
+  // ---- wave-1 passives: the health-tension kit ----
+  { id: "armor", name: "Validator Plating", desc: (l) => `−${8 * l}% contact damage`, maxLevel: 3, weight: 7 },
+  { id: "lifesteal", name: "Crimson Protocol", desc: (l) => `heal ${3 * l}% of damage you deal`, maxLevel: 3, weight: 5 },
+  { id: "regen", name: "Uptime", desc: (l) => `+${(0.8 * l).toFixed(1)} hp/s regeneration`, maxLevel: 3, weight: 6 },
+  { id: "crit", name: "MEV Strike", desc: (l) => `${8 * l}% chance to hit for double`, maxLevel: 3, weight: 5 },
   // ---- evolutions (weight 0: never rolled — injected when ingredients max) ----
   { id: "bladestorm", name: "Blade Storm", desc: () => "every 3s: a 360° nova of 12 shurikens", maxLevel: 1, weight: 0, requires: ["multishot", "firerate"] },
   { id: "tempest", name: "Crimson Tempest", desc: () => "4 burning katanas · double blade damage", maxLevel: 1, weight: 0, requires: ["damage", "katana"] },
   { id: "whirlwind", name: "Golden Whirlwind", desc: () => "your sprint leaves a damaging golden wake", maxLevel: 1, weight: 0, requires: ["speed", "magnet"] },
+  { id: "chainreaction", name: "Chain Reaction", desc: () => "lightning chains through EVERYTHING and always crits", maxLevel: 1, weight: 0, requires: ["arcnode", "crit"] },
+  { id: "meltdown", name: "Core Meltdown", desc: () => "huge halo · enemies inside slowed to a crawl", maxLevel: 1, weight: 0, requires: ["halo", "armor"] },
 ];
 
 export const BLOCK_SECONDS = 30; // difficulty ramps every "block" — X1 has 1s blocks, ours are chunkier
@@ -157,6 +167,23 @@ export function currentSpeedMult() {
 }
 export function xpMult() {
   return 1 + 0.1 * run.perm.xp;
+}
+export function armorMult() {
+  return 1 - 0.08 * (run.upgrades.armor ?? 0);
+}
+export function lifestealPct() {
+  return 0.03 * (run.upgrades.lifesteal ?? 0);
+}
+export function regenRate() {
+  return 0.8 * (run.upgrades.regen ?? 0);
+}
+export function critChance() {
+  return 0.08 * (run.upgrades.crit ?? 0);
+}
+export function haloAngle() {
+  const lv = run.upgrades.halo ?? 0;
+  if (lv === 0) return 0;
+  return (0.16 + 0.03 * lv) * (run.upgrades.meltdown ? 1.6 : 1);
 }
 
 // ---- React-facing store ----
