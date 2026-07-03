@@ -42,7 +42,7 @@ const ATMOSPHERE = new THREE.ShaderMaterial({
     varying vec3 vNormal;
     void main() {
       float intensity = pow(0.66 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
-      gl_FragColor = vec4(0.3, 0.55, 1.0, 1.0) * intensity;
+      gl_FragColor = vec4(0.18, 0.32, 0.68, 1.0) * intensity;
     }
   `,
   blending: THREE.AdditiveBlending,
@@ -326,7 +326,7 @@ export default function Planet() {
       <OrbitDust />
 
       {/* atmosphere glow (doesn't rotate — it's light, not land) */}
-      <mesh scale={1.14}>
+      <mesh scale={1.08}>
         <sphereGeometry args={[PLANET_RADIUS, 48, 48]} />
         <primitive object={ATMOSPHERE} attach="material" />
       </mesh>

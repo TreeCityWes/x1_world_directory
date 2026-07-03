@@ -101,7 +101,7 @@ const MODEL_PATH: Record<EnemyTypeId, string> = {
 const MODEL_SCALE: Record<EnemyTypeId, number> = {
   goblin: 0.16,
   gremlin: 0.12,
-  whale: 0.1,
+  whale: 0.03,
   boss: 0.3,
 };
 useGLTF.preload(MODEL_PATH.goblin);
