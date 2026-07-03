@@ -154,5 +154,11 @@
     "project": "X1 Wiki",
     "domain": "x1.wiki",
     "builder": "Unknown"
+  },
+  {
+    "category": "Data / Explorer",
+    "project": "XenBlocks Explorer",
+    "domain": "explorer.xenblocks.io",
+    "builder": "Unknown"
   }
 ]

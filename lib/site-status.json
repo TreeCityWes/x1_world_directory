@@ -258,5 +258,15 @@
     "twitter": "https://x.com/xen_artist",
     "telegram": "https://t.me/+Ig4hGl6rIdNiNWRh",
     "checkedAt": "2026-07-03T13:13:41.057Z"
+  },
+  "xenblocks-explorer-explorer-xenblocks-io": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "explorer.xenblocks.io",
+    "project": "XenBlocks Explorer",
+    "description": "XENBLOCKS SERVE AS A PROOF-OF-WORK (POW) TOKEN ON THE X1 BLOCKCHAIN",
+    "twitter": "",
+    "telegram": "https://t.me/+yDcqqTGMNC4yNjdj",
+    "checkedAt": "2026-07-03T13:14:41.977Z"
   }
 }
