@@ -196,6 +196,18 @@ export default function Planet() {
       v.z += ACC * mult * dt * mx;
     }
 
+    // knockback from enemy contact + heavy legs while shoving through them
+    if (moveState.pushVX !== 0 || moveState.pushVZ !== 0) {
+      v.x += moveState.pushVX;
+      v.z += moveState.pushVZ;
+      moveState.pushVX = 0;
+      moveState.pushVZ = 0;
+    }
+    const contactDrag = moveState.contactSlow ? Math.exp(-5 * dt) : 1;
+    moveState.contactSlow = false;
+    v.x *= contactDrag;
+    v.z *= contactDrag;
+
     // …damp for inertia, clamp for sanity
     const d = Math.exp(-DAMP * dt);
     v.x = THREE.MathUtils.clamp(v.x * d, -maxSpeed, maxSpeed);

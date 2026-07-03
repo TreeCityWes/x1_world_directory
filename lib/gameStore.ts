@@ -120,6 +120,7 @@ type Hud = {
   captured: number;
   upgrades: Record<string, number>;
   shield: boolean;
+  hit: boolean;
 };
 
 type GameStore = {
@@ -150,6 +151,7 @@ const emptyHud = (): Hud => ({
   captured: run.captured,
   upgrades: { ...run.upgrades },
   shield: run.t < run.fx.shield,
+  hit: run.t - run.lastHitAt < 0.35,
 });
 
 const BEST_KEY = "x1world_best_score";

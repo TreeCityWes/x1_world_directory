@@ -126,6 +126,7 @@ const world = {
       siteIds: [] as string[],
       siteRespawnAt: 0,
       syncAt: 0,
+  knockAt: 0,
       started: false,
 };
 
@@ -267,6 +268,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       for (const gm of world.gems) gm.alive = false;
       world.fireAt = 0;
       world.spawnAt = 0;
+      world.knockAt = 0;
       world.bossAtBlock = 0;
       world.siteIds = pickSites(ACTIVE_SITES, []);
       store.setActiveSites(world.siteIds);
@@ -343,9 +345,22 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       rotateToward(e.dir, world.pLocal, e.speed * lunge * dt);
       const contact = (CONTACT_BASE * R + e.radius) / R;
       if (e.dir.angleTo(world.pLocal) < contact) {
+        moveState.contactSlow = true;
         if (!shielded) {
           run.hp -= e.dmg * dt;
           run.lastHitAt = run.t;
+          // knockback: shove the ninja away from the enemy (world-space tangent)
+          if (run.t >= world.knockAt) {
+            world.knockAt = run.t + 0.35;
+            const t = tangentToward(world.pLocal, e.dir, _t);
+            if (t) {
+              // push direction = away from the enemy, converted to world space
+              _v.copy(t).multiplyScalar(-1).applyQuaternion(g.quaternion);
+              const MAG = 0.5;
+              moveState.pushVX += -_v.z * MAG; // ω_x moves the ninja along -Z
+              moveState.pushVZ += _v.x * MAG; // ω_z moves the ninja along +X
+            }
+          }
         }
       }
     }
@@ -500,7 +515,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     if (run.hp <= 0) {
       run.hp = 0;
       store.die();
-    } else if (run.t >= world.syncAt) {
+    } else if (run.t >= world.syncAt || (run.t - run.lastHitAt < 0.1 && run.t >= world.syncAt - 0.2)) {
       world.syncAt = run.t + 0.25;
       store.syncHud();
     }

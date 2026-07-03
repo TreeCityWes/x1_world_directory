@@ -12,4 +12,9 @@ export const moveState = {
   speed: 0,
   /** camera azimuth (rad) — Rig writes, input mapping reads (camera-relative WASD) */
   camAz: 0,
+  /** knockback impulse (planet angular velocity) — GameLayer writes, Planet consumes */
+  pushVX: 0,
+  pushVZ: 0,
+  /** true while shoving through an enemy — Planet applies extra drag this frame */
+  contactSlow: false,
 };

@@ -21,6 +21,20 @@ export default function GameHUD() {
 
   return (
     <>
+      {/* damage vignette */}
+      <AnimatePresence>
+        {hud.hit && mode === "play" && (
+          <motion.div
+            key="hit"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.1 }}
+            className="pointer-events-none absolute inset-0 z-40"
+            style={{ boxShadow: "inset 0 0 90px 30px rgba(224, 60, 47, 0.55)" }}
+          />
+        )}
+      </AnimatePresence>
       {/* bars — bottom center of the world pane */}
       <div className="pointer-events-none absolute bottom-16 left-1/2 w-[min(300px,60%)] -translate-x-1/2 space-y-1.5">
         <div className="h-2 overflow-hidden rounded-full border border-white/15 bg-space/70">
