@@ -23,11 +23,12 @@ export default function Overlay() {
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
       <div className="absolute left-5 top-4 space-y-2.5">
+        {/* desktop: full ad + keyboard hint */}
         <a
           href="https://x1.ninja"
           target="_blank"
           rel="noopener noreferrer"
-          className="pointer-events-auto block font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim transition-colors hover:text-gold"
+          className="pointer-events-auto block font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim transition-colors hover:text-gold max-md:hidden"
         >
           watch <span className="text-gold">x1 ninja</span> run the world — visit{" "}
           <span className="text-cyan underline decoration-dotted underline-offset-2">x1.ninja</span>{" "}
@@ -39,15 +40,18 @@ export default function Overlay() {
           </span>{" "}
           use your keyboard to run the world
         </p>
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink md:hidden">
-          <span className="text-gold">drag</span> to spin ·{" "}
-          <span className="text-gold">pad</span> to run
+        {/* mobile: one tiny line, never wraps, never covers the ninja */}
+        <p className="whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim md:hidden">
+          <a href="https://x1.ninja" className="pointer-events-auto text-gold">
+            x1.ninja ↗
+          </a>{" "}
+          · drag to spin · pad to run
         </p>
       </div>
 
       <TouchPad />
 
-      <h1 className="absolute bottom-4 left-5 text-5xl font-semibold leading-none tracking-tighter sm:text-6xl">
+      <h1 className="absolute bottom-4 left-5 text-5xl font-semibold leading-none tracking-tighter max-md:bottom-3 max-md:text-2xl md:text-6xl">
         x1<span className="text-gold">.world</span>
       </h1>
     </div>
