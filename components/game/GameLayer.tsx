@@ -85,20 +85,21 @@ const _axis = new THREE.Vector3();
 const _t = new THREE.Vector3();
 const _f0 = new THREE.Vector3();
 
-// KayKit skeleton crew (CC0, Kay Lousberg) — one model per enemy type.
+// KayKit Halloween crew (CC0, Kay Lousberg) — limbless creatures that read
+// perfectly while gliding: tumbling jack-o-lanterns and floating skulls.
 // The pool is partitioned into fixed per-type slot ranges so each slot keeps
 // a single pre-cloned model.
 const MODEL_PATH: Record<EnemyTypeId, string> = {
-  goblin: "/models/Skeleton_Minion.glb",
-  gremlin: "/models/Skeleton_Rogue.glb",
-  whale: "/models/Skeleton_Warrior.glb",
-  boss: "/models/Skeleton_Mage.glb",
+  goblin: "/models/pumpkin_orange_jackolantern.glb",
+  gremlin: "/models/skull.glb",
+  whale: "/models/pumpkin_yellow_jackolantern.glb",
+  boss: "/models/skull.glb",
 };
 const MODEL_SCALE: Record<EnemyTypeId, number> = {
-  goblin: 0.14,
-  gremlin: 0.16,
-  whale: 0.22,
-  boss: 0.34,
+  goblin: 0.5,
+  gremlin: 0.45,
+  whale: 0.9,
+  boss: 1.6,
 };
 const TYPE_RANGES: Record<EnemyTypeId, [number, number]> = {
   goblin: [0, 26],
@@ -346,7 +347,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (!grp) continue;
       grp.visible = e.alive;
       if (e.alive) {
-        grp.position.copy(e.dir).multiplyScalar(R + 0.01);
+        const skullish = e.type === "gremlin" || e.type === "boss";
+        // skulls float and bob; pumpkins hug the ground
+        const hover = skullish ? 0.09 + Math.sin(e.t * 4) * 0.03 : 0.005;
+        grp.position.copy(e.dir).multiplyScalar(R + hover);
         // stand on the surface…
         grp.quaternion.setFromUnitVectors(UP, e.dir);
         // …and face the ninja (yaw around the local up axis)
@@ -357,9 +361,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           const yaw = Math.atan2(_axis.crossVectors(_f0, t).dot(e.dir), _f0.dot(t));
           grp.rotateY(yaw);
         }
-        // scuttle bounce (model scale lives on the clone; group carries wobble)
-        const wob = 1 + Math.sin(e.t * 9) * 0.06;
-        grp.scale.set(1, wob, 1);
+        if (skullish) {
+          // menacing chatter tilt
+          grp.rotateX(Math.sin(e.t * 6) * 0.12);
+          const wob = 1 + Math.sin(e.t * 9) * 0.05;
+          grp.scale.set(1, wob, 1);
+        } else {
+          // pumpkins tumble-roll toward you
+          grp.rotateX(e.t * e.speed * 6);
+          grp.scale.set(1, 1, 1);
+        }
       }
     }
     for (let i = 0; i < MAX_SHURIKENS; i++) {
