@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { moveState } from "@/lib/gameState";
+import { prefersReducedMotion } from "@/lib/motion";
 import { PLANET_RADIUS } from "./Planet";
 
 // x1.ninja logo palette: charcoal hood + electric-blue headband/X + gold
@@ -69,22 +70,25 @@ export default function Character() {
       yaw.current.quaternion.slerp(_target, 1 - Math.pow(0.0005, dt));
     }
 
-    // idle bob + run bounce + lean into the run
-    if (bob.current) {
-      bob.current.position.y =
-        0.02 * Math.sin(t * 2.2) + 0.05 * Math.abs(Math.sin(phase.current)) * speedNorm;
-      bob.current.rotation.x = 0.22 * speedNorm;
-    }
+    // decorative motion only — freeze it for reduced-motion users (facing stays)
+    if (!prefersReducedMotion.current) {
+      // idle bob + run bounce + lean into the run
+      if (bob.current) {
+        bob.current.position.y =
+          0.02 * Math.sin(t * 2.2) + 0.05 * Math.abs(Math.sin(phase.current)) * speedNorm;
+        bob.current.rotation.x = 0.22 * speedNorm;
+      }
 
-    // arms: gentle sway idle, big swing running
-    const swing = Math.sin(phase.current) * (0.12 + 0.7 * speedNorm);
-    if (armL.current) armL.current.rotation.x = swing;
-    if (armR.current) armR.current.rotation.x = -swing;
+      // arms: gentle sway idle, big swing running
+      const swing = Math.sin(phase.current) * (0.12 + 0.7 * speedNorm);
+      if (armL.current) armL.current.rotation.x = swing;
+      if (armR.current) armR.current.rotation.x = -swing;
 
-    // scarf trails and flutters with speed
-    if (scarf.current) {
-      scarf.current.rotation.x =
-        -0.35 - 0.55 * speedNorm + Math.sin(t * 7 + 1) * (0.06 + 0.12 * speedNorm);
+      // scarf trails and flutters with speed
+      if (scarf.current) {
+        scarf.current.rotation.x =
+          -0.35 - 0.55 * speedNorm + Math.sin(t * 7 + 1) * (0.06 + 0.12 * speedNorm);
+      }
     }
   });
 

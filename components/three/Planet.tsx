@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { regions, type Region } from "@/lib/regions";
 import { useWorld } from "@/lib/store";
 import { moveState } from "@/lib/gameState";
+import { prefersReducedMotion } from "@/lib/motion";
 import { run, useGame } from "@/lib/gameStore";
 import { touchKeys } from "@/lib/touchInput";
 import { useKeyboard } from "@/lib/useKeyboard";
@@ -232,7 +233,13 @@ export default function Planet() {
 
     // explore-only idle drift so a still world still feels alive (DESIGN.md);
     // never during a run — the ninja must stay pole-locked under the chase cam
-    if (gMode === "explore" && !dragging.current && !moveState.inputActive && surf < 0.02) {
+    if (
+      gMode === "explore" &&
+      !dragging.current &&
+      !moveState.inputActive &&
+      surf < 0.02 &&
+      !prefersReducedMotion.current
+    ) {
       v.y = 0.04;
     }
 
@@ -256,8 +263,10 @@ export default function Planet() {
       if (st.selectedId) st.select(null);
     }
 
-    // the world slowly breathes
-    g.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 0.9) * 0.006);
+    // the world slowly breathes (frozen for reduced-motion users)
+    g.scale.setScalar(
+      prefersReducedMotion.current ? 1 : 1 + Math.sin(state.clock.elapsedTime * 0.9) * 0.006,
+    );
 
     // proximity panel updates only matter while exploring
     if (gMode === "explore") {

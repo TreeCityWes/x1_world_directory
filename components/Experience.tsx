@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
+import { MotionConfig } from "framer-motion";
 import Planet from "@/components/three/Planet";
 import Character from "@/components/three/Character";
 import Rig from "@/components/three/Rig";
@@ -17,6 +18,7 @@ import SidePanel from "@/components/ui/SidePanel";
  */
 export default function Experience() {
   return (
+    <MotionConfig reducedMotion="user">
     <div className="absolute inset-0 flex select-none max-md:flex-col">
       {/* left screen — the world */}
       <div className="relative min-w-0 flex-1 max-md:h-[52vh] max-md:flex-none">
@@ -68,5 +70,6 @@ export default function Experience() {
       {/* right screen — the console */}
       <SidePanel />
     </div>
+    </MotionConfig>
   );
 }

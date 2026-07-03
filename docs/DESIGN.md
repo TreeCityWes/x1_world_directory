@@ -5,22 +5,24 @@ locked brand law — Fable should refine against the final art direction.
 
 ## Palette
 
-The world is blue. Space is deep. Accents glow.
+The world is blue. Space is deep. Accents glow. **Source of truth: `app/globals.css`** (CSS tokens) — keep this table in sync with it.
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `--space` | `#05070f` | Deep background / outer space |
-| `--space-2` | `#0a1024` | Secondary background, gradients |
-| `--ocean` | `#1656d6` | The globe's core blue |
-| `--ocean-lit` | `#3b82f6` | Lit side of the globe, water |
-| `--land` | `#5eead4` → `#22d3ee` | Illustrated landmasses (teal-cyan) |
-| `--glow` | `#7dd3fc` | Node/consensus glow, particles |
-| `--accent` | `#a78bfa` | Rare highlight (violet), CTAs |
-| `--ink` | `#eaf2ff` | Primary text on dark |
+| `--space` | `#04060f` | Deep background / outer space |
+| `--space-2` | `#0b1226` | Secondary background, glass panels |
+| `--ocean` | `#1656d6` | The globe's core blue (token) — the 3D shell itself is a darker navy `#16234a` |
+| `--ocean-lit` | `#3b82f6` | Lit side of the globe, blue fills |
+| `--cyan` | `#7dd3fc` | Network/consensus glow, particles, links |
+| `--gold` | `#f0c75e` | CTAs, "you are here", score, captures |
+| `--gold-deep` | `#c9a13b` | Gold gradients |
+| `--ink` | `#e8eefc` | Primary text on dark |
 | `--ink-dim` | `#8ea3c4` | Secondary text |
 
-Guidance: keep 90% of the frame in blues/space; use violet `--accent`
-sparingly so CTAs and "you are here" markers pop.
+Guidance: keep ~90% of the frame in blues/space. **Gold is the CTA color**
+(open-site buttons, the "game" tab, captures, score). Cyan is the network/glow
+color (links, nodes, the rivers between them). No violet accent in the build —
+that was an early candidate, since retired.
 
 ## Typography
 
