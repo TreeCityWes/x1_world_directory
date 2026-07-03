@@ -39,7 +39,7 @@ function GamePanel() {
           best {best}
         </p>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5 [&>*]:shrink-0">
         {/* who's running */}
         <ProfileCard />
 
