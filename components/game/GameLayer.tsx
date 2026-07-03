@@ -69,6 +69,7 @@ type Enemy = {
   t: number;
   biteAt: number; // next time this enemy may bite (discrete attacks, not dps)
   recoilUntil: number; // after a bite it backs off briefly
+  bossKind: "whale" | "nemesis";
 };
 type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
@@ -106,8 +107,8 @@ const MODEL_PATH: Record<EnemyTypeId, string> = {
 const TARGET_SIZE: Record<EnemyTypeId, number> = {
   goblin: 0.15,
   gremlin: 0.2,
-  whale: 0.34,
-  boss: 1, // unused — boss renders the Nemesis
+  whale: 0.26, // violet elder skull (the whale model is now boss #1)
+  boss: 0.85, // THE WHALE — big on purpose, but nowhere near planet-sized
 };
 useGLTF.preload(MODEL_PATH.goblin);
 useGLTF.preload(MODEL_PATH.gremlin);
@@ -160,7 +161,7 @@ function randomDirNear(center: THREE.Vector3, minAng: number, maxAng: number) {
 const world = {
       enemies: Array.from({ length: MAX_ENEMIES }, (): Enemy => ({
         alive: false, type: "goblin", dir: new THREE.Vector3(), hp: 0, maxHp: 0,
-        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0,
+        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0, bossKind: "whale",
       })),
       shurikens: Array.from({ length: MAX_SHURIKENS }, (): Shuriken => ({
         alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0,
@@ -174,6 +175,7 @@ const world = {
       fireAt: 0,
       spawnAt: 0,
       bossAtBlock: 0,
+  bossCount: 0,
       siteIds: [] as string[],
       siteRespawnAt: 0,
   captured: new Set<string>(),
@@ -220,8 +222,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     const sceneFor: Record<EnemyTypeId, THREE.Object3D> = {
       goblin: goblinGltf.scene,
       gremlin: wraithGltf.scene,
-      whale: whaleGltf.scene,
-      boss: wraithGltf.scene,
+      whale: goblinGltf.scene, // tinted violet below
+      boss: whaleGltf.scene, // boss #1 is THE WHALE
     };
     return Array.from({ length: MAX_ENEMIES }, (_, i) => {
       const type = typeForSlot(i);
@@ -234,6 +236,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const center = box.getCenter(new THREE.Vector3());
       clone.scale.setScalar(k);
       clone.position.set(-center.x * k, -center.y * k, -center.z * k);
+      if (type === "whale") {
+        clone.traverse((o) => {
+          const mesh = o as THREE.Mesh;
+          if (mesh.isMesh && mesh.material) {
+            const m = (mesh.material as THREE.MeshStandardMaterial).clone();
+            m.color?.multiplyScalar(0.8);
+            m.emissive?.set("#a78bfa");
+            m.emissiveIntensity = 0.3;
+            mesh.material = m;
+          }
+        });
+      }
       return clone;
     });
   }, [goblinGltf, wraithGltf, whaleGltf]);
@@ -273,6 +287,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     e.t = Math.random() * 10;
     e.biteAt = 0;
     e.recoilUntil = 0;
+    // boss ladder: THE WHALE first, then your dark mirror — alternating after
+    if (type === "boss") e.bossKind = world.bossCount++ % 2 === 0 ? "whale" : "nemesis";
   };
 
   const dropGems = (at: THREE.Vector3, xp: number, split: number) => {
@@ -367,12 +383,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       grp.visible = e.alive;
       if (e.alive) {
         // everything floats: heads bob, the whale swims
-        const hover =
-          e.type === "boss"
+        const whaleBoss = e.type === "boss" && e.bossKind === "whale";
+        const hover = whaleBoss
+          ? 0.3 + Math.sin(e.t * 1.6) * 0.05
+          : e.type === "boss"
             ? 0.01 + Math.sin(e.t * 2.5) * 0.015
-            : e.type === "whale"
-              ? 0.1 + Math.sin(e.t * 2) * 0.025
-              : 0.11 + Math.sin(e.t * 4) * 0.03;
+            : 0.11 + Math.sin(e.t * 4) * 0.03;
         grp.position.copy(e.dir).multiplyScalar(R + hover);
         grp.quaternion.setFromUnitVectors(UP, e.dir);
         // face the ninja (yaw around the local up axis)
@@ -384,11 +400,15 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           grp.rotateY(yaw);
         }
         // per-type body language
-        if (e.type === "whale") {
-          grp.rotateZ(Math.sin(e.t * 2) * 0.12); // swim roll
-          grp.rotateX(Math.sin(e.t * 1.4) * 0.08); // pitch
-        } else if (e.type === "boss") {
-          grp.rotateX(Math.sin(e.t * 2) * 0.06); // slow menace
+        if (e.type === "boss") {
+          grp.children[0].visible = e.bossKind === "whale";
+          grp.children[1].visible = e.bossKind === "nemesis";
+          if (whaleBoss) {
+            grp.rotateZ(Math.sin(e.t * 1.6) * 0.14); // vast swim roll
+            grp.rotateX(Math.sin(e.t * 1.1) * 0.1);
+          } else {
+            grp.rotateX(Math.sin(e.t * 2) * 0.06); // slow menace
+          }
         } else {
           grp.rotateX(Math.sin(e.t * 6) * 0.14); // chatter
         }
@@ -548,6 +568,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       for (const w of world.wake) w.alive = false;
       for (const p of world.parts) p.alive = false;
       world.bossAtBlock = 0;
+      world.bossCount = 0;
       world.captured.clear();
       world.siteIds = pickSites(ACTIVE_SITES, []);
       store.setActiveSites(world.siteIds);
@@ -983,7 +1004,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         return (
           <group key={`e${i}`} ref={(el) => { enemyRefs.current[i] = el; }} visible={false}>
             {kind === "boss" ? (
-              <Nemesis scale={1.05} />
+              <>
+                <primitive object={enemyClones[i]} />
+                <Nemesis scale={1.05} />
+              </>
             ) : (
               <primitive object={enemyClones[i]} />
             )}

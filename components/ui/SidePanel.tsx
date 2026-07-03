@@ -154,29 +154,31 @@ function GamePanel() {
               {hud.captured} lit · {total - hud.captured} dark
             </span>
           </div>
-          <div className="mt-2 grid grid-cols-11 gap-1.5 max-md:grid-cols-9">
+          <div className="mt-2 grid grid-cols-8 gap-1.5 max-md:grid-cols-6">
             {regions.map((r) => {
               const lit = capturedIds.includes(r.id);
               return (
                 <motion.div
                   key={r.id}
                   title={r.name}
-                  animate={
-                    lit
-                      ? { scale: [1, 1.6, 1], opacity: 1 }
-                      : { scale: 1, opacity: 1 }
-                  }
+                  animate={lit ? { scale: [1, 1.28, 1] } : { scale: 1 }}
                   transition={{ duration: 0.45, ease: "easeOut" }}
-                  className="aspect-square rounded-[3px] transition-colors duration-300"
+                  className="relative aspect-[8/5] overflow-hidden rounded-[4px] transition-shadow duration-300"
                   style={
                     lit
-                      ? { background: r.accent, boxShadow: `0 0 10px ${r.accent}` }
-                      : {
-                          background: "rgba(255,255,255,0.045)",
-                          border: "1px solid rgba(255,255,255,0.09)",
-                        }
+                      ? { border: , boxShadow:  }
+                      : { border: "1px solid rgba(255,255,255,0.08)" }
                   }
-                />
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- tiny thumbs */}
+                  <img
+                    src={r.screenshot.replace("/projects/", "/projects/thumbs/").replace(/.(png|svg)$/, ".jpg")}
+                    alt={r.name}
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).src = r.screenshot; }}
+                    className={}
+                  />
+                </motion.div>
               );
             })}
           </div>
