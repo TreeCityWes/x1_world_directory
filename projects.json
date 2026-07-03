@@ -20,7 +20,7 @@
   {
     "category": "Trading Bot",
     "project": "Honey Badger",
-    "domain": "t.me/HoneyBadgerC",
+    "domain": "honeybadger.fortiblox.com",
     "builder": "BuddySan"
   },
   {
@@ -44,7 +44,7 @@
   {
     "category": "DEX / Trading",
     "project": "OTC",
-    "domain": "xonedex.xyz",
+    "domain": "otc.xonedex.xyz",
     "builder": "Xenian"
   },
   {
@@ -179,6 +179,156 @@
     "category": "Infrastructure",
     "project": "Ripper Pool",
     "domain": "x1ripper.xyz",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Bridge UI",
+    "project": "X1 Teleporter",
+    "domain": "x1teleporter.vercel.app",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Data / Charts",
+    "project": "X1 Charts",
+    "domain": "charts.x1app.fyi",
+    "builder": "Steve"
+  },
+  {
+    "category": "Data / Oracle",
+    "project": "Oracle V2",
+    "domain": "github.com/jacklevin74/oracle-v2",
+    "builder": "Jack Levin"
+  },
+  {
+    "category": "Data / Oracle",
+    "project": "X1 Onchain Randomness",
+    "domain": "x1-randomness.vercel.app",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Staking",
+    "project": "DGN Staking V2",
+    "domain": "app.degen.fyi/staking-v2",
+    "builder": "Jason"
+  },
+  {
+    "category": "Launchpad",
+    "project": "X1 Forge",
+    "domain": "x1forge.xyz",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Data / Oracle",
+    "project": "Geiger Entropy Oracle",
+    "domain": "geiger-dashboard.vercel.app",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Social / Community",
+    "project": "Memo",
+    "domain": "memo.rip",
+    "builder": "xen_artist"
+  },
+  {
+    "category": "Game / Mining",
+    "project": "X1 Games Lobby",
+    "domain": "games.x1app.fyi",
+    "builder": "Steve"
+  },
+  {
+    "category": "Game / Mining",
+    "project": "Block Breaker",
+    "domain": "jack0.x1.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "Game / Mining",
+    "project": "Master of the Epoch",
+    "domain": "x1mote.xyz",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Data / Explorer",
+    "project": "X1 Explorer",
+    "domain": "explorer.x1.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "Core Infra",
+    "project": "X1 Delegation Program",
+    "domain": "delegation.mainnet.x1.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "Docs / Wiki",
+    "project": "Validator Management",
+    "domain": "validator.x1.wiki",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Docs / Wiki",
+    "project": "X1 Docs",
+    "domain": "docs.x1.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "Data / Explorer",
+    "project": "FortiBlox Explorer",
+    "domain": "explorer.fortiblox.com",
+    "builder": "BuddySan"
+  },
+  {
+    "category": "Data / Charts",
+    "project": "X1 Sonar",
+    "domain": "x1sonar.xyz",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Trading Bot",
+    "project": "X1 Buy Alert Bot",
+    "domain": "t.me/X1_OFFICIAL_BUY_BOT",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Social / Community",
+    "project": "X1 Trending Tokens",
+    "domain": "t.me/x1TrendingOfficial",
+    "builder": "Unknown"
+  },
+  {
+    "category": "DEX / Trading",
+    "project": "Vow Protocol",
+    "domain": "vow-protocol.vercel.app",
+    "builder": "Unknown"
+  },
+  {
+    "category": "DEX / Trading",
+    "project": "X1 Brains DeFi Hub",
+    "domain": "x1brains.io",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Social / Community",
+    "project": "X1City",
+    "domain": "x1city.io",
+    "builder": "Unknown"
+  },
+  {
+    "category": "NFT Marketplace",
+    "project": "CAPY NFT Mint",
+    "domain": "capy-nft-mint.vercel.app",
+    "builder": "Unknown"
+  },
+  {
+    "category": "NFT Marketplace",
+    "project": "RISE Phoenix NFT",
+    "domain": "rise-phoenix-nft.vercel.app",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Staking",
+    "project": "THEO Pools",
+    "domain": "theo-pools.vercel.app",
     "builder": "Unknown"
   }
 ]

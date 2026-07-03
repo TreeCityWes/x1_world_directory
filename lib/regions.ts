@@ -79,6 +79,7 @@ const BLURB_BY_CATEGORY: Record<string, string> = {
   Launchpad: "Launch new tokens and projects on X1.",
   "Meme / Community": "Meme energy and community culture on X1.",
   "Docs / Wiki": "Community knowledge base — everything about X1 in one place.",
+  Staking: "Stake and earn on the X1 network.",
 };
 
 const KIND_BY_CATEGORY: Record<string, LandmarkKind> = {
@@ -103,6 +104,7 @@ const KIND_BY_CATEGORY: Record<string, LandmarkKind> = {
   Launchpad: "bridgePortal",
   "Meme / Community": "socialBeacon",
   "Docs / Wiki": "explorerFort",
+  Staking: "validatorTower",
 };
 
 /** Optional hand-written blurb on a projects.json entry. */
