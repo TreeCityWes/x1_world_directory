@@ -182,12 +182,18 @@ export default function Planet() {
     const mult = playing ? run.speedMult : 1;
     const maxSpeed = MAX_SPEED * mult;
 
-    // accelerate from input (keyboard OR mobile D-pad)…
+    // accelerate from input (keyboard OR mobile D-pad), camera-relative:
+    // "forward" is always away from the camera, whatever its orbit angle
     if (inputAllowed) {
-      if (k.forward || touchKeys.forward) v.x += ACC * mult * dt;
-      if (k.back || touchKeys.back) v.x -= ACC * mult * dt;
-      if (k.right || touchKeys.right) v.z += ACC * mult * dt;
-      if (k.left || touchKeys.left) v.z -= ACC * mult * dt;
+      const az = moveState.camAz;
+      const fwd = (k.forward || touchKeys.forward ? 1 : 0) - (k.back || touchKeys.back ? 1 : 0);
+      const side = (k.right || touchKeys.right ? 1 : 0) - (k.left || touchKeys.left ? 1 : 0);
+      // desired surface direction in world space
+      const mx = -Math.sin(az) * fwd + Math.cos(az) * side;
+      const mz = -Math.cos(az) * fwd - Math.sin(az) * side;
+      // map to planet angular velocity (ω_x moves the ninja -Z, ω_z moves +X)
+      v.x += ACC * mult * dt * -mz;
+      v.z += ACC * mult * dt * mx;
     }
 
     // …damp for inertia, clamp for sanity

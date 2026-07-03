@@ -64,6 +64,16 @@ const _qInv = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _axis = new THREE.Vector3();
+const _t = new THREE.Vector3();
+const _f0 = new THREE.Vector3();
+
+// silhouette per enemy type: [x, y, z] body scale multipliers
+const BODY_SHAPE: Record<string, [number, number, number]> = {
+  goblin: [1, 0.85, 1],
+  gremlin: [0.7, 1.35, 0.7],
+  whale: [1.35, 0.95, 1.35],
+  boss: [1.25, 1.15, 1.25],
+};
 
 function tangentToward(from: THREE.Vector3, to: THREE.Vector3, out: THREE.Vector3) {
   // unit tangent at `from` pointing along the great circle toward `to`
@@ -122,7 +132,7 @@ const world = {
 export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Group | null> }) {
   const mode = useGame((s) => s.mode);
 
-  const enemyRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const enemyRefs = useRef<(THREE.Group | null)[]>([]);
   const shurikenRefs = useRef<(THREE.Mesh | null)[]>([]);
   const gemRefs = useRef<(THREE.Mesh | null)[]>([]);
   const katanaRefs = useRef<(THREE.Mesh | null)[]>([]);
@@ -192,20 +202,33 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
 
   function syncMeshes() {
     for (let i = 0; i < MAX_ENEMIES; i++) {
-      const mesh = enemyRefs.current[i];
+      const grp = enemyRefs.current[i];
       const e = world.enemies[i];
-      if (!mesh) continue;
-      mesh.visible = e.alive;
+      if (!grp) continue;
+      grp.visible = e.alive;
       if (e.alive) {
-        mesh.position.copy(e.dir).multiplyScalar(R + e.radius * 0.9);
-        mesh.scale.setScalar(e.radius);
-        mesh.quaternion.setFromUnitVectors(UP, e.dir);
-        mesh.rotateY(e.t * 1.5);
-        const m = mesh.material as THREE.MeshStandardMaterial;
+        grp.position.copy(e.dir).multiplyScalar(R + e.radius * 0.9);
+        const shape = BODY_SHAPE[e.type];
+        grp.scale.set(e.radius * shape[0], e.radius * shape[1], e.radius * shape[2]);
+        // stand on the surface…
+        grp.quaternion.setFromUnitVectors(UP, e.dir);
+        // …and face the ninja (yaw around the local up axis)
+        const t = tangentToward(e.dir, world.pLocal, _t);
+        if (t) {
+          _f0.set(0, 0, 1).applyQuaternion(grp.quaternion);
+          _f0.addScaledVector(e.dir, -e.dir.dot(_f0)).normalize();
+          const yaw = Math.atan2(_axis.crossVectors(_f0, t).dot(e.dir), _f0.dot(t));
+          grp.rotateY(yaw);
+        }
+        // squash-and-stretch scuttle
+        const wob = 1 + Math.sin(e.t * 9) * 0.06;
+        grp.scale.y *= wob;
+        const body = grp.children[0] as THREE.Mesh;
+        const m = body.material as THREE.MeshStandardMaterial;
         const T = ENEMY_TYPES[e.type];
         m.color.set(T.color);
         m.emissive.set(T.color);
-        m.emissiveIntensity = e.hp < e.maxHp * 0.35 ? 1.2 : 0.55;
+        m.emissiveIntensity = e.hp < e.maxHp * 0.35 ? 1.1 : 0.4;
       }
     }
     for (let i = 0; i < MAX_SHURIKENS; i++) {
@@ -493,10 +516,31 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   return (
     <group>
       {Array.from({ length: MAX_ENEMIES }).map((_, i) => (
-        <mesh key={`e${i}`} ref={(el) => { enemyRefs.current[i] = el; }} visible={false}>
-          <icosahedronGeometry args={[1, 0]} />
-          <meshStandardMaterial roughness={0.45} metalness={0.1} />
-        </mesh>
+        <group key={`e${i}`} ref={(el) => { enemyRefs.current[i] = el; }} visible={false}>
+          {/* body — first child, recolored per type */}
+          <mesh position={[0, 0.55, 0]}>
+            <icosahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial roughness={0.5} metalness={0.1} flatShading />
+          </mesh>
+          {/* glowing eyes, facing forward (+Z = toward the ninja) */}
+          <mesh position={[0.32, 0.75, 0.78]}>
+            <sphereGeometry args={[0.16, 8, 8]} />
+            <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={2.4} />
+          </mesh>
+          <mesh position={[-0.32, 0.75, 0.78]}>
+            <sphereGeometry args={[0.16, 8, 8]} />
+            <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={2.4} />
+          </mesh>
+          {/* horns */}
+          <mesh position={[0.42, 1.3, 0]} rotation={[0, 0, -0.5]}>
+            <coneGeometry args={[0.14, 0.5, 5]} />
+            <meshStandardMaterial color="#11141f" roughness={0.5} />
+          </mesh>
+          <mesh position={[-0.42, 1.3, 0]} rotation={[0, 0, 0.5]}>
+            <coneGeometry args={[0.14, 0.5, 5]} />
+            <meshStandardMaterial color="#11141f" roughness={0.5} />
+          </mesh>
+        </group>
       ))}
       {Array.from({ length: MAX_SHURIKENS }).map((_, i) => (
         <mesh key={`s${i}`} ref={(el) => { shurikenRefs.current[i] = el; }} visible={false}>

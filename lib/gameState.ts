@@ -10,4 +10,6 @@ export const moveState = {
   vx: 0,
   vz: 0,
   speed: 0,
+  /** camera azimuth (rad) — Rig writes, input mapping reads (camera-relative WASD) */
+  camAz: 0,
 };
