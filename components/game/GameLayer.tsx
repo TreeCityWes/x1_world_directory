@@ -515,7 +515,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.siteIds = pickSites(ACTIVE_SITES, []);
       store.setActiveSites(world.siteIds);
     }
-    if (store.mode === "explore" || store.mode === "menu" || store.mode === "dead") {
+    if (
+      store.mode === "explore" ||
+      store.mode === "menu" ||
+      store.mode === "dead" ||
+      store.mode === "won"
+    ) {
       if (world.started) {
         world.started = false;
         for (const e of world.enemies) e.alive = false;
