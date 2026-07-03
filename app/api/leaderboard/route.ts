@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 
 /**
- * Global leaderboard. Backed by Upstash Redis (set UPSTASH_REDIS_REST_URL +
- * UPSTASH_REDIS_REST_TOKEN in Vercel — the Upstash marketplace integration
- * provides both). Without them it falls back to in-memory (per-instance,
- * resets on redeploy) so the feature still demos locally.
+ * Global leaderboard, backed by Supabase (PostgREST — no client dependency).
+ * Table `public.leaderboard` has RLS enabled with no public policies; only
+ * this route's service-role key can touch it. Falls back to in-memory when
+ * the env vars are absent so local demos still work.
  */
 
-const URL_ = process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const SB_URL =
+  process.env["NEXT_PUBLIC_x1_world_new_SUPABASE_URL"] ?? process.env.SUPABASE_URL;
+const SB_KEY =
+  process.env["x1_world_new_SUPABASE_SERVICE_ROLE_KEY"] ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 type Entry = { name: string; wallet: string; score: number; diff: string; at: number };
 
@@ -16,16 +18,17 @@ type Entry = { name: string; wallet: string; score: number; diff: string; at: nu
 const mem = (globalThis as unknown as { __x1lb?: Map<string, Entry> }).__x1lb ?? new Map<string, Entry>();
 (globalThis as unknown as { __x1lb?: Map<string, Entry> }).__x1lb = mem;
 
-async function redis(cmd: (string | number)[]): Promise<unknown> {
-  const res = await fetch(`${URL_}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify(cmd),
+function sb(path: string, init?: RequestInit) {
+  return fetch(`${SB_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: SB_KEY!,
+      Authorization: `Bearer ${SB_KEY}`,
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`redis ${res.status}`);
-  const j = (await res.json()) as { result: unknown };
-  return j.result;
 }
 
 const memberOf = (e: { name: string; wallet: string }) =>
@@ -33,22 +36,11 @@ const memberOf = (e: { name: string; wallet: string }) =>
 
 export async function GET() {
   try {
-    if (URL_ && TOKEN) {
-      const raw = (await redis(["ZRANGE", "lb", 0, 24, "REV", "WITHSCORES"])) as string[];
-      const board = [];
-      for (let i = 0; i < raw.length; i += 2) {
-        const member = raw[i];
-        const score = Number(raw[i + 1]);
-        const info = (await redis(["HGET", "lb:info", member])) as string | null;
-        const meta = info ? (JSON.parse(info) as Partial<Entry>) : {};
-        board.push({
-          rank: i / 2 + 1,
-          name: member.split("|")[0],
-          wallet: meta.wallet ?? "",
-          score,
-          diff: meta.diff ?? "normal",
-        });
-      }
+    if (SB_URL && SB_KEY) {
+      const res = await sb("leaderboard?select=name,wallet,score,diff&order=score.desc&limit=25");
+      if (!res.ok) throw new Error(`sb ${res.status}`);
+      const rows = (await res.json()) as Omit<Entry, "at">[];
+      const board = rows.map((r, i) => ({ rank: i + 1, ...r }));
       return NextResponse.json({ ok: true, board, persistent: true });
     }
     const board = [...mem.values()]
@@ -74,9 +66,19 @@ export async function POST(req: Request) {
     if (score <= 0) return NextResponse.json({ ok: false }, { status: 400 });
 
     const member = memberOf({ name, wallet });
-    if (URL_ && TOKEN) {
-      await redis(["ZADD", "lb", "GT", score, member]); // keep personal best only
-      await redis(["HSET", "lb:info", member, JSON.stringify({ wallet, diff, at: Date.now() })]);
+    if (SB_URL && SB_KEY) {
+      // keep personal best only: read current, upsert if beaten
+      const cur = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}&select=score`);
+      const rows = cur.ok ? ((await cur.json()) as { score: number }[]) : [];
+      if (rows.length === 0 || rows[0].score < score) {
+        await sb("leaderboard?on_conflict=member", {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates" },
+          body: JSON.stringify([
+            { member, name, wallet, score, diff, updated_at: new Date().toISOString() },
+          ]),
+        });
+      }
     } else {
       const prev = mem.get(member);
       if (!prev || prev.score < score) mem.set(member, { name, wallet, score, diff, at: Date.now() });
