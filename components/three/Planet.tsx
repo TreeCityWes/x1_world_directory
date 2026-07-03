@@ -9,11 +9,10 @@ import { useWorld } from "@/lib/store";
 import { moveState } from "@/lib/gameState";
 import { prefersReducedMotion } from "@/lib/motion";
 import { run, useGame } from "@/lib/gameStore";
-import { touchKeys } from "@/lib/touchInput";
+import { touchStick } from "@/lib/touchInput";
 import { useKeyboard } from "@/lib/useKeyboard";
 import Landmark from "@/components/three/Landmarks";
 import GameLayer from "@/components/game/GameLayer";
-import NetworkLinks from "@/components/three/NetworkLinks";
 
 export const PLANET_RADIUS = 2.4;
 
@@ -195,8 +194,9 @@ export default function Planet() {
     // "forward" is always away from the camera, whatever its orbit angle
     if (inputAllowed) {
       const az = moveState.camAz;
-      const fwd = (k.forward || touchKeys.forward ? 1 : 0) - (k.back || touchKeys.back ? 1 : 0);
-      const side = (k.right || touchKeys.right ? 1 : 0) - (k.left || touchKeys.left ? 1 : 0);
+      // keyboard digital + joystick analog, summed then clamped to unit length
+      const fwd = (k.forward ? 1 : 0) - (k.back ? 1 : 0) + touchStick.y;
+      const side = (k.right ? 1 : 0) - (k.left ? 1 : 0) + touchStick.x;
       // desired surface direction in world space — NORMALIZED so diagonals
       // aren't √2 faster than cardinal runs
       let mx = -Math.sin(az) * fwd + Math.cos(az) * side;
@@ -209,7 +209,7 @@ export default function Planet() {
       // map to planet angular velocity (ω_x moves the ninja -Z, ω_z moves +X)
       v.x += ACC * mult * dt * -mz;
       v.z += ACC * mult * dt * mx;
-      moveState.inputActive = fwd !== 0 || side !== 0;
+      moveState.inputActive = fwd !== 0 || side !== 0 || touchStick.active;
     } else {
       moveState.inputActive = false;
     }
@@ -341,7 +341,6 @@ export default function Planet() {
           ))}
 
         {/* glowing network traces between ecosystem nodes (explore only) */}
-        <NetworkLinks />
 
         {/* X1 Ninja Survivors — enemies, shurikens, coins, katanas */}
         <GameLayer planet={group} />

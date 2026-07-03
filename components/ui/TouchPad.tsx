@@ -1,39 +1,68 @@
 "use client";
 
-import { touchKeys } from "@/lib/touchInput";
+import { useRef } from "react";
+import { touchStick } from "@/lib/touchInput";
 
-type Dir = keyof typeof touchKeys;
+const RADIUS = 44; // knob travel in px
 
-const PAD: { dir: Dir; label: string; cls: string }[] = [
-  { dir: "forward", label: "▲", cls: "col-start-2 row-start-1" },
-  { dir: "left", label: "◀", cls: "col-start-1 row-start-2" },
-  { dir: "right", label: "▶", cls: "col-start-3 row-start-2" },
-  { dir: "back", label: "▼", cls: "col-start-2 row-start-3" },
-];
-
-/** Mobile D-pad — drives the same movement state as WASD. Hidden on md+. */
+/**
+ * Mobile virtual joystick — a radial analog stick like every mobile game.
+ * Drag anywhere on the base; the knob follows your thumb (clamped to the
+ * ring) and writes a normalized vector into touchStick. Hidden on md+.
+ */
 export default function TouchPad() {
-  const press = (dir: Dir, down: boolean) => () => {
-    touchKeys[dir] = down;
+  const knob = useRef<HTMLDivElement | null>(null);
+  const base = useRef<HTMLDivElement | null>(null);
+
+  const move = (clientX: number, clientY: number) => {
+    const el = base.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    let dx = clientX - (r.left + r.width / 2);
+    let dy = clientY - (r.top + r.height / 2);
+    const len = Math.hypot(dx, dy);
+    if (len > RADIUS) {
+      dx = (dx / len) * RADIUS;
+      dy = (dy / len) * RADIUS;
+    }
+    touchStick.x = dx / RADIUS; // right +
+    touchStick.y = -dy / RADIUS; // up = forward +
+    touchStick.active = true;
+    if (knob.current) knob.current.style.transform = `translate(${dx}px, ${dy}px)`;
+  };
+
+  const release = () => {
+    touchStick.x = 0;
+    touchStick.y = 0;
+    touchStick.active = false;
+    if (knob.current) knob.current.style.transform = "translate(0px, 0px)";
   };
 
   return (
-    <div className="pointer-events-auto absolute bottom-4 right-4 grid select-none grid-cols-3 grid-rows-3 gap-1 md:hidden">
-      {PAD.map(({ dir, label, cls }) => (
-        <button
-          key={dir}
-          aria-label={`walk ${dir}`}
-          className={`${cls} grid h-12 w-12 place-items-center rounded-lg border border-cyan/30 bg-[rgba(9,13,28,0.7)] text-sm text-cyan backdrop-blur active:border-gold/70 active:text-gold`}
-          style={{ touchAction: "none" }}
-          onPointerDown={press(dir, true)}
-          onPointerUp={press(dir, false)}
-          onPointerLeave={press(dir, false)}
-          onPointerCancel={press(dir, false)}
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          {label}
-        </button>
-      ))}
+    <div
+      ref={base}
+      className="pointer-events-auto absolute bottom-6 right-6 grid h-32 w-32 select-none place-items-center rounded-full border border-cyan/30 bg-[rgba(9,13,28,0.55)] backdrop-blur md:hidden"
+      style={{ touchAction: "none" }}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        move(e.clientX, e.clientY);
+      }}
+      onPointerMove={(e) => {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) move(e.clientX, e.clientY);
+      }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {/* subtle cross ticks so it reads as a stick, not a button */}
+      <span className="absolute top-2 font-mono text-[9px] text-cyan/50">▲</span>
+      <span className="absolute bottom-2 font-mono text-[9px] text-cyan/50">▼</span>
+      <span className="absolute left-2 font-mono text-[9px] text-cyan/50">◀</span>
+      <span className="absolute right-2 font-mono text-[9px] text-cyan/50">▶</span>
+      <div
+        ref={knob}
+        className="h-12 w-12 rounded-full border border-gold/60 bg-gradient-to-b from-[#ffd97a]/30 to-[#c9921e]/30 shadow-[0_0_16px_rgba(240,199,94,0.35)] transition-transform duration-75"
+      />
     </div>
   );
 }

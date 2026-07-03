@@ -55,16 +55,6 @@ export default function Overlay() {
       {/* mode tabs — big, bright, unmissable */}
       <div className="pointer-events-auto absolute left-4 top-3 flex gap-2">
         <button
-          onClick={() => mode !== "explore" && useGame.getState().quit()}
-          className={`rounded-xl border-2 px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
-            mode === "explore"
-              ? "border-cyan bg-gradient-to-b from-[#39c7f5] to-[#1e6fff] text-white shadow-[0_0_24px_rgba(57,199,245,0.55)]"
-              : "border-white/20 bg-space/70 text-ink-dim hover:border-cyan/70 hover:text-cyan"
-          }`}
-        >
-          🌐 explore
-        </button>
-        <button
           onClick={() => mode === "explore" && openMenu()}
           className={`rounded-xl border-2 px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
             mode !== "explore"
@@ -73,6 +63,16 @@ export default function Overlay() {
           }`}
         >
           🥷 game
+        </button>
+        <button
+          onClick={() => mode !== "explore" && useGame.getState().quit()}
+          className={`rounded-xl border-2 px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
+            mode === "explore"
+              ? "border-cyan bg-gradient-to-b from-[#39c7f5] to-[#1e6fff] text-white shadow-[0_0_24px_rgba(57,199,245,0.55)]"
+              : "border-white/20 bg-space/70 text-ink-dim hover:border-cyan/70 hover:text-cyan"
+          }`}
+        >
+          🌐 explore
         </button>
       </div>
 

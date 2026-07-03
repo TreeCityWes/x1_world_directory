@@ -245,7 +245,7 @@ const emptyHud = (): Hud => ({
 const BEST_KEY = "x1world_best_score";
 
 export const useGame = create<GameStore>((set) => ({
-  mode: "explore",
+  mode: "menu", // the game IS the landing experience; explore is the side quest
   hud: emptyHud(),
   choices: [],
   activeSites: [],
