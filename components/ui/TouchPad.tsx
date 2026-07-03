@@ -25,8 +25,14 @@ export default function TouchPad() {
       dx = (dx / len) * RADIUS;
       dy = (dy / len) * RADIUS;
     }
-    touchStick.x = dx / RADIUS; // right +
-    touchStick.y = -dy / RADIUS; // up = forward +
+    // deadzone: thumb jitter near center must not flip direction
+    if (len < RADIUS * 0.18) {
+      touchStick.x = 0;
+      touchStick.y = 0;
+    } else {
+      touchStick.x = dx / RADIUS; // right +
+      touchStick.y = -dy / RADIUS; // up = forward +
+    }
     touchStick.active = true;
     if (knob.current) knob.current.style.transform = `translate(${dx}px, ${dy}px)`;
   };

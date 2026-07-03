@@ -148,11 +148,13 @@ export default function Planet() {
     let lastX = 0;
     let lastY = 0;
     const down = (e: PointerEvent) => {
+      if (useGame.getState().mode !== "explore") return; // drag-spin is explore-only
       dragging.current = true;
       lastX = e.clientX;
       lastY = e.clientY;
     };
     const move = (e: PointerEvent) => {
+      if (useGame.getState().mode !== "explore") return;
       if (!dragging.current) return;
       vel.current.x += (e.clientY - lastY) * 0.0055;
       vel.current.y += (e.clientX - lastX) * 0.0055;
