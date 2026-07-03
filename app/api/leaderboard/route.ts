@@ -59,11 +59,11 @@ export async function POST(req: Request) {
     const name = String(body.name ?? "")
       .replace(/[^\w \-.✨🥷]/g, "")
       .trim()
-      .slice(0, 20) || "anon ninja";
+      .slice(0, 20);
     const wallet = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(body.wallet ?? "")) ? String(body.wallet) : "";
     const score = Math.max(0, Math.min(500_000, Math.round(Number(body.score) || 0)));
     const diff = ["normal", "hard", "cursed"].includes(String(body.diff)) ? String(body.diff) : "normal";
-    if (score <= 0) return NextResponse.json({ ok: false }, { status: 400 });
+    if (!name || score <= 0) return NextResponse.json({ ok: false }, { status: 400 });
 
     const member = memberOf({ name, wallet });
     if (SB_URL && SB_KEY) {

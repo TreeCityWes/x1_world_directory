@@ -4,22 +4,39 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 /**
- * Ninja profile — display name + connected SVM wallet. Wallet connect uses
- * whatever standard injected provider is present (X1 Wallet, Backpack,
- * Phantom, Solflare all expose the same connect/publicKey surface). No heavy
- * wallet-adapter dependency needed for "sign in with your address".
+ * Ninja profile — display name + connected wallet. X1 Wallet (wallet.x1.xyz)
+ * is the primary target, Backpack also works; Phantom is NOT supported on X1
+ * and is explicitly skipped. Standard injected connect/publicKey surface — no
+ * wallet-adapter dependency needed.
  */
 
 type InjectedProvider = {
   connect: () => Promise<{ publicKey?: { toString(): string } } | void>;
   disconnect?: () => Promise<void>;
   publicKey?: { toString(): string };
+  isPhantom?: boolean;
 };
 
 function getProvider(): InjectedProvider | null {
   if (typeof window === "undefined") return null;
-  const w = window as unknown as Record<string, { solana?: InjectedProvider } & InjectedProvider>;
-  return w.x1wallet?.solana ?? w.backpack?.solana ?? w.phantom?.solana ?? (w.solana as InjectedProvider | undefined) ?? null;
+  const w = window as unknown as Record<
+    string,
+    ({ solana?: InjectedProvider } & InjectedProvider) | undefined
+  >;
+  const candidates = [
+    // X1 Wallet first — different builds have injected under different names
+    w.x1wallet?.solana ?? (w.x1wallet as InjectedProvider | undefined),
+    w.x1?.solana ?? (w.x1 as InjectedProvider | undefined),
+    w.X1Wallet as InjectedProvider | undefined,
+    // Backpack second
+    w.backpack?.solana,
+    // generic injection last — but never Phantom (X1 doesn't support it)
+    w.solana as InjectedProvider | undefined,
+  ];
+  for (const p of candidates) {
+    if (p && typeof p.connect === "function" && !p.isPhantom) return p;
+  }
+  return null;
 }
 
 type ProfileState = {
@@ -43,7 +60,7 @@ export const useProfile = create<ProfileState>()(
       connect: async () => {
         const p = getProvider();
         if (!p) {
-          set({ walletError: "no wallet found — install X1 Wallet, Backpack or Phantom" });
+          set({ walletError: "no supported wallet — get X1 Wallet at wallet.x1.xyz (or Backpack)" });
           return;
         }
         set({ connecting: true, walletError: "" });

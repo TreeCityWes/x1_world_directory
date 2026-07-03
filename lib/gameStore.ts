@@ -272,7 +272,7 @@ export const useGame = create<GameStore>((set) => ({
     }
     sfx.death();
     const pd = useProfile.getState();
-    submitScore({ name: pd.name || "anon ninja", wallet: pd.wallet, score, diff: run.difficulty });
+    if (pd.name.trim()) submitScore({ name: pd.name, wallet: pd.wallet, score, diff: run.difficulty });
     set({ mode: "dead", finalScore: score, best, hud: emptyHud() });
   },
   win: () => {
@@ -284,7 +284,7 @@ export const useGame = create<GameStore>((set) => ({
     }
     sfx.win();
     const pw = useProfile.getState();
-    submitScore({ name: pw.name || "anon ninja", wallet: pw.wallet, score, diff: run.difficulty });
+    if (pw.name.trim()) submitScore({ name: pw.name, wallet: pw.wallet, score, diff: run.difficulty });
     set({ mode: "won", finalScore: score, best, hud: emptyHud() });
   },
   syncHud: () => set({ hud: emptyHud() }),

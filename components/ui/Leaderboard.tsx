@@ -25,7 +25,7 @@ export default function Leaderboard() {
   const mode = useGame((s) => s.mode);
   const name = useProfile((s) => s.name);
   const wallet = useProfile((s) => s.wallet);
-  const me = `${name || "anon ninja"}|${wallet ? wallet.slice(0, 8) : "guest"}`;
+  const me = `${name}|${wallet ? wallet.slice(0, 8) : "guest"}`;
 
   useEffect(() => {
     let stale = false;
@@ -59,6 +59,11 @@ export default function Leaderboard() {
       </div>
       <div className="mt-2 space-y-1.5">
         {!loaded && <p className="text-xs text-ink-dim">loading…</p>}
+        {!name.trim() && (
+          <p className="rounded-md border border-gold/30 bg-gold/5 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-gold">
+            name your ninja above to compete on the board
+          </p>
+        )}
         {loaded && board.length === 0 && (
           <p className="text-xs text-ink-dim">no runs yet — be the first ninja on the board</p>
         )}
