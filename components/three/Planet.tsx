@@ -119,7 +119,9 @@ export default function Planet() {
   const keys = useKeyboard();
   const vel = useRef({ x: 0, y: 0, z: 0 }); // angular velocity around world axes
   const lastNear = useRef<string | null>(null);
+  const lastClosest = useRef<string | null>(null);
   const setNear = useWorld((s) => s.setNear);
+  const setClosest = useWorld((s) => s.setClosest);
   const gl = useThree((s) => s.gl);
 
   const hexMap = useMemo(() => makeHexTexture(), []);
@@ -196,19 +198,25 @@ export default function Planet() {
     g.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 0.9) * 0.006);
 
     // proximity: which region is closest to the top (where the character is)?
-    let nearest: string | null = null;
-    let best = NEAR_ANGLE;
+    let closest: string | null = null;
+    let best = Infinity;
     for (const a of anchors) {
       _v.copy(a.local).applyQuaternion(g.quaternion);
       const angle = Math.acos(THREE.MathUtils.clamp(_v.dot(UP), -1, 1));
       if (angle < best) {
         best = angle;
-        nearest = a.region.id;
+        closest = a.region.id;
       }
     }
+    // "near" = closest AND within interaction range
+    const nearest = best < NEAR_ANGLE ? closest : null;
     if (nearest !== lastNear.current) {
       lastNear.current = nearest;
       setNear(nearest);
+    }
+    if (closest !== lastClosest.current) {
+      lastClosest.current = closest;
+      setClosest(closest);
     }
   });
 

@@ -9,15 +9,19 @@ import { create } from "zustand";
  */
 type WorldState = {
   nearId: string | null;
+  /** Closest landmark to the player, regardless of range — never null after frame 1. */
+  closestId: string | null;
   hoveredId: string | null;
   selectedId: string | null;
   setNear: (id: string | null) => void;
+  setClosest: (id: string | null) => void;
   setHovered: (id: string | null) => void;
   select: (id: string | null) => void;
 };
 
 export const useWorld = create<WorldState>((set) => ({
   nearId: null,
+  closestId: null,
   hoveredId: null,
   selectedId: null,
   setNear: (id) =>
@@ -25,6 +29,7 @@ export const useWorld = create<WorldState>((set) => ({
       nearId: id,
       selectedId: id !== null && id !== s.nearId ? null : s.selectedId,
     })),
+  setClosest: (id) => set({ closestId: id }),
   setHovered: (id) => set({ hoveredId: id }),
   select: (id) => set({ selectedId: id }),
 }));

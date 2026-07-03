@@ -11,12 +11,14 @@ import { useWorld } from "@/lib/store";
  */
 export default function SidePanel() {
   const nearId = useWorld((s) => s.nearId);
+  const closestId = useWorld((s) => s.closestId);
   const hoveredId = useWorld((s) => s.hoveredId);
   const selectedId = useWorld((s) => s.selectedId);
 
-  const activeId = selectedId ?? nearId ?? hoveredId;
+  // clicked/locked → in-range → hovered → whatever is closest to the ninja
+  const activeId = selectedId ?? nearId ?? hoveredId ?? closestId;
   const region = regions.find((r) => r.id === activeId) ?? regions[0];
-  const isFeatured = activeId === null;
+  const isApproaching = activeId !== null && activeId === closestId && nearId === null;
 
   return (
     <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-sm:w-full max-sm:min-h-0 max-sm:flex-1 max-sm:border-l-0 max-sm:border-t">
@@ -67,9 +69,9 @@ export default function SidePanel() {
               >
                 {region.category}
               </p>
-              {isFeatured && (
+              {isApproaching && (
                 <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
-                  featured
+                  nearest — walk closer
                 </p>
               )}
             </div>
