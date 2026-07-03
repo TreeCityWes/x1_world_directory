@@ -47,6 +47,12 @@ export default function Directory() {
 
   return (
     <section id="directory" className="mx-auto max-w-6xl px-5 py-16">
+      <a
+        href="#world"
+        className="mb-6 inline-block rounded-md border border-white/15 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim transition-colors hover:border-gold/60 hover:text-gold"
+      >
+        ▲ back to the world
+      </a>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-gold">
@@ -108,12 +114,20 @@ export default function Directory() {
         </table>
       </div>
 
-      <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim/70">
-        unofficial fan tribute · not affiliated with x1 foundation ·{" "}
-        <a href="https://docs.x1.xyz" className="underline decoration-dotted hover:text-gold">
-          docs.x1.xyz
+      <div className="mt-8 flex flex-col items-center gap-4">
+        <a
+          href="#world"
+          className="rounded-md border border-white/15 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim transition-colors hover:border-gold/60 hover:text-gold"
+        >
+          ▲ back to the world
         </a>
-      </p>
+        <p className="text-center font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim/70">
+          unofficial fan tribute · not affiliated with x1 foundation ·{" "}
+          <a href="https://docs.x1.xyz" className="underline decoration-dotted hover:text-gold">
+            docs.x1.xyz
+          </a>
+        </p>
+      </div>
     </section>
   );
 }

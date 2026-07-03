@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <main>
       {/* the console: globe (left screen) + info panel (right screen) */}
-      <section className="relative h-dvh w-full overflow-hidden">
+      <section id="world" className="relative h-dvh w-full overflow-hidden">
         <ExperienceLoader />
         <a
           href="#directory"

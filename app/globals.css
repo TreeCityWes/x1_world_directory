@@ -35,21 +35,22 @@
   --font-mono: var(--font-geist-mono);
 }
 
-html,
-body {
+html {
   height: 100%;
+  /* hero console is 100dvh; the ecosystem directory scrolls below it */
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  scroll-behavior: smooth;
 }
 
 body {
+  min-height: 100%;
   background:
     radial-gradient(1100px 700px at 72% -8%, rgba(47, 78, 158, 0.28), transparent 60%),
     radial-gradient(900px 600px at 12% 108%, rgba(23, 48, 110, 0.22), transparent 55%),
     var(--space);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
-  /* hero console is 100dvh; the ecosystem directory scrolls below it */
-  overflow-x: hidden;
-  overscroll-behavior: none;
 }
 
 /* Tiny nameplate above the focused landmark only */
