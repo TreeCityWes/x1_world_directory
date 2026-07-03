@@ -1,12 +1,6 @@
 [
   {
     "category": "Core Infra",
-    "project": "X1 Console",
-    "domain": "x1console.app",
-    "builder": "Blackbeard"
-  },
-  {
-    "category": "Core Infra",
     "project": "X1 Validator HQ",
     "domain": "x1valhq.xyz",
     "builder": "Shaka_Vibes"
@@ -85,12 +79,6 @@
   },
   {
     "category": "Social / Community",
-    "project": "Memo Dapp",
-    "domain": "memox1.xyz",
-    "builder": "xen_artist"
-  },
-  {
-    "category": "Social / Community",
     "project": "X1 World",
     "domain": "x1.world",
     "builder": "TreeCityWes"
@@ -112,12 +100,6 @@
     "project": "X1 Nodes / XEN Pub",
     "domain": "xen.pub",
     "builder": "Jozef"
-  },
-  {
-    "category": "Bridge UI",
-    "project": "X1 Bridge Easy",
-    "domain": "x1-bridge-easy.vercel.app",
-    "builder": "Unknown"
   },
   {
     "category": "Launchpad",
@@ -148,11 +130,5 @@
     "project": "Solaris Prime",
     "domain": "solarisprime.xyz",
     "builder": "Owl"
-  },
-  {
-    "category": "Validator Dashboard",
-    "project": "Xenobi X1 Dashboard",
-    "domain": "xenobi-x.one",
-    "builder": "Xenobi"
   }
 ]
