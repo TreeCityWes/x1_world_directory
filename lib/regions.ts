@@ -105,6 +105,13 @@ const KIND_BY_CATEGORY: Record<string, LandmarkKind> = {
   "Docs / Wiki": "explorerFort",
 };
 
+/** Optional hand-written blurb on a projects.json entry. */
+function customBlurb(p: unknown): string | undefined {
+  return typeof p === "object" && p !== null && "blurb" in p
+    ? String((p as { blurb: unknown }).blurb)
+    : undefined;
+}
+
 export function slugify(text: string) {
   return text
     .toLowerCase()
@@ -161,10 +168,12 @@ export const regions: Region[] = live.map((p, i) => {
     accent: accentFor(p.category),
     kind: KIND_BY_CATEGORY[p.category] ?? "validatorTower",
     blurb:
-      p.domain === "x1.world"
+      customBlurb(p) ??
+      (p.domain === "x1.world"
         ? "You are here. The interactive X1 ecosystem world you're exploring right now."
-        : BLURB_BY_CATEGORY[p.category] ?? `Part of the growing X1 ecosystem — ${p.category}.`,
-    description: s?.description ?? "",
+        : BLURB_BY_CATEGORY[p.category] ?? `Part of the growing X1 ecosystem — ${p.category}.`),
+    // a hand-written blurb in projects.json beats the scraped description
+    description: customBlurb(p) ?? s?.description ?? "",
     twitter: s?.twitter ?? "",
     telegram: s?.telegram ?? "",
   };
@@ -202,6 +211,7 @@ export const directory: DirectoryEntry[] = projects.map((p) => {
     accent: accentFor(p.category),
     ok,
     description:
+      customBlurb(p) ||
       s?.description ||
       (p.domain === "x1.world"
         ? "You are here — the interactive X1 ecosystem world."

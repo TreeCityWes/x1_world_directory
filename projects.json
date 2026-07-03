@@ -160,5 +160,12 @@
     "project": "XenBlocks Explorer",
     "domain": "explorer.xenblocks.io",
     "builder": "Unknown"
+  },
+  {
+    "category": "Data / Charts",
+    "project": "X1 SCR",
+    "domain": "x1scr.xyz",
+    "builder": "Unknown",
+    "blurb": "The second DEX screener on X1 — the first one is a ninja. 🥷"
   }
 ]

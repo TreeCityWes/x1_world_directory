@@ -268,5 +268,15 @@
     "twitter": "https://x.com/phonkmasta228",
     "telegram": "https://t.me/phonkmasta",
     "checkedAt": "2026-07-03T13:12:33.244Z"
+  },
+  "x1-scr-x1scr-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1scr.xyz",
+    "project": "X1 SCR",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T13:20:39.922Z"
   }
 }
