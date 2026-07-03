@@ -20,12 +20,19 @@ const MAP: Record<string, keyof Keys> = {
   ArrowRight: "right",
 };
 
+/** True when the user is typing in a field — game keys must not interfere. */
+export function isTyping(e: KeyboardEvent) {
+  const t = e.target as HTMLElement | null;
+  return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+}
+
 /** Tracks WASD/arrow state in a ref (no re-renders — read it in useFrame). */
 export function useKeyboard() {
   const keys = useRef<Keys>({ forward: false, back: false, left: false, right: false });
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if (isTyping(e)) return; // let inputs have their letters
       const k = MAP[e.code];
       if (!k) return;
       e.preventDefault(); // keep arrows from scrolling anything

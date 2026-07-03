@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useWorld } from "@/lib/store";
 import { useGame } from "@/lib/gameStore";
 import { isMuted, subscribeMute, toggleMute } from "@/lib/sound";
+import { isTyping } from "@/lib/useKeyboard";
 import FocusHeader from "@/components/ui/FocusHeader";
 import TouchPad from "@/components/ui/TouchPad";
 import GameHUD from "@/components/game/GameHUD";
@@ -22,6 +23,7 @@ export default function Overlay() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isTyping(e)) return; // typing a name — E/Esc are letters, not commands
       const world = useWorld.getState();
       const game = useGame.getState();
       if (e.code === "KeyE" && game.mode === "explore" && world.nearId) world.select(world.nearId);
