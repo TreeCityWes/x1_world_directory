@@ -43,8 +43,8 @@ export default function Experience() {
           {/* useTexture & co. suspend — everything lives under Suspense */}
           <Suspense fallback={null}>
             {/* two star layers at different radii → parallax depth */}
-            <Stars radius={55} depth={30} count={2500} factor={4} saturation={0} fade speed={0.7} />
-            <Stars radius={110} depth={60} count={3000} factor={6} saturation={0} fade speed={0.25} />
+            <Stars radius={55} depth={30} count={2500} factor={4} saturation={0} fade speed={0.2} />
+            <Stars radius={110} depth={60} count={3000} factor={6} saturation={0} fade speed={0.1} />
             <Planet />
             <Character />
             <Rig />
@@ -53,10 +53,10 @@ export default function Experience() {
           {/* post: bloom on the emissive beacons/eyes/blades + soft vignette */}
           <EffectComposer multisampling={8}>
             <Bloom
-              intensity={0.6}
-              luminanceThreshold={0.55}
-              luminanceSmoothing={0.3}
-              radius={0.7}
+              intensity={0.5}
+              luminanceThreshold={0.9}
+              luminanceSmoothing={0.7}
+              radius={0.6}
               mipmapBlur
             />
             <Vignette offset={0.3} darkness={0.6} />
