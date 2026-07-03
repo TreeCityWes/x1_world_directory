@@ -32,27 +32,27 @@ export default function Overlay() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
-      {/* mode tabs — top-left */}
-      <div className="pointer-events-auto absolute left-4 top-3 flex overflow-hidden rounded-lg border border-white/15 font-mono text-[10px] uppercase tracking-[0.18em] backdrop-blur">
+      {/* mode tabs — big, bright, unmissable */}
+      <div className="pointer-events-auto absolute left-4 top-3 flex gap-2">
         <button
           onClick={() => mode !== "explore" && useGame.getState().quit()}
-          className={`px-3 py-1.5 transition-colors ${
+          className={`rounded-xl border-2 px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
             mode === "explore"
-              ? "bg-gold text-space"
-              : "bg-space/70 text-ink-dim hover:text-gold"
+              ? "border-cyan bg-gradient-to-b from-[#39c7f5] to-[#1e6fff] text-white shadow-[0_0_24px_rgba(57,199,245,0.55)]"
+              : "border-white/20 bg-space/70 text-ink-dim hover:border-cyan/70 hover:text-cyan"
           }`}
         >
           🌐 explore
         </button>
         <button
           onClick={() => mode === "explore" && startGame()}
-          className={`px-3 py-1.5 transition-colors ${
+          className={`rounded-xl border-2 px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
             mode !== "explore"
-              ? "bg-gold text-space"
-              : "bg-space/70 text-ink-dim hover:text-gold"
+              ? "border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] text-space shadow-[0_0_24px_rgba(240,199,94,0.6)]"
+              : "animate-pulse border-gold/60 bg-space/70 text-gold shadow-[0_0_16px_rgba(240,199,94,0.25)] hover:animate-none hover:border-gold hover:shadow-[0_0_24px_rgba(240,199,94,0.5)]"
           }`}
         >
-          🥷 survive
+          🥷 game
         </button>
       </div>
 
