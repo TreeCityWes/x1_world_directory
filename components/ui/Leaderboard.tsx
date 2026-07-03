@@ -87,7 +87,11 @@ export default function Leaderboard() {
                 {mine && <span className="ml-1.5 font-mono text-[9px] uppercase text-cyan">you</span>}
               </span>
               {e.wallet && (
-                <span className="shrink-0 font-mono text-[9px] text-ink-dim/60">
+                <span
+                  className="shrink-0 font-mono text-[9px] text-ink-dim/60"
+                  title={e.verified ? "wallet ownership proven by signature" : "unverified wallet"}
+                >
+                  {e.verified && <span className="mr-0.5 text-[#4ade80]">✓</span>}
                   {shortAddr(e.wallet)}
                 </span>
               )}

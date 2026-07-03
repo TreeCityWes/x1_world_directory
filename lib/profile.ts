@@ -15,7 +15,27 @@ type InjectedProvider = {
   disconnect?: () => Promise<void>;
   publicKey?: { toString(): string };
   isPhantom?: boolean;
+  signMessage?: (
+    msg: Uint8Array,
+    encoding?: string,
+  ) => Promise<{ signature: Uint8Array } | Uint8Array>;
 };
+
+/** Sign an arbitrary message with the connected wallet → base64, or null. */
+export async function signWithWallet(message: string): Promise<string | null> {
+  const p = getProvider();
+  if (!p?.signMessage) return null;
+  try {
+    const res = await p.signMessage(new TextEncoder().encode(message), "utf8");
+    const sig = res instanceof Uint8Array ? res : res?.signature;
+    if (!sig) return null;
+    let bin = "";
+    for (const byte of sig) bin += String.fromCharCode(byte);
+    return btoa(bin);
+  } catch {
+    return null; // user declined — submit unverified
+  }
+}
 
 function getProvider(): InjectedProvider | null {
   if (typeof window === "undefined") return null;

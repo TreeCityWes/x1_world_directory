@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { ed25519 } from "@noble/curves/ed25519";
+import { base58, base64 } from "@scure/base";
+import { nonceValid } from "@/lib/nonce";
 
 /**
  * Global leaderboard, backed by Supabase (PostgREST — no client dependency).
@@ -37,7 +40,9 @@ const memberOf = (e: { name: string; wallet: string }) =>
 export async function GET() {
   try {
     if (SB_URL && SB_KEY) {
-      const res = await sb("leaderboard?select=name,wallet,score,diff&order=score.desc&limit=25");
+      const res = await sb(
+        "leaderboard?select=name,wallet,score,diff,verified&order=score.desc&limit=25",
+      );
       if (!res.ok) throw new Error(`sb ${res.status}`);
       const rows = (await res.json()) as Omit<Entry, "at">[];
       const board = rows.map((r, i) => ({ rank: i + 1, ...r }));
@@ -65,6 +70,20 @@ export async function POST(req: Request) {
     const diff = ["normal", "hard", "cursed"].includes(String(body.diff)) ? String(body.diff) : "normal";
     if (!name || score <= 0) return NextResponse.json({ ok: false }, { status: 400 });
 
+    // proof of wallet ownership: ed25519 signature over a server nonce
+    let verified = false;
+    const b = body as Partial<Entry> & { ts?: string; nonce?: string; sig?: string };
+    if (wallet && b.ts && b.nonce && b.sig && nonceValid(b.ts, b.nonce)) {
+      try {
+        const msg = new TextEncoder().encode(
+          `x1.world run · score:${score} · diff:${diff} · ${b.nonce}`,
+        );
+        verified = ed25519.verify(base64.decode(b.sig), msg, base58.decode(wallet));
+      } catch {
+        verified = false;
+      }
+    }
+
     const member = memberOf({ name, wallet });
     if (SB_URL && SB_KEY) {
       // keep personal best only: read current, upsert if beaten
@@ -75,7 +94,7 @@ export async function POST(req: Request) {
           method: "POST",
           headers: { Prefer: "resolution=merge-duplicates" },
           body: JSON.stringify([
-            { member, name, wallet, score, diff, updated_at: new Date().toISOString() },
+            { member, name, wallet, score, diff, verified, updated_at: new Date().toISOString() },
           ]),
         });
       }
