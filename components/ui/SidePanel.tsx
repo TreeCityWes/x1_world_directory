@@ -3,6 +3,89 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { useWorld } from "@/lib/store";
+import { UPGRADES, useGame } from "@/lib/gameStore";
+
+/** Right screen during a survival run: live run stats + owned upgrades. */
+function GamePanel() {
+  const hud = useGame((s) => s.hud);
+  const best = useGame((s) => s.best);
+  const activeSites = useGame((s) => s.activeSites);
+  const owned = Object.entries(hud.upgrades);
+  const sites = activeSites
+    .map((id) => regions.find((r) => r.id === id))
+    .filter((r): r is (typeof regions)[number] => Boolean(r));
+
+  return (
+    <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-md:w-full max-md:min-h-0 max-md:flex-1 max-md:border-l-0 max-md:border-t">
+      <header className="flex shrink-0 items-center gap-2.5 border-b border-white/10 px-5 py-3">
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#e0563f] shadow-[0_0_10px_rgba(224,86,63,0.8)]" />
+        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-ink">survival run</p>
+        <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+          best {best}
+        </p>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="grid grid-cols-2 gap-2 font-mono text-[11px] uppercase tracking-[0.15em]">
+          {[
+            ["block", hud.block],
+            ["level", hud.level],
+            ["kills", hud.kills],
+            ["sites", hud.captured],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg border border-white/10 bg-space-2/40 px-3 py-2">
+              <p className="text-ink-dim/70">{label}</p>
+              <p className="mt-0.5 text-xl text-ink">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">upgrades</p>
+        <div className="mt-2 space-y-1.5">
+          {owned.length === 0 && (
+            <p className="text-xs text-ink-dim">collect XN coins to level up</p>
+          )}
+          {owned.map(([id, lv]) => {
+            const u = UPGRADES.find((x) => x.id === id);
+            if (!u) return null;
+            return (
+              <div
+                key={id}
+                className="flex items-baseline justify-between rounded-md border border-white/8 bg-space-2/30 px-3 py-1.5 text-sm"
+              >
+                <span>{u.name}</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-cyan">
+                  lv {lv}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+          powerup sites
+        </p>
+        <div className="mt-2 space-y-1.5">
+          {sites.map((r) => (
+            <div
+              key={r.id}
+              className="flex items-center gap-2 rounded-md border border-white/8 bg-space-2/30 px-3 py-1.5 text-sm"
+            >
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ background: r.accent, boxShadow: `0 0 8px ${r.accent}` }}
+              />
+              {r.name}
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-6 font-mono text-[9px] uppercase leading-relaxed tracking-[0.15em] text-ink-dim/70">
+          survive the blocks · capture glowing sites for powers · shurikens aim where you run
+        </p>
+      </div>
+    </aside>
+  );
+}
 
 /**
  * The right screen of the console — full-height info pane that swaps as you
@@ -10,10 +93,13 @@ import { useWorld } from "@/lib/store";
  * featured default.
  */
 export default function SidePanel() {
+  const gameMode = useGame((s) => s.mode);
   const nearId = useWorld((s) => s.nearId);
   const closestId = useWorld((s) => s.closestId);
   const hoveredId = useWorld((s) => s.hoveredId);
   const selectedId = useWorld((s) => s.selectedId);
+
+  if (gameMode !== "explore") return <GamePanel />;
 
   // clicked/locked → in-range → hovered → whatever is closest to the ninja
   const activeId = selectedId ?? nearId ?? hoveredId ?? closestId;

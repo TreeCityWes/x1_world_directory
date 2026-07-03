@@ -7,9 +7,11 @@ import * as THREE from "three";
 import { regions, type Region } from "@/lib/regions";
 import { useWorld } from "@/lib/store";
 import { moveState } from "@/lib/gameState";
+import { run, useGame } from "@/lib/gameStore";
 import { touchKeys } from "@/lib/touchInput";
 import { useKeyboard } from "@/lib/useKeyboard";
 import Landmark from "@/components/three/Landmarks";
+import GameLayer from "@/components/game/GameLayer";
 
 export const PLANET_RADIUS = 2.4;
 
@@ -126,6 +128,8 @@ export default function Planet() {
   const gl = useThree((s) => s.gl);
 
   const hexMap = useMemo(() => makeHexTexture(), []);
+  const gameMode = useGame((s) => s.mode);
+  const activeSites = useGame((s) => s.activeSites);
 
   const anchors = useMemo(
     () =>
@@ -172,18 +176,25 @@ export default function Planet() {
     if (!g) return;
     const k = keys.current;
     const v = vel.current;
+    const gMode = useGame.getState().mode;
+    const playing = gMode === "play";
+    const inputAllowed = gMode === "explore" || playing;
+    const mult = playing ? run.speedMult : 1;
+    const maxSpeed = MAX_SPEED * mult;
 
     // accelerate from input (keyboard OR mobile D-pad)…
-    if (k.forward || touchKeys.forward) v.x += ACC * dt;
-    if (k.back || touchKeys.back) v.x -= ACC * dt;
-    if (k.right || touchKeys.right) v.z += ACC * dt;
-    if (k.left || touchKeys.left) v.z -= ACC * dt;
+    if (inputAllowed) {
+      if (k.forward || touchKeys.forward) v.x += ACC * mult * dt;
+      if (k.back || touchKeys.back) v.x -= ACC * mult * dt;
+      if (k.right || touchKeys.right) v.z += ACC * mult * dt;
+      if (k.left || touchKeys.left) v.z -= ACC * mult * dt;
+    }
 
     // …damp for inertia, clamp for sanity
     const d = Math.exp(-DAMP * dt);
-    v.x = THREE.MathUtils.clamp(v.x * d, -MAX_SPEED, MAX_SPEED);
-    v.y = THREE.MathUtils.clamp(v.y * d, -MAX_SPEED, MAX_SPEED);
-    v.z = THREE.MathUtils.clamp(v.z * d, -MAX_SPEED, MAX_SPEED);
+    v.x = THREE.MathUtils.clamp(v.x * d, -maxSpeed, maxSpeed);
+    v.y = THREE.MathUtils.clamp(v.y * d, -maxSpeed, maxSpeed);
+    v.z = THREE.MathUtils.clamp(v.z * d, -maxSpeed, maxSpeed);
 
     // rotate the world under the character's feet (world-space axes)
     g.quaternion.premultiply(_q.setFromAxisAngle(X_AXIS, v.x * dt));
@@ -208,26 +219,31 @@ export default function Planet() {
     // the world slowly breathes
     g.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 0.9) * 0.006);
 
-    // proximity: which region is closest to the top (where the character is)?
-    let closest: string | null = null;
-    let best = Infinity;
-    for (const a of anchors) {
-      _v.copy(a.local).applyQuaternion(g.quaternion);
-      const angle = Math.acos(THREE.MathUtils.clamp(_v.dot(UP), -1, 1));
-      if (angle < best) {
-        best = angle;
-        closest = a.region.id;
+    // proximity panel updates only matter while exploring
+    if (gMode === "explore") {
+      let closest: string | null = null;
+      let best = Infinity;
+      for (const a of anchors) {
+        _v.copy(a.local).applyQuaternion(g.quaternion);
+        const angle = Math.acos(THREE.MathUtils.clamp(_v.dot(UP), -1, 1));
+        if (angle < best) {
+          best = angle;
+          closest = a.region.id;
+        }
       }
-    }
-    // "near" = closest AND within interaction range
-    const nearest = best < NEAR_ANGLE ? closest : null;
-    if (nearest !== lastNear.current) {
-      lastNear.current = nearest;
-      setNear(nearest);
-    }
-    if (closest !== lastClosest.current) {
-      lastClosest.current = closest;
-      setClosest(closest);
+      // "near" = closest AND within interaction range
+      const nearest = best < NEAR_ANGLE ? closest : null;
+      if (nearest !== lastNear.current) {
+        lastNear.current = nearest;
+        setNear(nearest);
+      }
+      if (closest !== lastClosest.current) {
+        lastClosest.current = closest;
+        setClosest(closest);
+      }
+    } else if (lastNear.current !== null) {
+      lastNear.current = null;
+      setNear(null);
     }
   });
 
@@ -256,10 +272,22 @@ export default function Planet() {
             depthWrite={false}
           />
         </mesh>
-        {/* the ecosystem: one landmark per project */}
-        {anchors.map(({ region, local }, i) => (
-          <RegionSite key={region.id} region={region} normal={local} index={i} />
-        ))}
+        {/* the ecosystem: all landmarks while exploring; only active powerup
+            sites during a survival run */}
+        {anchors
+          .filter(({ region }) => gameMode === "explore" || activeSites.includes(region.id))
+          .map(({ region, local }, i) => (
+            <RegionSite
+              key={region.id}
+              region={region}
+              normal={local}
+              index={i}
+              forceLit={gameMode !== "explore"}
+            />
+          ))}
+
+        {/* X1 Ninja Survivors — enemies, shurikens, coins, katanas */}
+        <GameLayer planet={group} />
       </group>
 
       <OrbitDust />
@@ -277,16 +305,19 @@ function RegionSite({
   region,
   normal,
   index,
+  forceLit = false,
 }: {
   region: Region;
   normal: THREE.Vector3;
   index: number;
+  /** during a survival run every visible site is a glowing powerup */
+  forceLit?: boolean;
 }) {
-  const near = useWorld((s) => s.nearId === region.id);
   // lit = the one project the side panel is currently showing
-  const lit = useWorld(
+  const panelLit = useWorld(
     (s) => (s.selectedId ?? s.nearId ?? s.hoveredId ?? s.closestId) === region.id,
   );
+  const lit = forceLit || panelLit;
   const select = useWorld((s) => s.select);
   const setHoveredId = useWorld((s) => s.setHovered);
   const [hovered, setHovered] = useState(false);
