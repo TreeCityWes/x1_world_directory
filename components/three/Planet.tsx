@@ -32,27 +32,8 @@ const SITE_SCALE = 0.44; // 55 landmarks — keep them small so the world breath
 
 // Classic additive fresnel glow — the planet's atmosphere.
 const ATMOSPHERE = new THREE.ShaderMaterial({
-  vertexShader: /* glsl */ `
-    varying vec3 vNormal;
-    varying vec3 vView;
-    void main() {
-      vNormal = normalize(normalMatrix * normal);
-      vec4 mv = modelViewMatrix * vec4(position, 1.0);
-      vView = normalize(-mv.xyz); // per-fragment view vector (stable at the silhouette)
-      gl_Position = projectionMatrix * mv;
-    }
-  `,
-  fragmentShader: /* glsl */ `
-    varying vec3 vNormal;
-    varying vec3 vView;
-    void main() {
-      // proper view-vector fresnel, softened with smoothstep so the rim can't
-      // alias/shimmer — the old +Z approximation flickered at the silhouette
-      float rim = 1.0 - abs(dot(normalize(vNormal), vView));
-      float glow = smoothstep(0.55, 1.0, rim) * 0.6;
-      gl_FragColor = vec4(0.16, 0.34, 0.74, 1.0) * glow;
-    }
-  `,
+  vertexShader: /* glsl */ ,
+  fragmentShader: /* glsl */ ,
   blending: THREE.AdditiveBlending,
   side: THREE.BackSide,
   transparent: true,
@@ -349,7 +330,7 @@ export default function Planet() {
       <OrbitDust />
 
       {/* atmosphere glow (doesn't rotate — it's light, not land) */}
-      <mesh scale={1.04}>
+      <mesh scale={1.08}>
         <sphereGeometry args={[PLANET_RADIUS, 48, 48]} />
         <primitive object={ATMOSPHERE} attach="material" />
       </mesh>
