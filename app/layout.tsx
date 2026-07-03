@@ -12,10 +12,49 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const TITLE = "x1.world — explore the X1 ecosystem";
+const DESCRIPTION =
+  "An interactive 3D world of the X1 blockchain ecosystem. Drive a little ninja around a living network planet — every landmark is a real X1 project, with live screenshots, health checks, and links.";
+
 export const metadata: Metadata = {
-  title: "x1.world — walk the X1 ecosystem",
-  description:
-    "An unofficial, fan-made interactive tribute to X1, the SVM-compatible Layer 1. Drive a little ninja around a living blue world under a starry sky — every beacon is an X1 ecosystem project.",
+  metadataBase: new URL("https://x1.world"),
+  title: TITLE,
+  description: DESCRIPTION,
+  keywords: [
+    "X1",
+    "X1 blockchain",
+    "XNT",
+    "SVM",
+    "X1 ecosystem",
+    "validator",
+    "crypto",
+    "interactive 3D",
+  ],
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "https://x1.world",
+    siteName: "x1.world",
+    type: "website",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "The x1.world interactive ecosystem globe",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/og.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
