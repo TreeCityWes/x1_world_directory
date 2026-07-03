@@ -61,7 +61,7 @@ export const ENEMY_TYPES: Record<
   goblin: { hp: 22, speed: 0.26, radius: 0.055, dmg: 10, xp: 2, gemSplit: 1, color: "#e0563f", weight: () => 10 },
   gremlin: { hp: 10, speed: 0.42, radius: 0.04, dmg: 6, xp: 1, gemSplit: 1, color: "#fb923c", weight: (b) => (b >= 1 ? 8 : 0) },
   whale: { hp: 90, speed: 0.13, radius: 0.09, dmg: 18, xp: 8, gemSplit: 4, color: "#a78bfa", weight: (b) => (b >= 2 ? 4 : 0) },
-  boss: { hp: 700, speed: 0.16, radius: 0.16, dmg: 30, xp: 48, gemSplit: 8, color: "#f0c75e", weight: () => 0 },
+  boss: { hp: 1100, speed: 0.19, radius: 0.18, dmg: 48, xp: 64, gemSplit: 10, color: "#f0c75e", weight: () => 0 },
 };
 
 export type UpgradeDef = {
