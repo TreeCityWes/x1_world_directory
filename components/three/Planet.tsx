@@ -238,7 +238,7 @@ export default function Planet() {
         <mesh ref={sphere} receiveShadow>
           <sphereGeometry args={[PLANET_RADIUS, 64, 64]} />
           <meshPhysicalMaterial
-            color="#111c3d"
+            color="#16234a"
             roughness={0.5}
             metalness={0.25}
             clearcoat={0.4}
