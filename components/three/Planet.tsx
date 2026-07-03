@@ -23,9 +23,9 @@ const _q = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 
 // Movement feel — tuned for "physical toy planet"
-const ACC = 2.2; // rad/s² from held keys
+const ACC = 1.9; // rad/s² from held keys
 const DAMP = 2.8; // exponential damping → inertia / glide
-const MAX_SPEED = 0.7; // rad/s — a stroll, not a sprint (panel keeps up)
+const MAX_SPEED = 0.6; // rad/s — a stroll, not a sprint (panel keeps up)
 const NEAR_ANGLE = 0.28; // rad from the top at which a region counts as "near"
 const SITE_SCALE = 0.44; // 55 landmarks — keep them small so the world breathes
 
@@ -188,9 +188,15 @@ export default function Planet() {
       const az = moveState.camAz;
       const fwd = (k.forward || touchKeys.forward ? 1 : 0) - (k.back || touchKeys.back ? 1 : 0);
       const side = (k.right || touchKeys.right ? 1 : 0) - (k.left || touchKeys.left ? 1 : 0);
-      // desired surface direction in world space
-      const mx = -Math.sin(az) * fwd + Math.cos(az) * side;
-      const mz = -Math.cos(az) * fwd - Math.sin(az) * side;
+      // desired surface direction in world space — NORMALIZED so diagonals
+      // aren't √2 faster than cardinal runs
+      let mx = -Math.sin(az) * fwd + Math.cos(az) * side;
+      let mz = -Math.cos(az) * fwd - Math.sin(az) * side;
+      const mlen = Math.hypot(mx, mz);
+      if (mlen > 1) {
+        mx /= mlen;
+        mz /= mlen;
+      }
       // map to planet angular velocity (ω_x moves the ninja -Z, ω_z moves +X)
       v.x += ACC * mult * dt * -mz;
       v.z += ACC * mult * dt * mx;
@@ -211,11 +217,17 @@ export default function Planet() {
     v.x *= contactDrag;
     v.z *= contactDrag;
 
-    // …damp for inertia, clamp for sanity
+    // …damp for inertia, clamp the COMBINED surface speed (diagonals included)
     const d = Math.exp(-DAMP * dt);
-    v.x = THREE.MathUtils.clamp(v.x * d, -maxSpeed, maxSpeed);
+    v.x *= d;
     v.y = THREE.MathUtils.clamp(v.y * d, -maxSpeed, maxSpeed);
-    v.z = THREE.MathUtils.clamp(v.z * d, -maxSpeed, maxSpeed);
+    v.z *= d;
+    const surf = Math.hypot(v.x, v.z);
+    if (surf > maxSpeed) {
+      const s = maxSpeed / surf;
+      v.x *= s;
+      v.z *= s;
+    }
 
     // rotate the world under the character's feet (world-space axes)
     g.quaternion.premultiply(_q.setFromAxisAngle(X_AXIS, v.x * dt));
