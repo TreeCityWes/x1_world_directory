@@ -48,7 +48,7 @@ const CONTACT_BASE = 0.055; // player's angular "radius"
 const SHURIKEN_SPEED = 1.7; // rad/s
 const SHURIKEN_TTL = 1.1;
 const GEM_PICKUP = 0.055;
-const CAPTURE_ANGLE = 0.26;
+const CAPTURE_ANGLE = 0.12; // must actually step onto the pad (arc ≈ 0.29 wu)
 const ACTIVE_SITES = 3;
 const SITE_RESPAWN = 2.5;
 
