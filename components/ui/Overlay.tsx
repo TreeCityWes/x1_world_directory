@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useWorld } from "@/lib/store";
+import TouchPad from "@/components/ui/TouchPad";
 
 /**
  * HUD for the LEFT screen only: wordmark + tribute note over the world.
@@ -32,13 +33,19 @@ export default function Overlay() {
           <span className="text-cyan underline decoration-dotted underline-offset-2">x1.ninja</span>{" "}
           for charting, wallet &amp; validator tools ↗
         </a>
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink max-md:hidden">
           <span className="mr-1 rounded border border-gold/60 px-1.5 py-0.5 text-gold">
             w a s d
           </span>{" "}
           use your keyboard to run the world
         </p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink md:hidden">
+          <span className="text-gold">drag</span> to spin ·{" "}
+          <span className="text-gold">pad</span> to run
+        </p>
       </div>
+
+      <TouchPad />
 
       <h1 className="absolute bottom-4 left-5 text-5xl font-semibold leading-none tracking-tighter sm:text-6xl">
         x1<span className="text-gold">.world</span>

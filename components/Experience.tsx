@@ -16,9 +16,9 @@ import SidePanel from "@/components/ui/SidePanel";
  */
 export default function Experience() {
   return (
-    <div className="absolute inset-0 flex select-none max-sm:flex-col">
+    <div className="absolute inset-0 flex select-none max-md:flex-col">
       {/* left screen — the world */}
-      <div className="relative min-w-0 flex-1 max-sm:h-[54vh] max-sm:flex-none">
+      <div className="relative min-w-0 flex-1 max-md:h-[52vh] max-md:flex-none">
         <Canvas
           shadows
           camera={{ position: [0, 3.2, 9.2], fov: 40 }}

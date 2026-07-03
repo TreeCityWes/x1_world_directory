@@ -21,7 +21,7 @@ export default function SidePanel() {
   const isApproaching = activeId !== null && activeId === closestId && nearId === null;
 
   return (
-    <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-sm:w-full max-sm:min-h-0 max-sm:flex-1 max-sm:border-l-0 max-sm:border-t">
+    <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-md:w-full max-md:min-h-0 max-md:flex-1 max-md:border-l-0 max-md:border-t">
       {/* console header */}
       <header className="flex shrink-0 items-center gap-2.5 border-b border-white/10 px-5 py-3">
         <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-gold shadow-[0_0_10px_rgba(240,199,94,0.8)]" />

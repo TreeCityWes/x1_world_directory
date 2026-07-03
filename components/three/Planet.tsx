@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { regions, type Region } from "@/lib/regions";
 import { useWorld } from "@/lib/store";
 import { moveState } from "@/lib/gameState";
+import { touchKeys } from "@/lib/touchInput";
 import { useKeyboard } from "@/lib/useKeyboard";
 import Landmark from "@/components/three/Landmarks";
 
@@ -172,11 +173,11 @@ export default function Planet() {
     const k = keys.current;
     const v = vel.current;
 
-    // accelerate from input…
-    if (k.forward) v.x += ACC * dt;
-    if (k.back) v.x -= ACC * dt;
-    if (k.right) v.z += ACC * dt;
-    if (k.left) v.z -= ACC * dt;
+    // accelerate from input (keyboard OR mobile D-pad)…
+    if (k.forward || touchKeys.forward) v.x += ACC * dt;
+    if (k.back || touchKeys.back) v.x -= ACC * dt;
+    if (k.right || touchKeys.right) v.z += ACC * dt;
+    if (k.left || touchKeys.left) v.z -= ACC * dt;
 
     // …damp for inertia, clamp for sanity
     const d = Math.exp(-DAMP * dt);
