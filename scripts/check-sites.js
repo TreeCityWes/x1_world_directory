@@ -29,6 +29,18 @@ const SITE_ACTIONS = {
     await page.mouse.click(640, 400);
     await page.waitForTimeout(2500);
   },
+  // explorer.x1.xyz data fetches can fail on first load — hit "Try Again"
+  "explorer.x1.xyz": async (page) => {
+    await page.waitForTimeout(4000);
+    for (const b of await page.getByRole("button", { name: /try again/i }).all()) {
+      try {
+        await b.click({ timeout: 1000 });
+      } catch {
+        // gone already
+      }
+    }
+    await page.waitForTimeout(6000);
+  },
 };
 
 // keep in sync with lib/regions.ts
@@ -186,8 +198,13 @@ async function main() {
         }
       }
       const code = res ? res.status() : 0;
-      // give SPAs a moment to paint
-      await page.waitForTimeout(3500);
+      // wait for data fetches to settle (dashboards/explorers), then paint
+      try {
+        await page.waitForLoadState("networkidle", { timeout: 12000 });
+      } catch {
+        // busy sites never go idle — proceed anyway
+      }
+      await page.waitForTimeout(4500);
       ok = code > 0 && code < 400;
       note = `HTTP ${code}`;
       if (ok) {

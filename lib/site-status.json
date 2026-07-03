@@ -337,7 +337,7 @@
     "description": "On-demand randomness with sub-second latency on X1 Mainnet",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:37:42.955Z"
+    "checkedAt": "2026-07-03T13:45:55.058Z"
   },
   "dgn-staking-v2-app-degen-fyi-staking-v2": {
     "ok": true,
@@ -411,13 +411,13 @@
   },
   "x1-explorer-explorer-x1-xyz": {
     "ok": true,
-    "note": "HTTP 200",
+    "note": "HTTP 200 +action",
     "domain": "explorer.x1.xyz",
     "project": "X1 Explorer",
     "description": "Inspect transactions, accounts, blocks, and more on the X1 Network ™ blockchain",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:38:16.472Z"
+    "checkedAt": "2026-07-03T13:47:26.287Z"
   },
   "x1-delegation-program-delegation-mainnet-x1-xyz": {
     "ok": true,

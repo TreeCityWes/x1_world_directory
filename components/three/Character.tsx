@@ -89,7 +89,7 @@ export default function Character() {
   });
 
   return (
-    <group position={[0, PLANET_RADIUS - 0.04, 0]} scale={0.9}>
+    <group position={[0, PLANET_RADIUS - 0.02, 0]} scale={0.5}>
       {/* hero lighting — the ninja must pop against the dark world */}
       <pointLight position={[0.5, 0.9, 0.9]} intensity={1.8} distance={2.8} color="#dbe6ff" />
       <pointLight position={[-0.6, 0.7, -0.8]} intensity={1.3} distance={2.6} color="#2f6bff" />

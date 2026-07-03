@@ -25,7 +25,6 @@ const ACC = 2.2; // rad/s² from held keys
 const DAMP = 2.8; // exponential damping → inertia / glide
 const MAX_SPEED = 0.7; // rad/s — a stroll, not a sprint (panel keeps up)
 const NEAR_ANGLE = 0.28; // rad from the top at which a region counts as "near"
-const ZONE_ANGLE = 0.6; // rad — landmarks this close to the player light up
 const SITE_SCALE = 0.44; // 55 landmarks — keep them small so the world breathes
 
 // Classic additive fresnel glow — the planet's atmosphere.
@@ -284,10 +283,13 @@ function RegionSite({
   index: number;
 }) {
   const near = useWorld((s) => s.nearId === region.id);
+  // lit = the one project the side panel is currently showing
+  const lit = useWorld(
+    (s) => (s.selectedId ?? s.nearId ?? s.hoveredId ?? s.closestId) === region.id,
+  );
   const select = useWorld((s) => s.select);
   const setHoveredId = useWorld((s) => s.setHovered);
   const [hovered, setHovered] = useState(false);
-  const [inZone, setInZone] = useState(false);
   useCursor(hovered);
   const site = useRef<THREE.Group>(null);
   const pulse = useRef<THREE.Group>(null);
@@ -298,18 +300,10 @@ function RegionSite({
   useFrame((state) => {
     const t = state.clock.elapsedTime;
 
-    // near landmark pulses gently
+    // the focused landmark pulses gently
     if (pulse.current) {
-      const s = near ? 1 + Math.sin(t * 6 + index) * 0.05 : 1;
+      const s = lit ? 1 + Math.sin(t * 6 + index) * 0.05 : 1;
       pulse.current.scale.setScalar(s);
-    }
-
-    // landmarks light up as the player approaches (hysteresis; caps light count)
-    if (site.current) {
-      site.current.getWorldPosition(_v);
-      const angle = Math.acos(THREE.MathUtils.clamp(_v.normalize().dot(UP), -1, 1));
-      const show = angle < (inZone ? ZONE_ANGLE + 0.1 : ZONE_ANGLE);
-      if (show !== inZone) setInZone(show);
     }
   });
 
@@ -338,32 +332,27 @@ function RegionSite({
           <meshBasicMaterial
             color={region.accent}
             transparent
-            opacity={near ? 0.28 : 0.1}
+            opacity={lit ? 0.3 : 0.1}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
           />
         </mesh>
         <mesh position={[0, 0.009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <torusGeometry args={[0.18, 0.006, 8, 40]} />
-          <meshBasicMaterial color={region.accent} transparent opacity={near ? 1 : 0.45} />
+          <meshBasicMaterial color={region.accent} transparent opacity={lit ? 1 : 0.4} />
         </mesh>
         {/* generous invisible hit target */}
         <mesh position={[0, 0.18, 0]} visible={false}>
           <sphereGeometry args={[0.24, 8, 8]} />
         </mesh>
-        {/* accent light only while the player is in the zone (caps light count) */}
-        {inZone && (
-          <pointLight
-            position={[0, 0.35, 0]}
-            color={region.accent}
-            distance={1.1}
-            intensity={near ? 1.8 : 0.7}
-          />
+        {/* exactly ONE landmark is lit: the one in the side panel */}
+        {lit && (
+          <pointLight position={[0, 0.35, 0]} color={region.accent} distance={1.6} intensity={2} />
         )}
       </group>
 
       {/* tiny nameplate — focused landmark only */}
-      {near && (
+      {lit && (
         <Html position={[0, 0.52, 0]} center distanceFactor={10} zIndexRange={[30, 0]}>
           <div className="nameplate">{region.name}</div>
         </Html>
