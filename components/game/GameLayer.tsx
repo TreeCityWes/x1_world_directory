@@ -296,8 +296,15 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (!mesh) continue;
       mesh.visible = gm.alive;
       if (gm.alive) {
-        mesh.position.copy(gm.dir).multiplyScalar(R + 0.05);
-        mesh.rotation.y += 0.05;
+        // hover just above the surface with a gentle bob (gm.t is the magnet
+        // flag — animate off the run clock instead)
+        const bob = 0.045 + Math.sin(run.t * 3 + i) * 0.012;
+        mesh.position.copy(gm.dir).multiplyScalar(R + bob);
+        // stand the coin upright on the surface (disc plane vertical)…
+        mesh.quaternion.setFromUnitVectors(UP, gm.dir);
+        mesh.rotateX(Math.PI / 2);
+        // …and give it the classic arcade spin around its vertical axis
+        mesh.rotateZ(run.t * 4 + i);
       }
     }
     for (let i = 0; i < MAX_WAKE; i++) {
@@ -720,9 +727,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         </mesh>
       ))}
       {Array.from({ length: MAX_GEMS }).map((_, i) => (
+        // classic arcade coin: upright gold disc, spinning on its vertical axis
         <mesh key={`g${i}`} ref={(el) => { gemRefs.current[i] = el; }} visible={false}>
-          <octahedronGeometry args={[0.03]} />
-          <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={1.4} roughness={0.3} />
+          <cylinderGeometry args={[0.04, 0.04, 0.012, 20]} />
+          <meshStandardMaterial
+            color="#ffd23d"
+            emissive="#c9921e"
+            emissiveIntensity={0.9}
+            metalness={0.9}
+            roughness={0.18}
+          />
         </mesh>
       ))}
       {Array.from({ length: MAX_KATANAS }).map((_, i) => (
