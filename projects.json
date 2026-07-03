@@ -167,5 +167,12 @@
     "domain": "x1scr.xyz",
     "builder": "Unknown",
     "blurb": "The second ever DEX screener on X1."
+  },
+  {
+    "category": "Meme / Community",
+    "project": "X1XH",
+    "domain": "x1xh.vercel.app",
+    "builder": "Unknown",
+    "blurb": "Token minting for meme coins on X1."
   }
 ]
