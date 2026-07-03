@@ -122,6 +122,7 @@ export default function Planet() {
   const sphere = useRef<THREE.Mesh>(null);
   const keys = useKeyboard();
   const vel = useRef({ x: 0, y: 0, z: 0 }); // angular velocity around world axes
+  const dragging = useRef(false); // true while drag-spinning — gates the idle drift
   const lastNear = useRef<string | null>(null);
   const lastClosest = useRef<string | null>(null);
   const setNear = useWorld((s) => s.setNear);
@@ -144,23 +145,22 @@ export default function Planet() {
   // Drag to spin (mouse + touch): horizontal = turntable, vertical = roll.
   useEffect(() => {
     const el = gl.domElement;
-    let dragging = false;
     let lastX = 0;
     let lastY = 0;
     const down = (e: PointerEvent) => {
-      dragging = true;
+      dragging.current = true;
       lastX = e.clientX;
       lastY = e.clientY;
     };
     const move = (e: PointerEvent) => {
-      if (!dragging) return;
+      if (!dragging.current) return;
       vel.current.x += (e.clientY - lastY) * 0.0055;
       vel.current.y += (e.clientX - lastX) * 0.0055;
       lastX = e.clientX;
       lastY = e.clientY;
     };
     const up = () => {
-      dragging = false;
+      dragging.current = false;
     };
     el.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
@@ -228,6 +228,12 @@ export default function Planet() {
       const s = maxSpeed / surf;
       v.x *= s;
       v.z *= s;
+    }
+
+    // explore-only idle drift so a still world still feels alive (DESIGN.md);
+    // never during a run — the ninja must stay pole-locked under the chase cam
+    if (gMode === "explore" && !dragging.current && !moveState.inputActive && surf < 0.02) {
+      v.y = 0.04;
     }
 
     // rotate the world under the character's feet (world-space axes)

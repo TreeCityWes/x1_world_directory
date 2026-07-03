@@ -56,14 +56,19 @@ export default function Overlay() {
         </button>
       </div>
 
-      {/* controls hint — below the tabs */}
-      <p className="absolute left-4 top-14 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim max-md:hidden">
-        keyboard: <span className="rounded border border-gold/60 px-1 py-0.5 text-gold">wasd</span>{" "}
-        {mode === "explore" ? "run the world" : "dodge & weave"}
-      </p>
-      <p className="absolute left-4 top-14 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim md:hidden">
-        drag to spin · pad to run
-      </p>
+      {/* controls hint — below the tabs (explore only; the run HUD covers play) */}
+      {mode === "explore" && (
+        <>
+          <p className="absolute left-4 top-14 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim max-md:hidden">
+            keyboard:{" "}
+            <span className="rounded border border-gold/60 px-1 py-0.5 text-gold">wasd</span> run the
+            world
+          </p>
+          <p className="absolute left-4 top-14 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim md:hidden">
+            drag to spin · pad to run
+          </p>
+        </>
+      )}
 
       {/* bottom-right: the x1.ninja spot (explore only) */}
       {mode === "explore" && (
