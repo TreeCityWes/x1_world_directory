@@ -166,17 +166,21 @@ function GamePanel() {
                   className="relative aspect-[8/5] overflow-hidden rounded-[4px] transition-shadow duration-300"
                   style={
                     lit
-                      ? { border: , boxShadow:  }
+                      ? { border: `1px solid ${r.accent}`, boxShadow: `0 0 10px ${r.accent}88` }
                       : { border: "1px solid rgba(255,255,255,0.08)" }
                   }
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- tiny thumbs */}
                   <img
-                    src={r.screenshot.replace("/projects/", "/projects/thumbs/").replace(/.(png|svg)$/, ".jpg")}
+                    src={r.screenshot.replace("/projects/", "/projects/thumbs/").replace(/\.(png|svg)$/, ".jpg")}
                     alt={r.name}
                     loading="lazy"
-                    onError={(e) => { (e.target as HTMLImageElement).src = r.screenshot; }}
-                    className={}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = r.screenshot;
+                    }}
+                    className={`h-full w-full object-cover object-top transition-all duration-500 ${
+                      lit ? "opacity-100" : "opacity-20 grayscale"
+                    }`}
                   />
                 </motion.div>
               );
