@@ -23,32 +23,25 @@ export default function Overlay() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
-      <div className="absolute left-5 top-4 space-y-2.5">
-        {/* desktop: full ad + keyboard hint */}
-        <a
-          href="https://x1.ninja"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="pointer-events-auto block font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim transition-colors hover:text-gold max-md:hidden"
-        >
-          watch <span className="text-gold">x1 ninja</span> run the world — visit{" "}
-          <span className="text-cyan underline decoration-dotted underline-offset-2">x1.ninja</span>{" "}
-          for charting, wallet &amp; validator tools ↗
-        </a>
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink max-md:hidden">
-          <span className="mr-1 rounded border border-gold/60 px-1.5 py-0.5 text-gold">
-            w a s d
-          </span>{" "}
-          use your keyboard to run the world
-        </p>
-        {/* mobile: one tiny line, never wraps, never covers the ninja */}
-        <p className="whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim md:hidden">
-          <a href="https://x1.ninja" className="pointer-events-auto text-gold">
-            x1.ninja ↗
-          </a>{" "}
-          · drag to spin · pad to run
-        </p>
-      </div>
+      {/* top-left: controls hint only (top-center belongs to the focus header) */}
+      <p className="absolute left-5 top-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink max-md:hidden">
+        <span className="mr-1 rounded border border-gold/60 px-1.5 py-0.5 text-gold">w a s d</span>{" "}
+        run the world
+      </p>
+      <p className="absolute left-4 top-3 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim md:hidden">
+        drag to spin · pad to run
+      </p>
+
+      {/* bottom-right: the x1.ninja spot, out of everyone's way */}
+      <a
+        href="https://x1.ninja"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="pointer-events-auto absolute bottom-4 right-5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim transition-colors hover:text-gold max-md:hidden"
+      >
+        watch <span className="text-gold">x1 ninja</span> run the world —{" "}
+        <span className="text-cyan underline decoration-dotted underline-offset-2">x1.ninja</span> ↗
+      </a>
 
       <FocusHeader />
 
