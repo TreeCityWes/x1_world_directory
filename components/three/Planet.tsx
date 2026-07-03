@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Html, useCursor } from "@react-three/drei";
+import { useCursor } from "@react-three/drei";
 import * as THREE from "three";
 import { regions, type Region } from "@/lib/regions";
 import { useWorld } from "@/lib/store";
@@ -350,13 +350,6 @@ function RegionSite({
           <pointLight position={[0, 0.35, 0]} color={region.accent} distance={1.6} intensity={2} />
         )}
       </group>
-
-      {/* tiny nameplate — focused landmark only */}
-      {lit && (
-        <Html position={[0, 0.52, 0]} center distanceFactor={10} zIndexRange={[30, 0]}>
-          <div className="nameplate">{region.name}</div>
-        </Html>
-      )}
     </group>
   );
 }

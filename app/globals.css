@@ -53,20 +53,6 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Tiny nameplate above the focused landmark only */
-.nameplate {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #ffe9a8;
-  background: rgba(8, 12, 26, 0.65);
-  border: 1px solid rgba(240, 199, 94, 0.5);
-  border-radius: 4px;
-  padding: 2px 7px;
-  white-space: nowrap;
-}
-
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

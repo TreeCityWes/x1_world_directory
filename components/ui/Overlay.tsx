@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useWorld } from "@/lib/store";
+import FocusHeader from "@/components/ui/FocusHeader";
 import TouchPad from "@/components/ui/TouchPad";
 
 /**
@@ -48,6 +49,8 @@ export default function Overlay() {
           · drag to spin · pad to run
         </p>
       </div>
+
+      <FocusHeader />
 
       <TouchPad />
 
