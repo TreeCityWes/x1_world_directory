@@ -3,7 +3,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { useWorld } from "@/lib/store";
-import { UPGRADES, useGame } from "@/lib/gameStore";
+import { UPGRADES, scoreOf, useGame } from "@/lib/gameStore";
+import ProfileCard from "@/components/ui/ProfileCard";
+import Leaderboard from "@/components/ui/Leaderboard";
 
 const POWER_LABEL: Record<string, string> = {
   validatorTower: "+5% speed forever",
@@ -37,8 +39,12 @@ function GamePanel() {
         </p>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        {/* who's running */}
+        <ProfileCard />
+
         {/* the quest: capture every ecosystem project */}
-        <div className="rounded-lg border border-gold/30 bg-space-2/40 px-4 py-3">
+        <div className="relative mt-3 overflow-hidden rounded-lg border border-gold/30 bg-space-2/40 px-4 py-3">
+          <div className="shimmer-line pointer-events-none absolute inset-x-0 top-0 h-px" />
           <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.18em]">
             <span className="text-gold">capture the ecosystem</span>
             <span className="text-ink">
@@ -57,39 +63,56 @@ function GamePanel() {
           current targets
         </p>
         <div className="mt-2 space-y-2">
-          {sites.map((r) => (
-            <div
-              key={r.id}
-              className="flex items-center gap-3 overflow-hidden rounded-lg border border-white/10 bg-space-2/30 p-2"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- site captures */}
-              <img
-                src={r.screenshot}
-                alt={r.name}
-                className="aspect-[8/5] w-20 shrink-0 rounded border border-white/10 object-cover object-top"
-              />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{r.name}</p>
-                <p
-                  className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.15em]"
-                  style={{ color: r.accent }}
-                >
-                  ⚡ {POWER_LABEL[r.kind] ?? r.category}
-                </p>
-              </div>
-            </div>
-          ))}
+          <AnimatePresence>
+            {sites.map((r) => (
+              <motion.div
+                key={r.id}
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="flex items-center gap-3 overflow-hidden rounded-lg border border-white/10 bg-space-2/30 p-2 transition-colors hover:border-gold/40"
+                style={{ boxShadow: `inset 2px 0 0 ${r.accent}` }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- site captures */}
+                <img
+                  src={r.screenshot}
+                  alt={r.name}
+                  className="aspect-[8/5] w-20 shrink-0 rounded border border-white/10 object-cover object-top"
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{r.name}</p>
+                  <p
+                    className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.15em]"
+                    style={{ color: r.accent }}
+                  >
+                    ⚡ {POWER_LABEL[r.kind] ?? r.category}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-[11px] uppercase tracking-[0.15em]">
+        <div className="mt-4 grid grid-cols-4 gap-2 font-mono text-[11px] uppercase tracking-[0.15em] max-sm:grid-cols-2">
           {[
+            ["score", scoreOf().toLocaleString()],
             ["block", hud.block],
             ["level", hud.level],
             ["kills", hud.kills],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-lg border border-white/10 bg-space-2/40 px-3 py-2">
+          ].map(([label, value], i) => (
+            <div
+              key={label}
+              className={`rounded-lg border px-3 py-2 ${
+                i === 0
+                  ? "border-gold/40 bg-gold/5 shadow-[inset_0_0_18px_rgba(240,199,94,0.06)]"
+                  : "border-white/10 bg-space-2/40"
+              }`}
+            >
               <p className="text-ink-dim/70">{label}</p>
-              <p className="mt-0.5 text-xl text-ink">{value}</p>
+              <p className={`mt-0.5 text-xl tabular-nums ${i === 0 ? "text-gold" : "text-ink"}`}>
+                {value}
+              </p>
             </div>
           ))}
         </div>
@@ -114,6 +137,10 @@ function GamePanel() {
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-5">
+          <Leaderboard />
         </div>
 
         <p className="mt-5 font-mono text-[9px] uppercase leading-relaxed tracking-[0.15em] text-ink-dim/70">
@@ -159,7 +186,7 @@ export default function SidePanel() {
 
       {/* accent hairline tracks the active project */}
       <div
-        className="h-px w-full shrink-0 transition-all duration-300"
+        className="shimmer-line h-px w-full shrink-0 transition-all duration-300"
         style={{
           background: `linear-gradient(90deg, transparent, ${region.accent}, transparent)`,
         }}
@@ -174,12 +201,15 @@ export default function SidePanel() {
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element -- svg/png site captures */}
-          <img
-            src={region.screenshot}
-            alt={`Screenshot of ${region.name}`}
-            className="aspect-[8/5] w-full shrink-0 border-b border-white/10 bg-space-2 object-cover object-top"
-          />
+          { }
+          <div className="group shrink-0 overflow-hidden border-b border-white/10 bg-space-2">
+            {/* eslint-disable-next-line @next/next/no-img-element -- site captures */}
+            <img
+              src={region.screenshot}
+              alt={`Screenshot of ${region.name}`}
+              className="aspect-[8/5] w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
+            />
+          </div>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 max-sm:p-4">
             {/* category badge */}
             <div className="flex items-center gap-2">

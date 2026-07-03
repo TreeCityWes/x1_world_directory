@@ -2,6 +2,8 @@
 
 import { create } from "zustand";
 import { sfx } from "@/lib/sound";
+import { submitScore } from "@/lib/leaderboard";
+import { useProfile } from "@/lib/profile";
 
 /**
  * X1 Ninja Survivors — game state. Authoritative per-frame numbers live in the
@@ -269,6 +271,8 @@ export const useGame = create<GameStore>((set) => ({
       localStorage.setItem(BEST_KEY, String(best));
     }
     sfx.death();
+    const pd = useProfile.getState();
+    submitScore({ name: pd.name || "anon ninja", wallet: pd.wallet, score, diff: run.difficulty });
     set({ mode: "dead", finalScore: score, best, hud: emptyHud() });
   },
   win: () => {
@@ -279,6 +283,8 @@ export const useGame = create<GameStore>((set) => ({
       localStorage.setItem(BEST_KEY, String(best));
     }
     sfx.win();
+    const pw = useProfile.getState();
+    submitScore({ name: pw.name || "anon ninja", wallet: pw.wallet, score, diff: run.difficulty });
     set({ mode: "won", finalScore: score, best, hud: emptyHud() });
   },
   syncHud: () => set({ hud: emptyHud() }),

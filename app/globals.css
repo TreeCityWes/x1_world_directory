@@ -59,3 +59,13 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* animated sheen used by console cards */
+@keyframes shimmer-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.shimmer-line {
+  background: linear-gradient(90deg, transparent, rgba(240, 199, 94, 0.7), transparent);
+  animation: shimmer-slide 3.2s ease-in-out infinite;
+}

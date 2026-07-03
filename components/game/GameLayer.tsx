@@ -102,11 +102,12 @@ const MODEL_PATH: Record<EnemyTypeId, string> = {
   whale: "/models/whale.glb",
   boss: "/models/wraith_head.glb",
 };
-const MODEL_SCALE: Record<EnemyTypeId, number> = {
-  goblin: 0.16,
-  gremlin: 0.12,
-  whale: 0.03,
-  boss: 0.3,
+// world-unit size of each model's longest dimension after normalization
+const TARGET_SIZE: Record<EnemyTypeId, number> = {
+  goblin: 0.15,
+  gremlin: 0.2,
+  whale: 0.34,
+  boss: 1, // unused — boss renders the Nemesis
 };
 useGLTF.preload(MODEL_PATH.goblin);
 useGLTF.preload(MODEL_PATH.gremlin);
@@ -225,6 +226,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     return Array.from({ length: MAX_ENEMIES }, (_, i) => {
       const type = typeForSlot(i);
       const clone = sceneFor[type].clone(true);
+      // measure & normalize: longest dimension -> TARGET_SIZE, centered
+      const box = new THREE.Box3().setFromObject(clone);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      const k = TARGET_SIZE[type] / maxDim;
+      const center = box.getCenter(new THREE.Vector3());
+      clone.scale.setScalar(k);
+      clone.position.set(-center.x * k, -center.y * k, -center.z * k);
       return clone;
     });
   }, [goblinGltf, wraithGltf, whaleGltf]);
@@ -975,7 +984,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             {kind === "boss" ? (
               <Nemesis scale={1.05} />
             ) : (
-              <primitive object={enemyClones[i]} scale={MODEL_SCALE[kind]} />
+              <primitive object={enemyClones[i]} />
             )}
             {wraith && (
               <mesh position={[0, -robeH * 0.55, 0]}>
