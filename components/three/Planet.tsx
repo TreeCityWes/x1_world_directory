@@ -122,7 +122,7 @@ export default function Planet() {
   const setNear = useWorld((s) => s.setNear);
   const gl = useThree((s) => s.gl);
 
-  const hexMap = useMemo(makeHexTexture, []);
+  const hexMap = useMemo(() => makeHexTexture(), []);
 
   const anchors = useMemo(
     () =>
