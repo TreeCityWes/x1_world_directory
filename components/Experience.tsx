@@ -19,7 +19,7 @@ import SidePanel from "@/components/ui/SidePanel";
 export default function Experience() {
   return (
     <MotionConfig reducedMotion="user">
-    <div className="absolute inset-0 flex select-none max-md:flex-col">
+    <div className="absolute inset-0 flex select-none max-md:static max-md:flex-col">
       {/* left screen — the world */}
       <div className="relative min-w-0 flex-1 max-md:h-[62vh] max-md:flex-none">
         <Canvas

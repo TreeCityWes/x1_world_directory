@@ -31,7 +31,7 @@ function GamePanel() {
     .filter((r): r is (typeof regions)[number] => Boolean(r));
 
   return (
-    <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-md:w-full max-md:min-h-0 max-md:flex-1 max-md:border-l-0 max-md:border-t">
+    <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-md:h-auto max-md:w-full max-md:border-l-0 max-md:border-t">
       <header className="flex shrink-0 items-center gap-2.5 border-b border-white/10 px-5 py-3">
         <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#e0563f] shadow-[0_0_10px_rgba(224,86,63,0.8)]" />
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-ink">survival run</p>
@@ -39,7 +39,7 @@ function GamePanel() {
           best {best}
         </p>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5 [&>*]:shrink-0">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5 max-md:overflow-visible [&>*]:shrink-0">
         {/* who's running */}
         <ProfileCard />
 
@@ -216,7 +216,7 @@ export default function SidePanel() {
   const isApproaching = activeId !== null && activeId === closestId && nearId === null;
 
   return (
-    <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-md:w-full max-md:min-h-0 max-md:flex-1 max-md:border-l-0 max-md:border-t">
+    <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-md:h-auto max-md:w-full max-md:border-l-0 max-md:border-t">
       {/* console header */}
       <header className="flex shrink-0 items-center gap-2.5 border-b border-white/10 px-5 py-3">
         <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-gold shadow-[0_0_10px_rgba(240,199,94,0.8)]" />
@@ -254,7 +254,7 @@ export default function SidePanel() {
               className="aspect-[8/5] w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
             />
           </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 max-sm:p-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 max-md:overflow-visible max-sm:p-4">
             {/* category badge */}
             <div className="flex items-center gap-2">
               <span
