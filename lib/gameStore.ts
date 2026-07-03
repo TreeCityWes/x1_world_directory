@@ -67,6 +67,8 @@ export type UpgradeDef = {
   desc: (lv: number) => string;
   maxLevel: number;
   weight: number;
+  /** evolution: requires both listed upgrades at max level; offered as a golden card */
+  requires?: [string, string];
 };
 
 export const UPGRADES: UpgradeDef[] = [
@@ -77,6 +79,10 @@ export const UPGRADES: UpgradeDef[] = [
   { id: "magnet", name: "Coin Magnet", desc: (l) => `+${60 * l}% pickup range`, maxLevel: 3, weight: 7 },
   { id: "vitality", name: "Iron Gi", desc: (l) => `+${25 * l} max hp & heal`, maxLevel: 3, weight: 6 },
   { id: "katana", name: "Orbiting Katana", desc: (l) => `${l} spinning katana${l > 1 ? "s" : ""}`, maxLevel: 2, weight: 4 },
+  // ---- evolutions (weight 0: never rolled — injected when ingredients max) ----
+  { id: "bladestorm", name: "Blade Storm", desc: () => "every 3s: a 360° nova of 12 shurikens", maxLevel: 1, weight: 0, requires: ["multishot", "firerate"] },
+  { id: "tempest", name: "Crimson Tempest", desc: () => "4 burning katanas · double blade damage", maxLevel: 1, weight: 0, requires: ["damage", "katana"] },
+  { id: "whirlwind", name: "Golden Whirlwind", desc: () => "your sprint leaves a damaging golden wake", maxLevel: 1, weight: 0, requires: ["speed", "magnet"] },
 ];
 
 export const BLOCK_SECONDS = 30; // difficulty ramps every "block" — X1 has 1s blocks, ours are chunkier
@@ -260,8 +266,15 @@ export const useGame = create<GameStore>((set) => ({
 
 /** Roll 3 distinct upgrade choices weighted like the original game. */
 export function rollChoices(): string[] {
-  const pool = UPGRADES.filter((u) => (run.upgrades[u.id] ?? 0) < u.maxLevel);
-  const out: string[] = [];
+  // an unlocked evolution jumps the queue as a guaranteed first card
+  const evo = UPGRADES.find(
+    (u) =>
+      u.requires &&
+      !(run.upgrades[u.id] ?? 0) &&
+      u.requires.every((r) => (run.upgrades[r] ?? 0) >= (UPGRADES.find((x) => x.id === r)?.maxLevel ?? 99)),
+  );
+  const pool = UPGRADES.filter((u) => u.weight > 0 && (run.upgrades[u.id] ?? 0) < u.maxLevel);
+  const out: string[] = evo ? [evo.id] : [];
   const candidates = [...pool];
   while (out.length < 3 && candidates.length > 0) {
     const total = candidates.reduce((s, u) => s + u.weight, 0);

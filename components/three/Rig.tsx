@@ -42,7 +42,9 @@ export default function Rig() {
       const px = Math.sin(az) * dh;
       const pz = Math.cos(az) * dh;
       const py = 6.6 * Math.max(1, 0.9 / aspect) - state.pointer.y * 0.3;
-      _look.set(-Math.sin(az) * 0.8, 2.25, -Math.cos(az) * 0.8); // just ahead of the ninja
+      // look almost at the ninja (slight ahead bias) so the view splits evenly
+      // — running backwards you can see behind you too
+      _look.set(-Math.sin(az) * 0.25, 2.3, -Math.cos(az) * 0.25);
       cam.position.x = THREE.MathUtils.damp(cam.position.x, px, 3.2, dt);
       cam.position.y = THREE.MathUtils.damp(cam.position.y, py, 3.2, dt);
       cam.position.z = THREE.MathUtils.damp(cam.position.z, pz, 3.2, dt);

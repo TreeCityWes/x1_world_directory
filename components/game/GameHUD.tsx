@@ -156,19 +156,32 @@ export default function GameHUD() {
                 {choices.map((id, i) => {
                   const u = UPGRADES.find((x) => x.id === id)!;
                   const nextLv = (hud.upgrades[id] ?? 0) + 1;
+                  const isEvo = !!u.requires;
                   return (
                     <motion.button
                       key={id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.07 }}
+                      initial={{ opacity: 0, y: 20, scale: isEvo ? 0.85 : 1 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ delay: i * 0.07, type: "spring", stiffness: 300, damping: 20 }}
                       onClick={() => pick(id)}
-                      className="w-44 rounded-xl border border-cyan/30 bg-[rgba(9,13,28,0.92)] p-4 text-left backdrop-blur-md transition-all hover:-translate-y-1 hover:border-gold/70 hover:shadow-[0_0_30px_rgba(240,199,94,0.25)]"
+                      className={
+                        isEvo
+                          ? "w-44 animate-pulse rounded-xl border-2 border-gold bg-gradient-to-b from-[rgba(40,30,8,0.95)] to-[rgba(9,13,28,0.95)] p-4 text-left shadow-[0_0_40px_rgba(240,199,94,0.45)] backdrop-blur-md transition-all hover:-translate-y-1 hover:animate-none"
+                          : "w-44 rounded-xl border border-cyan/30 bg-[rgba(9,13,28,0.92)] p-4 text-left backdrop-blur-md transition-all hover:-translate-y-1 hover:border-gold/70 hover:shadow-[0_0_30px_rgba(240,199,94,0.25)]"
+                      }
                     >
-                      <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-cyan">
-                        lv {nextLv} / {u.maxLevel}
+                      <p
+                        className={`font-mono text-[9px] uppercase tracking-[0.2em] ${
+                          isEvo ? "text-gold" : "text-cyan"
+                        }`}
+                      >
+                        {isEvo ? "⚡ evolution" : `lv ${nextLv} / ${u.maxLevel}`}
                       </p>
-                      <p className="mt-1.5 text-base font-semibold tracking-tight">{u.name}</p>
+                      <p
+                        className={`mt-1.5 text-base font-semibold tracking-tight ${isEvo ? "text-gold" : ""}`}
+                      >
+                        {u.name}
+                      </p>
                       <p className="mt-1 text-xs leading-relaxed text-ink-dim">{u.desc(nextLv)}</p>
                     </motion.button>
                   );

@@ -32,9 +32,11 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 // pools
 const MAX_ENEMIES = 56;
-const MAX_SHURIKENS = 24;
+const MAX_SHURIKENS = 40;
 const MAX_GEMS = 90;
-const MAX_KATANAS = 2;
+const MAX_KATANAS = 4;
+const MAX_WAKE = 16;
+const MAX_PARTS = 48;
 
 const CONTACT_BASE = 0.055; // player's angular "radius"
 const SHURIKEN_SPEED = 1.7; // rad/s
@@ -59,6 +61,15 @@ type Enemy = {
 };
 type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
+type Wake = { alive: boolean; dir: THREE.Vector3; life: number };
+type Part = {
+  alive: boolean;
+  dir: THREE.Vector3;
+  axis: THREE.Vector3;
+  speed: number;
+  life: number;
+  color: string;
+};
 
 const _q = new THREE.Quaternion();
 const _qInv = new THREE.Quaternion();
@@ -129,6 +140,13 @@ const world = {
   captured: new Set<string>(),
       syncAt: 0,
   knockAt: 0,
+  novaAt: 0,
+  wakeAt: 0,
+  wake: Array.from({ length: MAX_WAKE }, (): Wake => ({ alive: false, dir: new THREE.Vector3(), life: 0 })),
+  parts: Array.from(
+    { length: MAX_PARTS },
+    (): Part => ({ alive: false, dir: new THREE.Vector3(), axis: new THREE.Vector3(), speed: 0, life: 0, color: "#fff" }),
+  ),
       started: false,
 };
 
@@ -139,6 +157,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const shurikenRefs = useRef<(THREE.Mesh | null)[]>([]);
   const gemRefs = useRef<(THREE.Mesh | null)[]>([]);
   const katanaRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const wakeRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const partRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   const spawnEnemy = (type: EnemyTypeId) => {
     const e = world.enemies.find((x) => !x.alive);
@@ -166,6 +186,20 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       g.dir.copy(split > 1 ? randomDirNear(at, 0.01, 0.06) : at);
       g.xp = per;
       g.t = 0;
+    }
+  };
+
+  const spawnBurst = (at: THREE.Vector3, color: string, n: number) => {
+    for (let i = 0; i < n; i++) {
+      const p = world.parts.find((x) => !x.alive);
+      if (!p) return;
+      p.alive = true;
+      p.dir.copy(at);
+      _v2.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
+      p.axis.crossVectors(at, _v2).normalize();
+      p.speed = 0.7 + Math.random() * 0.9;
+      p.life = 0.45;
+      p.color = color;
     }
   };
 
@@ -266,6 +300,34 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         mesh.rotation.y += 0.05;
       }
     }
+    for (let i = 0; i < MAX_WAKE; i++) {
+      const mesh = wakeRefs.current[i];
+      const w = world.wake[i];
+      if (!mesh) continue;
+      mesh.visible = w.alive;
+      if (w.alive) {
+        mesh.position.copy(w.dir).multiplyScalar(R + 0.015);
+        mesh.quaternion.setFromUnitVectors(UP, w.dir);
+        mesh.rotateX(-Math.PI / 2);
+        const m = mesh.material as THREE.MeshBasicMaterial;
+        m.opacity = 0.45 * (w.life / 1.1);
+        const sc = 0.7 + 0.5 * (1 - w.life / 1.1);
+        mesh.scale.setScalar(sc);
+      }
+    }
+    for (let i = 0; i < MAX_PARTS; i++) {
+      const mesh = partRefs.current[i];
+      const p = world.parts[i];
+      if (!mesh) continue;
+      mesh.visible = p.alive;
+      if (p.alive) {
+        mesh.position.copy(p.dir).multiplyScalar(R + 0.08);
+        const m = mesh.material as THREE.MeshStandardMaterial;
+        m.color.set(p.color);
+        m.emissive.set(p.color);
+        mesh.scale.setScalar(0.035 * (p.life / 0.45));
+      }
+    }
   }
 
   useFrame((state, rawDt) => {
@@ -282,6 +344,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.fireAt = 0;
       world.spawnAt = 0;
       world.knockAt = 0;
+      world.novaAt = 0;
+      world.wakeAt = 0;
+      for (const w of world.wake) w.alive = false;
+      for (const p of world.parts) p.alive = false;
       world.bossAtBlock = 0;
       world.captured.clear();
       world.siteIds = pickSites(ACTIVE_SITES, []);
@@ -452,8 +518,66 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       }
     }
 
-    // ---- orbiting katanas ----
-    const kCount = run.upgrades.katana ?? 0;
+    // ---- Blade Storm evolution: periodic 360° shuriken nova ----
+    if (run.upgrades.bladestorm && run.t >= world.novaAt) {
+      world.novaAt = run.t + 3;
+      _v2.set(1, 0, 0);
+      _v2.addScaledVector(world.pLocal, -world.pLocal.dot(_v2)).normalize();
+      for (let i = 0; i < 12; i++) {
+        const s = world.shurikens.find((x) => !x.alive);
+        if (!s) break;
+        const t = _v.copy(_v2).applyQuaternion(
+          _q.setFromAxisAngle(world.pLocal, (i * Math.PI * 2) / 12),
+        );
+        s.alive = true;
+        s.pos.copy(world.pLocal);
+        s.axis.crossVectors(world.pLocal, t).normalize();
+        s.ttl = SHURIKEN_TTL;
+        s.dmg = shurikenDamage();
+        s.spin = 0;
+      }
+    }
+
+    // ---- Golden Whirlwind evolution: the sprint itself wounds ----
+    if (run.upgrades.whirlwind && moveState.speed > 0.7 && run.t >= world.wakeAt) {
+      world.wakeAt = run.t + 0.16;
+      const w = world.wake.find((x) => !x.alive);
+      if (w) {
+        w.alive = true;
+        w.dir.copy(world.pLocal);
+        w.life = 1.1;
+      }
+    }
+    for (const w of world.wake) {
+      if (!w.alive) continue;
+      w.life -= dt;
+      if (w.life <= 0) {
+        w.alive = false;
+        continue;
+      }
+      for (const e of world.enemies) {
+        if (!e.alive) continue;
+        if (w.dir.angleTo(e.dir) < (e.radius + 0.08) / R + 0.02) {
+          e.hp -= 45 * dt;
+          run.damage += 45 * dt;
+        }
+      }
+    }
+
+    // ---- particles (death bursts) ----
+    for (const p of world.parts) {
+      if (!p.alive) continue;
+      p.life -= dt;
+      if (p.life <= 0) {
+        p.alive = false;
+        continue;
+      }
+      p.dir.applyQuaternion(_q.setFromAxisAngle(p.axis, p.speed * dt)).normalize();
+    }
+
+    // ---- orbiting katanas (Crimson Tempest: 4 burning blades, 2× dps) ----
+    const hasTempest = !!run.upgrades.tempest;
+    const kCount = hasTempest ? 4 : (run.upgrades.katana ?? 0);
     for (let i = 0; i < MAX_KATANAS; i++) {
       const mesh = katanaRefs.current[i];
       if (!mesh) continue;
@@ -466,25 +590,32 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       _v2.addScaledVector(world.pLocal, -world.pLocal.dot(_v2)).normalize();
       _v2.applyQuaternion(_q.setFromAxisAngle(world.pLocal, phi));
       _axis.crossVectors(world.pLocal, _v2).normalize();
-      const kpos = _v.copy(world.pLocal).applyQuaternion(_q.setFromAxisAngle(_axis, 0.16));
+      const kpos = _v
+        .copy(world.pLocal)
+        .applyQuaternion(_q.setFromAxisAngle(_axis, hasTempest ? 0.2 : 0.16));
       mesh.visible = true;
       mesh.position.copy(kpos).multiplyScalar(R + 0.1);
       mesh.quaternion.setFromUnitVectors(UP, kpos);
       mesh.rotateY(phi * 2);
+      const km = mesh.material as THREE.MeshStandardMaterial;
+      km.emissive.set(hasTempest ? "#ff4d3d" : "#f0c75e");
+      km.emissiveIntensity = hasTempest ? 1.6 : 0.8;
+      const kdps = hasTempest ? 150 : 70;
       for (const e of world.enemies) {
         if (!e.alive) continue;
         if (kpos.angleTo(e.dir) < (e.radius + 0.06) / R + 0.02) {
-          e.hp -= 70 * dt;
-          run.damage += 70 * dt;
+          e.hp -= kdps * dt;
+          run.damage += kdps * dt;
         }
       }
     }
 
-    // ---- deaths ----
+    // ---- deaths (with a satisfying pop) ----
     for (const e of world.enemies) {
       if (!e.alive || e.hp > 0) continue;
       e.alive = false;
       run.kills++;
+      spawnBurst(e.dir, ENEMY_TYPES[e.type].color, e.type === "boss" ? 14 : 6);
       dropGems(e.dir, e.xp, e.gemSplit);
     }
 
@@ -598,6 +729,25 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         <mesh key={`k${i}`} ref={(el) => { katanaRefs.current[i] = el; }} visible={false}>
           <boxGeometry args={[0.02, 0.02, 0.22]} />
           <meshStandardMaterial color="#c7d0e2" emissive="#f0c75e" emissiveIntensity={0.8} metalness={0.9} roughness={0.2} />
+        </mesh>
+      ))}
+      {Array.from({ length: MAX_WAKE }).map((_, i) => (
+        <mesh key={`w${i}`} ref={(el) => { wakeRefs.current[i] = el; }} visible={false}>
+          <circleGeometry args={[0.09, 20]} />
+          <meshBasicMaterial
+            color="#ffd23d"
+            transparent
+            opacity={0.4}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+      {Array.from({ length: MAX_PARTS }).map((_, i) => (
+        <mesh key={`p${i}`} ref={(el) => { partRefs.current[i] = el; }} visible={false}>
+          <octahedronGeometry args={[1]} />
+          <meshStandardMaterial emissiveIntensity={1.8} roughness={0.3} />
         </mesh>
       ))}
     </group>
