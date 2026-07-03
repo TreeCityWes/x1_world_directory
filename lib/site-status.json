@@ -1,0 +1,272 @@
+{
+  "x1-console-x1console-app": {
+    "ok": false,
+    "note": "page.goto: net::ERR_NAME_NOT_RESOLVED at https://x1console.app/",
+    "domain": "x1console.app",
+    "project": "X1 Console",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:41:33.106Z"
+  },
+  "x1-validator-hq-x1valhq-xyz": {
+    "ok": true,
+    "note": "HTTP 200 +gate",
+    "domain": "x1valhq.xyz",
+    "project": "X1 Validator HQ",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:41:40.021Z"
+  },
+  "x1-validator-dashboard-x1val-online": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1val.online",
+    "project": "X1 Validator Dashboard",
+    "description": "",
+    "twitter": "https://x.com/tangyujie2002",
+    "telegram": "https://t.me/+A52XIc1WEWwzMDY0",
+    "checkedAt": "2026-07-03T12:41:44.657Z"
+  },
+  "fortiblox-fortiblox-com": {
+    "ok": true,
+    "note": "HTTP 200 +strip",
+    "domain": "fortiblox.com",
+    "project": "FortiBlox",
+    "description": "FortiBlox provides comprehensive X1 Blockchain services including Explorer, Honey Badger Trading Bot, and Documentation solutions.",
+    "twitter": "https://www.twitter.com/fortiblox",
+    "telegram": "https://t.me/HoneyBadgerCoreBot",
+    "checkedAt": "2026-07-03T12:41:49.389Z"
+  },
+  "honey-badger-t-me-honeybadgerc": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "t.me/HoneyBadgerC",
+    "project": "Honey Badger",
+    "description": "Data based analysis  \t\tOne main objective - to crush it!\t\tOnly post my analysis and content. \t\tmy only TG: @bitbadger\t\tTwitter.com/honeybadgerc",
+    "twitter": "",
+    "telegram": "https://t.me/bitbadger",
+    "checkedAt": "2026-07-03T12:41:53.979Z"
+  },
+  "xdex-xdex-xyz": {
+    "ok": true,
+    "note": "HTTP 200 +gate",
+    "domain": "xdex.xyz",
+    "project": "xDEX",
+    "description": "XDEX | X1 DEX",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:42:00.762Z"
+  },
+  "apexfaucet-apexfaucet-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "apexfaucet.xyz",
+    "project": "APEXfaucet",
+    "description": "The X1 faucet. Free XNT on the X1 blockchain — no gas charge, no signup, no email. Claim every hour. Plus a swap, a screener, a citizens city, and on-chain games.",
+    "twitter": "https://x.com/ApexFaucet",
+    "telegram": "https://t.me/X1APEX",
+    "checkedAt": "2026-07-03T12:42:05.834Z"
+  },
+  "x1-bridge-x1-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1.xyz",
+    "project": "X1 Bridge",
+    "description": "X1 Blockchain is a low-cost, high-speed, high-performance, high-throughput, censorship-resistant and monolithic Layer-1 SVM-based blockchain designed to enable freedom to transact with minimal technical and economic limitations",
+    "twitter": "https://x.com/x1_chain",
+    "telegram": "https://t.me/+HtiLywX2Dug3MjJk",
+    "checkedAt": "2026-07-03T12:42:09.590Z"
+  },
+  "otc-xonedex-xyz": {
+    "ok": true,
+    "note": "HTTP 200 +gate +gate +strip",
+    "domain": "xonedex.xyz",
+    "project": "OTC",
+    "description": "",
+    "twitter": "https://twitter.com/xonedex",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:42:19.838Z"
+  },
+  "x1-ninja-x1-ninja": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1.ninja",
+    "project": "X1 Ninja",
+    "description": "Track X1 tokens, new pairs, prices, volume, liquidity, wallets, staking, validators, and transactions with X1.Ninja.",
+    "twitter": "https://x.com/TreeRootDev",
+    "telegram": "https://t.me/TreeCityTrading",
+    "checkedAt": "2026-07-03T12:42:25.103Z"
+  },
+  "x1-prism-x1prism-com": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1prism.com",
+    "project": "X1 Prism",
+    "description": "X1-Prism - Portfolio tracker and analytics dashboard for the X1 blockchain. See the full spectrum of your X1 holdings.",
+    "twitter": "https://x.com/X1_chain",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:42:28.873Z"
+  },
+  "x1-report-x1report-com": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1report.com",
+    "project": "X1 Report",
+    "description": "Real-time X1 Blockchain news, XNT price, staking stats, validator data, and ecosystem coverage.",
+    "twitter": "https://x.com/X1_chain",
+    "telegram": "https://t.me/+yT0VAcNPFqM3OGQ0",
+    "checkedAt": "2026-07-03T12:42:33.065Z"
+  },
+  "x1-galaxy-x1galaxy-io": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1galaxy.io",
+    "project": "X1 Galaxy",
+    "description": "",
+    "twitter": "https://x.com/tangyujie2002",
+    "telegram": "https://t.me/X1rpc",
+    "checkedAt": "2026-07-03T12:42:38.429Z"
+  },
+  "x1-oracle-x1oracle-com": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1oracle.com",
+    "project": "X1 Oracle",
+    "description": "A decentralised, multi-feeder token price oracle deployed on X1.",
+    "twitter": "https://x.com/ludolphus",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:42:42.680Z"
+  },
+  "memo-dapp-memox1-xyz": {
+    "ok": false,
+    "note": "page.goto: net::ERR_NAME_NOT_RESOLVED at https://memox1.xyz/",
+    "domain": "memox1.xyz",
+    "project": "Memo Dapp",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:42:42.784Z"
+  },
+  "x1-world-x1-world": {
+    "ok": false,
+    "note": "page.goto: net::ERR_CONNECTION_REFUSED at https://x1.world/",
+    "domain": "x1.world",
+    "project": "X1 World",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:42:45.291Z"
+  },
+  "x1-style-x1-style": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1.style",
+    "project": "X1 Style",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:42:51.906Z"
+  },
+  "vero-x1-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1.xyz",
+    "project": "Vero",
+    "description": "X1 Blockchain is a low-cost, high-speed, high-performance, high-throughput, censorship-resistant and monolithic Layer-1 SVM-based blockchain designed to enable freedom to transact with minimal technical and economic limitations",
+    "twitter": "https://x.com/x1_chain",
+    "telegram": "https://t.me/+HtiLywX2Dug3MjJk",
+    "checkedAt": "2026-07-03T12:42:55.587Z"
+  },
+  "x1ns-x1ns-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1ns.xyz",
+    "project": "X1NS",
+    "description": "Register your .x1 or .xnt domain on the X1 blockchain. Decentralized, secure, and easy-to-use naming service for Web3. Own your digital identity.",
+    "twitter": "https://x.com/x1ns_xnt",
+    "telegram": "https://t.me/X1NameService",
+    "checkedAt": "2026-07-03T12:42:59.701Z"
+  },
+  "x1-nodes-xen-pub-xen-pub": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "xen.pub",
+    "project": "X1 Nodes / XEN Pub",
+    "description": "Real-time XEN crypto stats across 15+ blockchains. Track supply, burns, staking, DBXEN, FENIX, XenBlocks and more — all in one place.",
+    "twitter": "https://x.com/xenpub",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:43:04.822Z"
+  },
+  "x1-bridge-easy-x1-bridge-easy-vercel-app": {
+    "ok": false,
+    "note": "HTTP 404",
+    "domain": "x1-bridge-easy.vercel.app",
+    "project": "X1 Bridge Easy",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:43:08.469Z"
+  },
+  "degen-dgn-launchpad-degen-fyi": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "degen.fyi",
+    "project": "Degen / DGN Launchpad",
+    "description": "Degens + Chaos + 2 Blockchains",
+    "twitter": "https://x.com/phonkmasta228",
+    "telegram": "https://t.me/phonkmasta",
+    "checkedAt": "2026-07-03T12:43:12.533Z"
+  },
+  "prime-miner-primeminer-xyz": {
+    "ok": true,
+    "note": "HTTP 200 +gate +gate",
+    "domain": "primeminer.xyz",
+    "project": "Prime Miner",
+    "description": "Primeminer ⛏🟢 is a variation of crypto mining with a twist. Compete with other miners for the treasury and points. Every mining round costs you 10 points.",
+    "twitter": "https://x.com/ludolphus",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:43:23.480Z"
+  },
+  "x1-app-x1app-fyi": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1app.fyi",
+    "project": "X1 App",
+    "description": "",
+    "twitter": "https://twitter.com/ludolphus",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:43:27.669Z"
+  },
+  "kryptark-kryptark-com": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "kryptark.com",
+    "project": "Kryptark",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:43:31.786Z"
+  },
+  "solaris-prime-solarisprime-xyz": {
+    "ok": true,
+    "note": "HTTP 200 +gate",
+    "domain": "solarisprime.xyz",
+    "project": "Solaris Prime",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:43:39.481Z"
+  },
+  "xenobi-x1-dashboard-xenobi-x-one": {
+    "ok": false,
+    "note": "page.goto: net::ERR_NAME_NOT_RESOLVED at https://xenobi-x.one/",
+    "domain": "xenobi-x.one",
+    "project": "Xenobi X1 Dashboard",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T12:43:39.588Z"
+  }
+}

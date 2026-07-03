@@ -1,0 +1,353 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { Html, useCursor } from "@react-three/drei";
+import * as THREE from "three";
+import { regions, type Region } from "@/lib/regions";
+import { useWorld } from "@/lib/store";
+import { moveState } from "@/lib/gameState";
+import { useKeyboard } from "@/lib/useKeyboard";
+import Landmark from "@/components/three/Landmarks";
+
+export const PLANET_RADIUS = 2.4;
+
+const X_AXIS = new THREE.Vector3(1, 0, 0);
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const UP = new THREE.Vector3(0, 1, 0);
+const _q = new THREE.Quaternion();
+const _v = new THREE.Vector3();
+
+// Movement feel — tuned for "physical toy planet"
+const ACC = 3.4; // rad/s² from held keys
+const DAMP = 2.8; // exponential damping → inertia / glide
+const MAX_SPEED = 1.15; // rad/s
+const NEAR_ANGLE = 0.32; // rad from the top at which a region counts as "near"
+const ZONE_ANGLE = 0.78; // rad — landmarks this close to the player light up
+
+// Classic additive fresnel glow — the planet's atmosphere.
+const ATMOSPHERE = new THREE.ShaderMaterial({
+  vertexShader: /* glsl */ `
+    varying vec3 vNormal;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    varying vec3 vNormal;
+    void main() {
+      float intensity = pow(0.66 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
+      gl_FragColor = vec4(0.3, 0.55, 1.0, 1.0) * intensity;
+    }
+  `,
+  blending: THREE.AdditiveBlending,
+  side: THREE.BackSide,
+  transparent: true,
+  depthWrite: false,
+});
+
+/** Subtle hex-grid texture for the planet shell — drawn once on a canvas. */
+function makeHexTexture() {
+  const c = document.createElement("canvas");
+  c.width = 1024;
+  c.height = 512;
+  const ctx = c.getContext("2d")!;
+  ctx.strokeStyle = "rgba(80, 130, 255, 0.55)";
+  ctx.lineWidth = 1.1;
+  const s = 20; // hex radius
+  const h = Math.sqrt(3) * s;
+  for (let col = 0; col * 1.5 * s < c.width + s; col++) {
+    for (let row = 0; row * h < c.height + h; row++) {
+      const cx = col * 1.5 * s;
+      const cy = row * h + (col % 2 ? h / 2 : 0);
+      ctx.beginPath();
+      for (let k = 0; k < 6; k++) {
+        const a = (Math.PI / 180) * (60 * k + 30);
+        const x = cx + s * Math.cos(a);
+        const y = cy + s * Math.sin(a);
+        if (k === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+/** Slow-drifting dust/satellite specks around the planet — depth + life. */
+function OrbitDust() {
+  const ref = useRef<THREE.Points>(null);
+  const positions = useMemo(() => {
+    const n = 260;
+    const arr = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const t = i * 2.399963;
+      const rad = 3.15 + ((i * 97) % 100) / 100 * 1.3;
+      arr[i * 3] = Math.cos(t) * rad;
+      arr[i * 3 + 1] = Math.sin(i * 3.7) * 1.6;
+      arr[i * 3 + 2] = Math.sin(t) * rad;
+    }
+    return arr;
+  }, []);
+  useFrame((_, dt) => {
+    if (ref.current) ref.current.rotation.y += dt * 0.02;
+  });
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#7dd3fc" size={0.016} sizeAttenuation transparent opacity={0.45} />
+    </points>
+  );
+}
+
+/**
+ * The world itself — and the "walking" illusion. The character never moves;
+ * WASD (and drag) rotates this whole group underneath them, with inertia.
+ * Also runs the proximity check that decides which region is "near".
+ */
+export default function Planet() {
+  const group = useRef<THREE.Group>(null);
+  const sphere = useRef<THREE.Mesh>(null);
+  const keys = useKeyboard();
+  const vel = useRef({ x: 0, y: 0, z: 0 }); // angular velocity around world axes
+  const lastNear = useRef<string | null>(null);
+  const setNear = useWorld((s) => s.setNear);
+  const gl = useThree((s) => s.gl);
+
+  const hexMap = useMemo(makeHexTexture, []);
+
+  const anchors = useMemo(
+    () =>
+      regions.map((r) => ({
+        region: r,
+        local: new THREE.Vector3(...r.dir), // unit direction, planet-local
+      })),
+    [],
+  );
+
+  // Drag to spin (mouse + touch): horizontal = turntable, vertical = roll.
+  useEffect(() => {
+    const el = gl.domElement;
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    const down = (e: PointerEvent) => {
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+    const move = (e: PointerEvent) => {
+      if (!dragging) return;
+      vel.current.x += (e.clientY - lastY) * 0.0045;
+      vel.current.y += (e.clientX - lastX) * 0.0045;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+    const up = () => {
+      dragging = false;
+    };
+    el.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      el.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [gl]);
+
+  useFrame((state, dt) => {
+    const g = group.current;
+    if (!g) return;
+    const k = keys.current;
+    const v = vel.current;
+
+    // accelerate from input…
+    if (k.forward) v.x += ACC * dt;
+    if (k.back) v.x -= ACC * dt;
+    if (k.right) v.z += ACC * dt;
+    if (k.left) v.z -= ACC * dt;
+
+    // …damp for inertia, clamp for sanity
+    const d = Math.exp(-DAMP * dt);
+    v.x = THREE.MathUtils.clamp(v.x * d, -MAX_SPEED, MAX_SPEED);
+    v.y = THREE.MathUtils.clamp(v.y * d, -MAX_SPEED, MAX_SPEED);
+    v.z = THREE.MathUtils.clamp(v.z * d, -MAX_SPEED, MAX_SPEED);
+
+    // rotate the world under the character's feet (world-space axes)
+    g.quaternion.premultiply(_q.setFromAxisAngle(X_AXIS, v.x * dt));
+    g.quaternion.premultiply(_q.setFromAxisAngle(Y_AXIS, v.y * dt));
+    g.quaternion.premultiply(_q.setFromAxisAngle(Z_AXIS, v.z * dt));
+
+    // share apparent surface velocity with the character (facing + walk cycle)
+    moveState.vx = v.z * PLANET_RADIUS;
+    moveState.vz = -v.x * PLANET_RADIUS;
+    moveState.speed = Math.hypot(moveState.vx, moveState.vz);
+
+    // the world slowly breathes
+    g.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 0.9) * 0.006);
+
+    // proximity: which region is closest to the top (where the character is)?
+    let nearest: string | null = null;
+    let best = NEAR_ANGLE;
+    for (const a of anchors) {
+      _v.copy(a.local).applyQuaternion(g.quaternion);
+      const angle = Math.acos(THREE.MathUtils.clamp(_v.dot(UP), -1, 1));
+      if (angle < best) {
+        best = angle;
+        nearest = a.region.id;
+      }
+    }
+    if (nearest !== lastNear.current) {
+      lastNear.current = nearest;
+      setNear(nearest);
+    }
+  });
+
+  return (
+    <>
+      <group ref={group}>
+        {/* the ocean — dark navy, not black */}
+        <mesh ref={sphere} receiveShadow>
+          <sphereGeometry args={[PLANET_RADIUS, 64, 64]} />
+          <meshPhysicalMaterial
+            color="#111c3d"
+            roughness={0.5}
+            metalness={0.25}
+            clearcoat={0.4}
+            clearcoatRoughness={0.4}
+          />
+        </mesh>
+        {/* subtle hex-grid shell */}
+        <mesh scale={1.0015}>
+          <sphereGeometry args={[PLANET_RADIUS, 64, 64]} />
+          <meshBasicMaterial
+            map={hexMap}
+            transparent
+            opacity={0.14}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+        {/* the ecosystem: one landmark per project */}
+        {anchors.map(({ region, local }, i) => (
+          <RegionSite key={region.id} region={region} normal={local} index={i} />
+        ))}
+      </group>
+
+      <OrbitDust />
+
+      {/* atmosphere glow (doesn't rotate — it's light, not land) */}
+      <mesh scale={1.14}>
+        <sphereGeometry args={[PLANET_RADIUS, 48, 48]} />
+        <primitive object={ATMOSPHERE} attach="material" />
+      </mesh>
+    </>
+  );
+}
+
+function RegionSite({
+  region,
+  normal,
+  index,
+}: {
+  region: Region;
+  normal: THREE.Vector3;
+  index: number;
+}) {
+  const near = useWorld((s) => s.nearId === region.id);
+  const select = useWorld((s) => s.select);
+  const setHoveredId = useWorld((s) => s.setHovered);
+  const [hovered, setHovered] = useState(false);
+  const [inZone, setInZone] = useState(false);
+  useCursor(hovered);
+  const site = useRef<THREE.Group>(null);
+  const pulse = useRef<THREE.Group>(null);
+
+  const quat = useMemo(() => new THREE.Quaternion().setFromUnitVectors(UP, normal), [normal]);
+  const pos = useMemo(() => normal.clone().multiplyScalar(PLANET_RADIUS * 0.995), [normal]);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+
+    // near landmark pulses gently
+    if (pulse.current) {
+      const s = near ? 1 + Math.sin(t * 6 + index) * 0.05 : 1;
+      pulse.current.scale.setScalar(s);
+    }
+
+    // landmarks light up as the player approaches (hysteresis; caps light count)
+    if (site.current) {
+      site.current.getWorldPosition(_v);
+      const angle = Math.acos(THREE.MathUtils.clamp(_v.normalize().dot(UP), -1, 1));
+      const show = angle < (inZone ? ZONE_ANGLE + 0.1 : ZONE_ANGLE);
+      if (show !== inZone) setInZone(show);
+    }
+  });
+
+  return (
+    <group ref={site} position={pos} quaternion={quat}>
+      <group
+        onClick={(e) => {
+          e.stopPropagation();
+          select(region.id);
+        }}
+        onPointerOver={() => {
+          setHovered(true);
+          setHoveredId(region.id);
+        }}
+        onPointerOut={() => {
+          setHovered(false);
+          setHoveredId(null);
+        }}
+      >
+        <group ref={pulse}>
+          <Landmark kind={region.kind} accent={region.accent} />
+        </group>
+        {/* glowing circular project pad */}
+        <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.18, 32]} />
+          <meshBasicMaterial
+            color={region.accent}
+            transparent
+            opacity={near ? 0.28 : 0.1}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh position={[0, 0.009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.18, 0.006, 8, 40]} />
+          <meshBasicMaterial color={region.accent} transparent opacity={near ? 1 : 0.45} />
+        </mesh>
+        {/* generous invisible hit target */}
+        <mesh position={[0, 0.18, 0]} visible={false}>
+          <sphereGeometry args={[0.24, 8, 8]} />
+        </mesh>
+        {/* accent light only while the player is in the zone (caps light count) */}
+        {inZone && (
+          <pointLight
+            position={[0, 0.35, 0]}
+            color={region.accent}
+            distance={1.1}
+            intensity={near ? 1.8 : 0.7}
+          />
+        )}
+      </group>
+
+      {/* tiny nameplate — focused landmark only */}
+      {near && (
+        <Html position={[0, 0.52, 0]} center distanceFactor={10} zIndexRange={[30, 0]}>
+          <div className="nameplate">{region.name}</div>
+        </Html>
+      )}
+    </group>
+  );
+}

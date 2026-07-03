@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- x1.world favicon: dark globe with gold orbit -->
+  <rect width="64" height="64" rx="14" fill="#04060f"/>
+  <circle cx="32" cy="32" r="17" fill="#1656d6"/>
+  <circle cx="32" cy="32" r="17" fill="url(#shade)"/>
+  <path d="M15 32a17 17 0 0 0 34 0" fill="#0f3fa0" opacity="0.55"/>
+  <ellipse cx="32" cy="32" rx="17" ry="6.5" fill="none" stroke="#2f6bff" stroke-width="1.6" opacity="0.85"/>
+  <ellipse cx="32" cy="32" rx="26" ry="9" fill="none" stroke="#f0c75e" stroke-width="2" transform="rotate(-18 32 32)"/>
+  <circle cx="52" cy="21" r="3" fill="#f0c75e"/>
+  <circle cx="32" cy="13.5" r="2.6" fill="#e8eefc"/>
+  <defs>
+    <radialGradient id="shade" cx="0.35" cy="0.3" r="1">
+      <stop offset="0" stop-color="#7dd3fc" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#1656d6" stop-opacity="0"/>
+      <stop offset="1" stop-color="#04060f" stop-opacity="0.65"/>
+    </radialGradient>
+  </defs>
+</svg>

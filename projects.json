@@ -1,0 +1,164 @@
+[
+  {
+    "category": "Core Infra",
+    "project": "X1 Console",
+    "domain": "x1console.app",
+    "builder": "Blackbeard"
+  },
+  {
+    "category": "Core Infra",
+    "project": "X1 Validator HQ",
+    "domain": "x1valhq.xyz",
+    "builder": "Shaka_Vibes"
+  },
+  {
+    "category": "Core Infra",
+    "project": "X1 Validator Dashboard",
+    "domain": "x1val.online",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Core Infra",
+    "project": "FortiBlox",
+    "domain": "fortiblox.com",
+    "builder": "BuddySan"
+  },
+  {
+    "category": "Trading Bot",
+    "project": "Honey Badger",
+    "domain": "t.me/HoneyBadgerC",
+    "builder": "BuddySan"
+  },
+  {
+    "category": "DEX / Trading",
+    "project": "xDEX",
+    "domain": "xdex.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "DEX / Trading",
+    "project": "APEXfaucet",
+    "domain": "apexfaucet.xyz",
+    "builder": "APEXfaucet"
+  },
+  {
+    "category": "DEX / Trading",
+    "project": "X1 Bridge",
+    "domain": "x1.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "DEX / Trading",
+    "project": "OTC",
+    "domain": "xonedex.xyz",
+    "builder": "Xenian"
+  },
+  {
+    "category": "Data / Charts",
+    "project": "X1 Ninja",
+    "domain": "x1.ninja",
+    "builder": "TreeCityWes"
+  },
+  {
+    "category": "Data / Portfolio",
+    "project": "X1 Prism",
+    "domain": "x1prism.com",
+    "builder": "Shaka_Vibes"
+  },
+  {
+    "category": "Data / News",
+    "project": "X1 Report",
+    "domain": "x1report.com",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Data / Explorer",
+    "project": "X1 Galaxy",
+    "domain": "x1galaxy.io",
+    "builder": "Obiwan"
+  },
+  {
+    "category": "Data / Oracle",
+    "project": "X1 Oracle",
+    "domain": "x1oracle.com",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Social / Community",
+    "project": "Memo Dapp",
+    "domain": "memox1.xyz",
+    "builder": "xen_artist"
+  },
+  {
+    "category": "Social / Community",
+    "project": "X1 World",
+    "domain": "x1.world",
+    "builder": "TreeCityWes"
+  },
+  {
+    "category": "Creative",
+    "project": "X1 Style",
+    "domain": "x1.style",
+    "builder": "TreeCityWes"
+  },
+  {
+    "category": "Prediction Markets",
+    "project": "Vero",
+    "domain": "x1.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "Infrastructure",
+    "project": "X1NS",
+    "domain": "x1ns.xyz",
+    "builder": "Xenian"
+  },
+  {
+    "category": "Infrastructure",
+    "project": "X1 Nodes / XEN Pub",
+    "domain": "xen.pub",
+    "builder": "Jozef"
+  },
+  {
+    "category": "Bridge UI",
+    "project": "X1 Bridge Easy",
+    "domain": "x1-bridge-easy.vercel.app",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Launchpad",
+    "project": "Degen / DGN Launchpad",
+    "domain": "degen.fyi",
+    "builder": "Jason"
+  },
+  {
+    "category": "Game / Mining",
+    "project": "Prime Miner",
+    "domain": "primeminer.xyz",
+    "builder": "Steve"
+  },
+  {
+    "category": "Games / Charts",
+    "project": "X1 App",
+    "domain": "x1app.fyi",
+    "builder": "Steve"
+  },
+  {
+    "category": "Messaging / Identity",
+    "project": "Kryptark",
+    "domain": "kryptark.com",
+    "builder": "Unknown"
+  },
+  {
+    "category": "NFT Marketplace",
+    "project": "Solaris Prime",
+    "domain": "solarisprime.xyz",
+    "builder": "Owl"
+  },
+  {
+    "category": "Validator Dashboard",
+    "project": "Xenobi X1 Dashboard",
+    "domain": "xenobi-x.one",
+    "builder": "Xenobi"
+  }
+]

@@ -1,26 +1,74 @@
 @import "tailwindcss";
 
+/* x1.world — high-tech precision theme. Starry night, realistic blue world,
+   dark glass UI with hairline borders, gold + cyan accents. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --space: #04060f;
+  --space-2: #0b1226;
+  --ink: #e8eefc;
+  --ink-dim: #8ea3c4;
+  --ocean: #1656d6;
+  --ocean-lit: #3b82f6;
+  --cyan: #7dd3fc;
+  --gold: #f0c75e;
+  --gold-deep: #c9a13b;
+  --accent: #3b82f6;
+
+  --background: var(--space);
+  --foreground: var(--ink);
 }
 
 @theme inline {
+  --color-space: var(--space);
+  --color-space-2: var(--space-2);
+  --color-ink: var(--ink);
+  --color-ink-dim: var(--ink-dim);
+  --color-ocean: var(--ocean);
+  --color-ocean-lit: var(--ocean-lit);
+  --color-cyan: var(--cyan);
+  --color-gold: var(--gold);
+  --color-gold-deep: var(--gold-deep);
+  --color-accent: var(--accent);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(1100px 700px at 72% -8%, rgba(47, 78, 158, 0.28), transparent 60%),
+    radial-gradient(900px 600px at 12% 108%, rgba(23, 48, 110, 0.22), transparent 55%),
+    var(--space);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  /* hero console is 100dvh; the ecosystem directory scrolls below it */
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+/* Tiny nameplate above the focused landmark only */
+.nameplate {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffe9a8;
+  background: rgba(8, 12, 26, 0.65);
+  border: 1px solid rgba(240, 199, 94, 0.5);
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }

@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# x1.world 🌐
 
-## Getting Started
+An **unofficial, fan-made** interactive explorer for the **X1 ecosystem** — the
+SVM-compatible Layer 1 from the X1 Foundation.
 
-First, run the development server:
+A little **ninja** (blue headband, gold katanas — x1.ninja energy) stands on top
+of a dark, glowing network-world under a starry sky. **You drive it**: walking
+rotates the planet beneath the ninja's feet. Walk up to a glowing beacon and its
+project card opens — screenshot, category, builder, and a link out. Every beacon
+is a real X1 ecosystem project.
+
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev     # http://localhost:3000
+npm run build   # production build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Desktop first: **WASD / arrows** to walk · **drag** to spin · **E** (or click a
+beacon) to inspect · **Esc** or walk away to close.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> Heads-up: browsers pause WebGL rendering in hidden tabs — the world only
+> animates while the tab is visible.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Add / edit projects
 
-## Learn More
+1. Edit **`projects.json`** in the repo root (category, project, domain, builder).
+2. Run `node scripts/check-sites.js` — headless Chromium visits every site,
+   captures a real screenshot into `public/projects/`, and writes up/down
+   status to `lib/site-status.json`. **Down sites are automatically hidden
+   from the globe** (x1.world itself is exempt).
+3. `node scripts/gen-screenshots.js` generates placeholder shots for anything
+   not yet captured.
 
-To learn more about Next.js, take a look at the following resources:
+Landmarks are placed automatically (Fibonacci sphere), so the list can grow
+without any layout work. Re-run the checker whenever you want fresh
+screenshots or a health re-check.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Where things live
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `components/Experience.tsx` — canvas root: stars, lighting, suspense
+- `components/three/Planet.tsx` — the world, movement/inertia, proximity, beacons
+- `components/three/Character.tsx` — the ninja (bob, facing, scarf, katanas)
+- `components/three/Rig.tsx` — camera framing + mouse drift
+- `components/ui/` — HUD overlay + project card (framer-motion)
+- `lib/regions.ts` — projects.json → placed regions
+- `docs/` — concept, design language, X1 facts, build plan
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+_Not affiliated with the X1 Foundation. A fan tribute._
