@@ -194,6 +194,16 @@ export default function Planet() {
     moveState.vz = -v.x * PLANET_RADIUS;
     moveState.speed = Math.hypot(moveState.vx, moveState.vz);
 
+    // walking is fresh intent: release stale hovers (R3F only re-checks hover
+    // on MOUSE moves, so a landmark rotating out from under a still cursor
+    // stays "hovered" forever) and any click/E lock, so the panel follows
+    // the closest landmark again.
+    if (moveState.speed > 0.35) {
+      const st = useWorld.getState();
+      if (st.hoveredId) st.setHovered(null);
+      if (st.selectedId) st.select(null);
+    }
+
     // the world slowly breathes
     g.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 0.9) * 0.006);
 
