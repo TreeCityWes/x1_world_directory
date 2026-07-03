@@ -104,7 +104,11 @@ export default function Overlay() {
         </a>
       )}
 
-      <h1 className="absolute bottom-4 left-5 text-5xl font-semibold leading-none tracking-tighter max-md:bottom-3 max-md:text-2xl md:text-6xl">
+      <h1
+        className={`absolute bottom-4 left-5 text-5xl font-semibold leading-none tracking-tighter max-md:bottom-3 max-md:text-2xl md:text-6xl ${
+          mode !== "explore" ? "max-md:hidden" : ""
+        }`}
+      >
         x1<span className="text-gold">.world</span>
       </h1>
 
@@ -112,7 +116,7 @@ export default function Overlay() {
       <button
         onClick={() => toggleMute()}
         aria-label={mutedUi ? "unmute" : "mute"}
-        className="pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 rounded-md border border-white/15 bg-space/70 px-2.5 py-1.5 text-sm backdrop-blur transition-colors hover:border-gold/60 max-md:bottom-20"
+        className="pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 rounded-md border border-white/15 bg-space/70 px-2.5 py-1.5 text-sm backdrop-blur transition-colors hover:border-gold/60 max-md:bottom-auto max-md:right-2 max-md:top-14 max-md:translate-x-0 max-md:px-2 max-md:py-1 max-md:text-xs"
       >
         {mutedUi ? "🔇" : "🔊"}
       </button>

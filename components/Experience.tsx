@@ -21,7 +21,7 @@ export default function Experience() {
     <MotionConfig reducedMotion="user">
     <div className="absolute inset-0 flex select-none max-md:flex-col">
       {/* left screen — the world */}
-      <div className="relative min-w-0 flex-1 max-md:h-[52vh] max-md:flex-none">
+      <div className="relative min-w-0 flex-1 max-md:h-[62vh] max-md:flex-none">
         <Canvas
           shadows
           camera={{ position: [0, 3.2, 9.2], fov: 40 }}

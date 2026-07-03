@@ -41,7 +41,7 @@ export default function TouchPad() {
   return (
     <div
       ref={base}
-      className="pointer-events-auto absolute bottom-6 right-6 grid h-32 w-32 select-none place-items-center rounded-full border border-cyan/30 bg-[rgba(9,13,28,0.55)] backdrop-blur md:hidden"
+      className="pointer-events-auto absolute bottom-4 right-4 grid h-28 w-28 select-none place-items-center rounded-full border border-cyan/30 bg-[rgba(9,13,28,0.55)] backdrop-blur md:hidden"
       style={{ touchAction: "none" }}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);

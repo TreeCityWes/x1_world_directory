@@ -39,7 +39,7 @@ export default function GameHUD() {
         )}
       </AnimatePresence>
       {/* bars — bottom center of the world pane */}
-      <div className="pointer-events-none absolute bottom-16 left-1/2 w-[min(300px,60%)] -translate-x-1/2 space-y-1.5">
+      <div className="pointer-events-none absolute bottom-16 left-1/2 w-[min(300px,60%)] -translate-x-1/2 space-y-1.5 max-md:bottom-4 max-md:left-3 max-md:w-[42%] max-md:translate-x-0">
         <div className="h-2 overflow-hidden rounded-full border border-white/15 bg-space/70">
           <div
             className="h-full rounded-full bg-gradient-to-r from-[#e0563f] to-[#ff8c6b] transition-[width] duration-200"
@@ -60,7 +60,7 @@ export default function GameHUD() {
       </div>
 
       {/* run stats — under the focus-header slot */}
-      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md">
+      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md max-md:left-2 max-md:top-12 max-md:translate-x-0 max-md:px-2 max-md:py-1 max-md:text-[8px] max-md:tracking-[0.12em]">
         {hud.diff !== "normal" && (
           <>
             <span className={hud.diff === "cursed" ? "text-[#a78bfa]" : "text-[#e0563f]"}>
