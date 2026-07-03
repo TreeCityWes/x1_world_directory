@@ -64,6 +64,8 @@ type Enemy = {
   xp: number;
   gemSplit: number;
   t: number;
+  biteAt: number; // next time this enemy may bite (discrete attacks, not dps)
+  recoilUntil: number; // after a bite it backs off briefly
 };
 type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
@@ -152,7 +154,7 @@ function randomDirNear(center: THREE.Vector3, minAng: number, maxAng: number) {
 const world = {
       enemies: Array.from({ length: MAX_ENEMIES }, (): Enemy => ({
         alive: false, type: "goblin", dir: new THREE.Vector3(), hp: 0, maxHp: 0,
-        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0,
+        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0,
       })),
       shurikens: Array.from({ length: MAX_SHURIKENS }, (): Shuriken => ({
         alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0,
@@ -256,6 +258,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     e.xp = T.xp;
     e.gemSplit = T.gemSplit;
     e.t = Math.random() * 10;
+    e.biteAt = 0;
+    e.recoilUntil = 0;
   };
 
   const dropGems = (at: THREE.Vector3, xp: number, split: number) => {
@@ -558,18 +562,27 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const inHalo = halo > 0 && e.dir.angleTo(world.pLocal) < halo + e.radius / R;
       // Core Meltdown: the halo is a tar pit
       const slow = inHalo && meltdown ? 0.45 : 1;
-      rotateToward(e.dir, world.pLocal, e.speed * lunge * slow * dt);
+      // after biting, an enemy backs off briefly instead of gluing to you
+      const recoiling = run.t < e.recoilUntil;
+      if (recoiling) {
+        rotateToward(e.dir, world.pLocal, -e.speed * 0.7 * dt);
+      } else {
+        rotateToward(e.dir, world.pLocal, e.speed * lunge * slow * dt);
+      }
       // Ion Halo burns everything inside
       if (inHalo) dealDamage(e, (10 + 6 * (run.upgrades.halo ?? 0)) * dt);
       const contact = (CONTACT_BASE * R + e.radius) / R;
       if (e.dir.angleTo(world.pLocal) < contact) {
         moveState.contactSlow = true;
-        if (!shielded) {
-          run.hp -= e.dmg * armorMult() * dt;
+        // discrete BITE with a cooldown — you can graze the horde and escape
+        if (!shielded && run.t >= e.biteAt) {
+          e.biteAt = run.t + 1.0;
+          e.recoilUntil = run.t + 0.45;
+          run.hp -= e.dmg * 0.8 * armorMult(); // one chunk, not a melt
           run.lastHitAt = run.t;
           // knockback: shove the ninja away from the enemy (world-space tangent)
           if (run.t >= world.knockAt) {
-            world.knockAt = run.t + 0.35;
+            world.knockAt = run.t + 0.3;
             const t = tangentToward(world.pLocal, e.dir, _t);
             if (t) {
               // push direction = away from the enemy, converted to world space
