@@ -12,6 +12,7 @@ import { touchKeys } from "@/lib/touchInput";
 import { useKeyboard } from "@/lib/useKeyboard";
 import Landmark from "@/components/three/Landmarks";
 import GameLayer from "@/components/game/GameLayer";
+import NetworkLinks from "@/components/three/NetworkLinks";
 
 export const PLANET_RADIUS = 2.4;
 
@@ -318,6 +319,9 @@ export default function Planet() {
               forceLit={gameMode !== "explore"}
             />
           ))}
+
+        {/* glowing network traces between ecosystem nodes (explore only) */}
+        <NetworkLinks />
 
         {/* X1 Ninja Survivors — enemies, shurikens, coins, katanas */}
         <GameLayer planet={group} />
