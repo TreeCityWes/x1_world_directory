@@ -14,7 +14,7 @@ import GameHUD from "@/components/game/GameHUD";
  */
 export default function Overlay() {
   const mode = useGame((s) => s.mode);
-  const startGame = useGame((s) => s.start);
+  const openMenu = useGame((s) => s.openMenu);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -22,7 +22,7 @@ export default function Overlay() {
       const game = useGame.getState();
       if (e.code === "KeyE" && game.mode === "explore" && world.nearId) world.select(world.nearId);
       if (e.code === "Escape") {
-        if (game.mode === "play") game.quit();
+        if (game.mode === "play" || game.mode === "menu" || game.mode === "won") game.quit();
         else world.select(null);
       }
     };
@@ -45,7 +45,7 @@ export default function Overlay() {
           🌐 explore
         </button>
         <button
-          onClick={() => mode === "explore" && startGame()}
+          onClick={() => mode === "explore" && openMenu()}
           className={`rounded-xl border-2 px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
             mode !== "explore"
               ? "border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] text-space shadow-[0_0_24px_rgba(240,199,94,0.6)]"

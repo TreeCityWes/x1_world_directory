@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
-import { UPGRADES, useGame } from "@/lib/gameStore";
+import { DIFFICULTIES, UPGRADES, useGame, type DifficultyId } from "@/lib/gameStore";
 
 const TOTAL_SITES = regions.length;
 
@@ -61,6 +61,14 @@ export default function GameHUD() {
 
       {/* run stats — under the focus-header slot */}
       <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md">
+        {hud.diff !== "normal" && (
+          <>
+            <span className={hud.diff === "cursed" ? "text-[#a78bfa]" : "text-[#e0563f]"}>
+              {hud.diff}
+            </span>
+            <span className="mx-2 text-ink-dim">·</span>
+          </>
+        )}
         <span className="text-gold">block {hud.block}</span>
         <span className="mx-2 text-ink-dim">·</span>lv {hud.level}
         <span className="mx-2 text-ink-dim">·</span>{hud.kills} kills
@@ -79,6 +87,57 @@ export default function GameHUD() {
           esc — quit run
         </button>
       )}
+
+      {/* run menu — pick your bet (Normal / Hard / Cursed) */}
+      <AnimatePresence>
+        {mode === "menu" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/60 backdrop-blur-sm"
+          >
+            <div className="text-center">
+              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
+                🥷 choose your run
+              </p>
+              <div className="mt-4 flex flex-wrap items-stretch justify-center gap-3 px-4">
+                {(Object.keys(DIFFICULTIES) as DifficultyId[]).map((id, i) => {
+                  const d = DIFFICULTIES[id];
+                  return (
+                    <motion.button
+                      key={id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.07 }}
+                      onClick={() => start(id)}
+                      className={`w-48 rounded-xl border p-4 text-left backdrop-blur-md transition-all hover:-translate-y-1 ${
+                        id === "cursed"
+                          ? "border-[#a78bfa]/50 bg-[rgba(20,10,32,0.92)] hover:border-[#a78bfa] hover:shadow-[0_0_30px_rgba(167,139,250,0.3)]"
+                          : id === "hard"
+                            ? "border-[#e0563f]/50 bg-[rgba(28,12,10,0.92)] hover:border-[#e0563f] hover:shadow-[0_0_30px_rgba(224,86,63,0.3)]"
+                            : "border-cyan/40 bg-[rgba(9,13,28,0.92)] hover:border-cyan hover:shadow-[0_0_30px_rgba(125,211,252,0.3)]"
+                      }`}
+                    >
+                      <p className="text-lg font-semibold tracking-tight">{d.name}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-ink-dim">{d.desc}</p>
+                      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-gold">
+                        {d.scoreMult}× score
+                      </p>
+                    </motion.button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={quit}
+                className="mt-5 rounded-md border border-white/15 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
+              >
+                back to explore
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* level-up cards */}
       <AnimatePresence>
@@ -147,7 +206,7 @@ export default function GameHUD() {
               </p>
               <div className="mt-6 flex justify-center gap-3">
                 <button
-                  onClick={start}
+                  onClick={() => start()}
                   className="rounded-md bg-gold px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-space transition-all hover:-translate-y-0.5 hover:bg-[#ffd97a]"
                 >
                   run it back
@@ -190,7 +249,7 @@ export default function GameHUD() {
               </div>
               <div className="mt-6 flex justify-center gap-3">
                 <button
-                  onClick={start}
+                  onClick={() => start()}
                   className="rounded-md bg-gold px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-space transition-all hover:-translate-y-0.5 hover:bg-[#ffd97a]"
                 >
                   run it back

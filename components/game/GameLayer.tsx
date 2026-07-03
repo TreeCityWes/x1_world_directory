@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { regions } from "@/lib/regions";
 import { moveState } from "@/lib/gameState";
 import {
-  BLOCK_SECONDS,
+  DIFFICULTIES,
   ENEMY_TYPES,
   currentSpeedMult,
   fireCooldown,
@@ -287,7 +287,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.siteIds = pickSites(ACTIVE_SITES, []);
       store.setActiveSites(world.siteIds);
     }
-    if (store.mode === "explore" || store.mode === "dead") {
+    if (store.mode === "explore" || store.mode === "menu" || store.mode === "dead") {
       if (world.started) {
         world.started = false;
         for (const e of world.enemies) e.alive = false;
@@ -305,7 +305,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     const dt = Math.min(rawDt, 0.05);
     run.t += dt;
     run.speedMult = currentSpeedMult();
-    const newBlock = Math.floor(run.t / BLOCK_SECONDS);
+    const D = DIFFICULTIES[run.difficulty];
+    const newBlock = Math.floor(run.t / D.blockSeconds);
     if (newBlock !== run.block) run.block = newBlock;
 
     // player's position & facing in planet-local space
@@ -322,7 +323,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     if (f.lengthSq() > 1e-8) f.normalize();
 
     // ---- spawner ----
-    const interval = Math.max(0.35, 1.6 * Math.pow(0.92, run.block));
+    const interval = Math.max(0.3, (1.6 * Math.pow(0.92, run.block)) / D.enemyMult);
     if (run.t >= world.spawnAt) {
       world.spawnAt = run.t + interval;
       const n = 1 + Math.floor(run.block / 3);
@@ -444,6 +445,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         if (!e.alive) continue;
         if (s.pos.angleTo(e.dir) < (e.radius + 0.05) / R + 0.02) {
           e.hp -= s.dmg;
+          run.damage += s.dmg;
           s.alive = false;
           break;
         }
@@ -471,7 +473,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       mesh.rotateY(phi * 2);
       for (const e of world.enemies) {
         if (!e.alive) continue;
-        if (kpos.angleTo(e.dir) < (e.radius + 0.06) / R + 0.02) e.hp -= 70 * dt;
+        if (kpos.angleTo(e.dir) < (e.radius + 0.06) / R + 0.02) {
+          e.hp -= 70 * dt;
+          run.damage += 70 * dt;
+        }
       }
     }
 

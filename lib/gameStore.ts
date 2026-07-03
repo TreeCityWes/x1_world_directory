@@ -8,7 +8,35 @@ import { create } from "zustand";
  * snapshot ~4x/s for the DOM HUD, plus mode/choices/sites which change rarely.
  */
 
-export type GameMode = "explore" | "play" | "levelup" | "dead" | "won";
+export type GameMode = "explore" | "menu" | "play" | "levelup" | "dead" | "won";
+
+export const DIFFICULTIES = {
+  normal: {
+    name: "Normal",
+    desc: "The standard run. Capture every project to win.",
+    scoreMult: 1,
+    enemyMult: 1,
+    statMult: 1,
+    blockSeconds: 30,
+  },
+  hard: {
+    name: "Hard",
+    desc: "20-second blocks, denser horde. Faster, juicier.",
+    scoreMult: 1.5,
+    enemyMult: 1.3,
+    statMult: 1,
+    blockSeconds: 20,
+  },
+  cursed: {
+    name: "Cursed",
+    desc: "Start 30% weaker. Endure. Double score.",
+    scoreMult: 2,
+    enemyMult: 1,
+    statMult: 0.7,
+    blockSeconds: 30,
+  },
+} as const;
+export type DifficultyId = keyof typeof DIFFICULTIES;
 
 // ---- registries (ported from the original X1 Ninja Survivors) ----
 
@@ -72,12 +100,16 @@ export const run = {
   perm: { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 },
   speedMult: 1, // consumed by the planet movement controller
   lastHitAt: -10,
+  damage: 0, // total damage dealt (feeds the score formula)
+  difficulty: "normal" as DifficultyId,
 };
 
-export function resetRun() {
+export function resetRun(diff?: DifficultyId) {
+  if (diff) run.difficulty = diff;
+  const statMult = DIFFICULTIES[run.difficulty].statMult;
   run.t = 0;
-  run.hp = 100;
-  run.maxHp = 100;
+  run.maxHp = Math.round(100 * statMult);
+  run.hp = run.maxHp;
   run.xp = 0;
   run.xpNext = 8;
   run.level = 1;
@@ -89,10 +121,13 @@ export function resetRun() {
   run.perm = { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 };
   run.speedMult = 1;
   run.lastHitAt = -10;
+  run.damage = 0;
 }
 
 export function scoreOf() {
-  return run.kills * 10 + run.captured * 50 + run.block * 100 + Math.floor(run.t);
+  const T = Math.min(600, run.t); // survival time caps at 10 minutes
+  const base = (T * T + run.kills * 30 + run.damage / 2) / 100 + run.captured * 50;
+  return Math.round(base * DIFFICULTIES[run.difficulty].scoreMult);
 }
 
 // derived combat numbers (upgrades + timed powerups)
@@ -106,7 +141,13 @@ export function magnetAngle() {
   return 0.2 * (1 + 0.6 * (run.upgrades.magnet ?? 0)) * (1 + 0.08 * run.perm.magnet);
 }
 export function currentSpeedMult() {
-  return (1 + 0.1 * (run.upgrades.speed ?? 0)) * (1 + Math.min(0.4, 0.05 * run.perm.speed));
+  const finalStand = run.hp < run.maxHp * 0.2 ? 1.3 : 1;
+  return (
+    (1 + 0.1 * (run.upgrades.speed ?? 0)) *
+    (1 + Math.min(0.4, 0.05 * run.perm.speed)) *
+    DIFFICULTIES[run.difficulty].statMult *
+    finalStand
+  );
 }
 export function xpMult() {
   return 1 + 0.1 * run.perm.xp;
@@ -127,6 +168,7 @@ type Hud = {
   upgrades: Record<string, number>;
   shield: boolean;
   hit: boolean;
+  diff: DifficultyId;
 };
 
 type GameStore = {
@@ -136,7 +178,8 @@ type GameStore = {
   activeSites: string[];
   best: number;
   finalScore: number;
-  start: () => void;
+  start: (diff?: DifficultyId) => void;
+  openMenu: () => void;
   quit: () => void;
   die: () => void;
   win: () => void;
@@ -159,6 +202,7 @@ const emptyHud = (): Hud => ({
   upgrades: { ...run.upgrades },
   shield: run.t < run.fx.shield,
   hit: run.t - run.lastHitAt < 0.35,
+  diff: run.difficulty,
 });
 
 const BEST_KEY = "x1world_best_score";
@@ -170,11 +214,17 @@ export const useGame = create<GameStore>((set) => ({
   activeSites: [],
   best: 0,
   finalScore: 0,
-  start: () => {
-    resetRun();
+  start: (diff) => {
+    resetRun(diff ?? run.difficulty);
     const best =
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
     set({ mode: "play", hud: emptyHud(), choices: [], activeSites: [], best });
+  },
+  openMenu: () => {
+    resetRun();
+    const best =
+      typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
+    set({ mode: "menu", hud: emptyHud(), choices: [], activeSites: [], best });
   },
   quit: () => set({ mode: "explore", activeSites: [] }),
   die: () => {
