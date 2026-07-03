@@ -32,8 +32,20 @@ const SITE_SCALE = 0.44; // 55 landmarks — keep them small so the world breath
 
 // Classic additive fresnel glow — the planet's atmosphere.
 const ATMOSPHERE = new THREE.ShaderMaterial({
-  vertexShader: /* glsl */ ,
-  fragmentShader: /* glsl */ ,
+  vertexShader: /* glsl */ `
+    varying vec3 vNormal;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    varying vec3 vNormal;
+    void main() {
+      float intensity = pow(0.66 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
+      gl_FragColor = vec4(0.18, 0.32, 0.68, 1.0) * intensity;
+    }
+  `,
   blending: THREE.AdditiveBlending,
   side: THREE.BackSide,
   transparent: true,
