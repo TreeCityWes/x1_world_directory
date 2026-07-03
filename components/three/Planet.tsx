@@ -26,7 +26,7 @@ const DAMP = 2.8; // exponential damping → inertia / glide
 const MAX_SPEED = 0.7; // rad/s — a stroll, not a sprint (panel keeps up)
 const NEAR_ANGLE = 0.28; // rad from the top at which a region counts as "near"
 const ZONE_ANGLE = 0.6; // rad — landmarks this close to the player light up
-const SITE_SCALE = 0.62; // 55 landmarks — keep them small so the world breathes
+const SITE_SCALE = 0.44; // 55 landmarks — keep them small so the world breathes
 
 // Classic additive fresnel glow — the planet's atmosphere.
 const ATMOSPHERE = new THREE.ShaderMaterial({
