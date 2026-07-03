@@ -108,7 +108,7 @@ const TARGET_SIZE: Record<EnemyTypeId, number> = {
   goblin: 0.15,
   gremlin: 0.2,
   whale: 0.26, // violet elder skull (the whale model is now boss #1)
-  boss: 0.85, // THE WHALE — big on purpose, but nowhere near planet-sized
+  boss: 0.45, // THE WHALE — ninja-sized, just… a whale
 };
 useGLTF.preload(MODEL_PATH.goblin);
 useGLTF.preload(MODEL_PATH.gremlin);
@@ -385,7 +385,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         // everything floats: heads bob, the whale swims
         const whaleBoss = e.type === "boss" && e.bossKind === "whale";
         const hover = whaleBoss
-          ? 0.3 + Math.sin(e.t * 1.6) * 0.05
+          ? 0.12 + Math.sin(e.t * 1.6) * 0.03
           : e.type === "boss"
             ? 0.01 + Math.sin(e.t * 2.5) * 0.015
             : 0.11 + Math.sin(e.t * 4) * 0.03;
