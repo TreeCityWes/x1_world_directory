@@ -11,9 +11,25 @@ const path = require("path");
 const { chromium } = require("playwright");
 
 const root = path.join(__dirname, "..");
-const projects = JSON.parse(fs.readFileSync(path.join(root, "projects.json"), "utf8"));
+const allProjects = JSON.parse(fs.readFileSync(path.join(root, "projects.json"), "utf8"));
 const outDir = path.join(root, "public", "projects");
 fs.mkdirSync(outDir, { recursive: true });
+
+// Optional domain filter: `node scripts/check-sites.js x1app.fyi` re-checks
+// just the matching site(s); results merge into the existing status file.
+const filter = process.argv[2];
+const projects = filter
+  ? allProjects.filter((p) => p.domain.includes(filter))
+  : allProjects;
+
+// Per-site quirks that run after load, before gate handling.
+const SITE_ACTIONS = {
+  // x1app.fyi shows a click-anywhere splash over the real page
+  "x1app.fyi": async (page) => {
+    await page.mouse.click(640, 400);
+    await page.waitForTimeout(2500);
+  },
+};
 
 // keep in sync with lib/regions.ts
 const slugify = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -144,7 +160,14 @@ async function main() {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36",
     ignoreHTTPSErrors: true,
   });
-  const status = {};
+  // merge into prior results so filtered runs don't wipe other sites
+  const statusPath = path.join(root, "lib", "site-status.json");
+  let status = {};
+  try {
+    status = JSON.parse(fs.readFileSync(statusPath, "utf8"));
+  } catch {
+    // first run
+  }
 
   for (const p of projects) {
     const id = slugify(`${p.project}-${p.domain}`);
@@ -168,6 +191,11 @@ async function main() {
       ok = code > 0 && code < 400;
       note = `HTTP ${code}`;
       if (ok) {
+        // per-site quirk (e.g. click-through splash screens)
+        if (SITE_ACTIONS[p.domain]) {
+          await SITE_ACTIONS[p.domain](page);
+          note += " +action";
+        }
         // Click through disclaimer/consent gates so we capture the real site
         // (per repo owner's request). Second pass only if still gated.
         if (await looksGated(page)) {
@@ -231,13 +259,13 @@ async function main() {
   }
 
   await browser.close();
-  fs.writeFileSync(
-    path.join(root, "lib", "site-status.json"),
-    JSON.stringify(status, null, 2),
+  fs.writeFileSync(statusPath, JSON.stringify(status, null, 2));
+  const checkedIds = projects.map((p) => slugify(`${p.project}-${p.domain}`));
+  const down = checkedIds.filter((id) => !status[id]?.ok);
+  console.log(
+    `\n${checkedIds.length - down.length}/${checkedIds.length} up · status written to lib/site-status.json`,
   );
-  const down = Object.values(status).filter((s) => !s.ok);
-  console.log(`\n${projects.length - down.length}/${projects.length} up · status written to lib/site-status.json`);
-  if (down.length) console.log(`down: ${down.map((d) => d.domain).join(", ")}`);
+  if (down.length) console.log(`down: ${down.map((id) => status[id]?.domain ?? id).join(", ")}`);
 }
 
 main().catch((e) => {

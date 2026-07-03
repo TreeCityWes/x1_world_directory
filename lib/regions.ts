@@ -77,6 +77,8 @@ const BLURB_BY_CATEGORY: Record<string, string> = {
   "NFT Marketplace": "Mint and trade NFTs on X1.",
   "Bridge UI": "Bridge assets in and out of the X1 network.",
   Launchpad: "Launch new tokens and projects on X1.",
+  "Meme / Community": "Meme energy and community culture on X1.",
+  "Docs / Wiki": "Community knowledge base — everything about X1 in one place.",
 };
 
 const KIND_BY_CATEGORY: Record<string, LandmarkKind> = {
@@ -99,6 +101,8 @@ const KIND_BY_CATEGORY: Record<string, LandmarkKind> = {
   "NFT Marketplace": "gameArcade",
   "Bridge UI": "bridgePortal",
   Launchpad: "bridgePortal",
+  "Meme / Community": "socialBeacon",
+  "Docs / Wiki": "explorerFort",
 };
 
 export function slugify(text: string) {

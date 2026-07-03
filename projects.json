@@ -130,5 +130,29 @@
     "project": "Solaris Prime",
     "domain": "solarisprime.xyz",
     "builder": "Owl"
+  },
+  {
+    "category": "Meme / Community",
+    "project": "X1 Cats",
+    "domain": "x1cats.com",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Meme / Community",
+    "project": "X1 Pepe",
+    "domain": "x1pepe.com",
+    "builder": "Unknown"
+  },
+  {
+    "category": "Core Infra",
+    "project": "X1 Next",
+    "domain": "next.x1.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "Docs / Wiki",
+    "project": "X1 Wiki",
+    "domain": "x1.wiki",
+    "builder": "Unknown"
   }
 ]

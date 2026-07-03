@@ -7,7 +7,7 @@
     "description": "",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:41:40.021Z"
+    "checkedAt": "2026-07-03T13:11:06.135Z"
   },
   "x1-validator-dashboard-x1val-online": {
     "ok": true,
@@ -17,7 +17,7 @@
     "description": "",
     "twitter": "https://x.com/tangyujie2002",
     "telegram": "https://t.me/+A52XIc1WEWwzMDY0",
-    "checkedAt": "2026-07-03T12:41:44.657Z"
+    "checkedAt": "2026-07-03T13:11:10.839Z"
   },
   "fortiblox-fortiblox-com": {
     "ok": true,
@@ -27,7 +27,7 @@
     "description": "FortiBlox provides comprehensive X1 Blockchain services including Explorer, Honey Badger Trading Bot, and Documentation solutions.",
     "twitter": "https://www.twitter.com/fortiblox",
     "telegram": "https://t.me/HoneyBadgerCoreBot",
-    "checkedAt": "2026-07-03T12:41:49.389Z"
+    "checkedAt": "2026-07-03T13:11:15.614Z"
   },
   "honey-badger-t-me-honeybadgerc": {
     "ok": true,
@@ -37,7 +37,7 @@
     "description": "Data based analysis  \t\tOne main objective - to crush it!\t\tOnly post my analysis and content. \t\tmy only TG: @bitbadger\t\tTwitter.com/honeybadgerc",
     "twitter": "",
     "telegram": "https://t.me/bitbadger",
-    "checkedAt": "2026-07-03T12:41:53.979Z"
+    "checkedAt": "2026-07-03T13:11:20.364Z"
   },
   "xdex-xdex-xyz": {
     "ok": true,
@@ -47,7 +47,7 @@
     "description": "XDEX | X1 DEX",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:42:00.762Z"
+    "checkedAt": "2026-07-03T13:11:27.193Z"
   },
   "apexfaucet-apexfaucet-xyz": {
     "ok": true,
@@ -57,7 +57,7 @@
     "description": "The X1 faucet. Free XNT on the X1 blockchain — no gas charge, no signup, no email. Claim every hour. Plus a swap, a screener, a citizens city, and on-chain games.",
     "twitter": "https://x.com/ApexFaucet",
     "telegram": "https://t.me/X1APEX",
-    "checkedAt": "2026-07-03T12:42:05.834Z"
+    "checkedAt": "2026-07-03T13:11:32.367Z"
   },
   "x1-bridge-x1-xyz": {
     "ok": true,
@@ -67,7 +67,7 @@
     "description": "X1 Blockchain is a low-cost, high-speed, high-performance, high-throughput, censorship-resistant and monolithic Layer-1 SVM-based blockchain designed to enable freedom to transact with minimal technical and economic limitations",
     "twitter": "https://x.com/x1_chain",
     "telegram": "https://t.me/+HtiLywX2Dug3MjJk",
-    "checkedAt": "2026-07-03T12:42:09.590Z"
+    "checkedAt": "2026-07-03T13:11:36.141Z"
   },
   "otc-xonedex-xyz": {
     "ok": true,
@@ -77,7 +77,7 @@
     "description": "",
     "twitter": "https://twitter.com/xonedex",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:42:19.838Z"
+    "checkedAt": "2026-07-03T13:11:46.353Z"
   },
   "x1-ninja-x1-ninja": {
     "ok": true,
@@ -87,7 +87,7 @@
     "description": "Track X1 tokens, new pairs, prices, volume, liquidity, wallets, staking, validators, and transactions with X1.Ninja.",
     "twitter": "https://x.com/TreeRootDev",
     "telegram": "https://t.me/TreeCityTrading",
-    "checkedAt": "2026-07-03T12:42:25.103Z"
+    "checkedAt": "2026-07-03T13:11:51.761Z"
   },
   "x1-prism-x1prism-com": {
     "ok": true,
@@ -97,7 +97,7 @@
     "description": "X1-Prism - Portfolio tracker and analytics dashboard for the X1 blockchain. See the full spectrum of your X1 holdings.",
     "twitter": "https://x.com/X1_chain",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:42:28.873Z"
+    "checkedAt": "2026-07-03T13:11:55.755Z"
   },
   "x1-report-x1report-com": {
     "ok": true,
@@ -107,7 +107,7 @@
     "description": "Real-time X1 Blockchain news, XNT price, staking stats, validator data, and ecosystem coverage.",
     "twitter": "https://x.com/X1_chain",
     "telegram": "https://t.me/+yT0VAcNPFqM3OGQ0",
-    "checkedAt": "2026-07-03T12:42:33.065Z"
+    "checkedAt": "2026-07-03T13:12:00.373Z"
   },
   "x1-galaxy-x1galaxy-io": {
     "ok": true,
@@ -117,7 +117,7 @@
     "description": "",
     "twitter": "https://x.com/tangyujie2002",
     "telegram": "https://t.me/X1rpc",
-    "checkedAt": "2026-07-03T12:42:38.429Z"
+    "checkedAt": "2026-07-03T13:12:06.667Z"
   },
   "x1-oracle-x1oracle-com": {
     "ok": true,
@@ -127,17 +127,17 @@
     "description": "A decentralised, multi-feeder token price oracle deployed on X1.",
     "twitter": "https://x.com/ludolphus",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:42:42.680Z"
+    "checkedAt": "2026-07-03T13:12:10.930Z"
   },
   "x1-world-x1-world": {
-    "ok": false,
-    "note": "page.goto: net::ERR_CONNECTION_REFUSED at https://x1.world/",
+    "ok": true,
+    "note": "HTTP 200",
     "domain": "x1.world",
     "project": "X1 World",
-    "description": "",
-    "twitter": "",
-    "telegram": "",
-    "checkedAt": "2026-07-03T12:42:45.291Z"
+    "description": "An interactive 3D world of the X1 blockchain ecosystem. Drive a little ninja around a living network planet — every landmark is a real X1 project, with live screenshots, health checks, and links.",
+    "twitter": "https://x.com/tangyujie2002",
+    "telegram": "https://t.me/+A52XIc1WEWwzMDY0",
+    "checkedAt": "2026-07-03T13:12:15.908Z"
   },
   "vero-x1-xyz": {
     "ok": true,
@@ -147,7 +147,7 @@
     "description": "X1 Blockchain is a low-cost, high-speed, high-performance, high-throughput, censorship-resistant and monolithic Layer-1 SVM-based blockchain designed to enable freedom to transact with minimal technical and economic limitations",
     "twitter": "https://x.com/x1_chain",
     "telegram": "https://t.me/+HtiLywX2Dug3MjJk",
-    "checkedAt": "2026-07-03T12:42:55.587Z"
+    "checkedAt": "2026-07-03T13:12:19.705Z"
   },
   "x1ns-x1ns-xyz": {
     "ok": true,
@@ -157,7 +157,7 @@
     "description": "Register your .x1 or .xnt domain on the X1 blockchain. Decentralized, secure, and easy-to-use naming service for Web3. Own your digital identity.",
     "twitter": "https://x.com/x1ns_xnt",
     "telegram": "https://t.me/X1NameService",
-    "checkedAt": "2026-07-03T12:42:59.701Z"
+    "checkedAt": "2026-07-03T13:12:23.939Z"
   },
   "x1-nodes-xen-pub-xen-pub": {
     "ok": true,
@@ -167,7 +167,7 @@
     "description": "Real-time XEN crypto stats across 15+ blockchains. Track supply, burns, staking, DBXEN, FENIX, XenBlocks and more — all in one place.",
     "twitter": "https://x.com/xenpub",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:43:04.822Z"
+    "checkedAt": "2026-07-03T13:12:29.149Z"
   },
   "degen-dgn-launchpad-degen-fyi": {
     "ok": true,
@@ -177,7 +177,7 @@
     "description": "Degens + Chaos + 2 Blockchains",
     "twitter": "https://x.com/phonkmasta228",
     "telegram": "https://t.me/phonkmasta",
-    "checkedAt": "2026-07-03T12:43:12.533Z"
+    "checkedAt": "2026-07-03T13:12:33.244Z"
   },
   "prime-miner-primeminer-xyz": {
     "ok": true,
@@ -187,17 +187,17 @@
     "description": "Primeminer ⛏🟢 is a variation of crypto mining with a twist. Compete with other miners for the treasury and points. Every mining round costs you 10 points.",
     "twitter": "https://x.com/ludolphus",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:43:23.480Z"
+    "checkedAt": "2026-07-03T13:12:43.608Z"
   },
   "x1-app-x1app-fyi": {
     "ok": true,
-    "note": "HTTP 200",
+    "note": "HTTP 200 +action",
     "domain": "x1app.fyi",
     "project": "X1 App",
     "description": "",
     "twitter": "https://twitter.com/ludolphus",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:43:27.669Z"
+    "checkedAt": "2026-07-03T13:12:50.175Z"
   },
   "kryptark-kryptark-com": {
     "ok": true,
@@ -207,7 +207,7 @@
     "description": "",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:43:31.786Z"
+    "checkedAt": "2026-07-03T13:12:54.365Z"
   },
   "solaris-prime-solarisprime-xyz": {
     "ok": true,
@@ -217,6 +217,46 @@
     "description": "",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T12:43:39.481Z"
+    "checkedAt": "2026-07-03T13:13:02.142Z"
+  },
+  "x1-cats-x1cats-com": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1cats.com",
+    "project": "X1 Cats",
+    "description": "X1 Cat NFT's",
+    "twitter": "",
+    "telegram": "https://t.me/x1cats",
+    "checkedAt": "2026-07-03T13:13:06.429Z"
+  },
+  "x1-pepe-x1pepe-com": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1pepe.com",
+    "project": "X1 Pepe",
+    "description": "🐸 Welcome to the Official X1 PEPE Token! ✨",
+    "twitter": "https://x.com/x1_pepe",
+    "telegram": "https://t.me/HoneyBadgerCoreBot?start=ref_ERD38Y2K",
+    "checkedAt": "2026-07-03T13:13:12.106Z"
+  },
+  "x1-next-next-x1-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "next.x1.xyz",
+    "project": "X1 Next",
+    "description": "X1 is a high-performance SVM blockchain built for radical growth, with 668 validators securing the network.",
+    "twitter": "https://x.com/x1_chain",
+    "telegram": "https://t.me/+yT0VAcNPFqM3OGQ0",
+    "checkedAt": "2026-07-03T13:13:16.853Z"
+  },
+  "x1-wiki-x1-wiki": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1.wiki",
+    "project": "X1 Wiki",
+    "description": "",
+    "twitter": "https://x.com/xen_artist",
+    "telegram": "https://t.me/+Ig4hGl6rIdNiNWRh",
+    "checkedAt": "2026-07-03T13:13:41.057Z"
   }
 }
