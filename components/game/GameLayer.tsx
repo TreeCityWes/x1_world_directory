@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { regions } from "@/lib/regions";
 import { moveState } from "@/lib/gameState";
@@ -79,13 +80,37 @@ const _axis = new THREE.Vector3();
 const _t = new THREE.Vector3();
 const _f0 = new THREE.Vector3();
 
-// silhouette per enemy type: [x, y, z] body scale multipliers
-const BODY_SHAPE: Record<string, [number, number, number]> = {
-  goblin: [1, 0.85, 1],
-  gremlin: [0.7, 1.35, 0.7],
-  whale: [1.35, 0.95, 1.35],
-  boss: [1.25, 1.15, 1.25],
+// KayKit skeleton crew (CC0, Kay Lousberg) — one model per enemy type.
+// The pool is partitioned into fixed per-type slot ranges so each slot keeps
+// a single pre-cloned model.
+const MODEL_PATH: Record<EnemyTypeId, string> = {
+  goblin: "/models/Skeleton_Minion.glb",
+  gremlin: "/models/Skeleton_Rogue.glb",
+  whale: "/models/Skeleton_Warrior.glb",
+  boss: "/models/Skeleton_Mage.glb",
 };
+const MODEL_SCALE: Record<EnemyTypeId, number> = {
+  goblin: 0.14,
+  gremlin: 0.16,
+  whale: 0.22,
+  boss: 0.34,
+};
+const TYPE_RANGES: Record<EnemyTypeId, [number, number]> = {
+  goblin: [0, 26],
+  gremlin: [26, 42],
+  whale: [42, 52],
+  boss: [52, 56],
+};
+function typeForSlot(i: number): EnemyTypeId {
+  if (i < 26) return "goblin";
+  if (i < 42) return "gremlin";
+  if (i < 52) return "whale";
+  return "boss";
+}
+useGLTF.preload(MODEL_PATH.goblin);
+useGLTF.preload(MODEL_PATH.gremlin);
+useGLTF.preload(MODEL_PATH.whale);
+useGLTF.preload(MODEL_PATH.boss);
 
 function tangentToward(from: THREE.Vector3, to: THREE.Vector3, out: THREE.Vector3) {
   // unit tangent at `from` pointing along the great circle toward `to`
@@ -153,6 +178,36 @@ const world = {
 export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Group | null> }) {
   const mode = useGame((s) => s.mode);
 
+  // one static clone per pool slot, tinted gold for the boss
+  const goblinGltf = useGLTF(MODEL_PATH.goblin);
+  const gremlinGltf = useGLTF(MODEL_PATH.gremlin);
+  const whaleGltf = useGLTF(MODEL_PATH.whale);
+  const bossGltf = useGLTF(MODEL_PATH.boss);
+  const enemyClones = useMemo(() => {
+    const sceneFor: Record<EnemyTypeId, THREE.Object3D> = {
+      goblin: goblinGltf.scene,
+      gremlin: gremlinGltf.scene,
+      whale: whaleGltf.scene,
+      boss: bossGltf.scene,
+    };
+    return Array.from({ length: MAX_ENEMIES }, (_, i) => {
+      const type = typeForSlot(i);
+      const clone = sceneFor[type].clone(true);
+      if (type === "boss") {
+        clone.traverse((o) => {
+          const mesh = o as THREE.Mesh;
+          if (mesh.isMesh && mesh.material) {
+            const m = (mesh.material as THREE.MeshStandardMaterial).clone();
+            m.emissive?.set("#f0c75e");
+            m.emissiveIntensity = 0.35;
+            mesh.material = m;
+          }
+        });
+      }
+      return clone;
+    });
+  }, [goblinGltf, gremlinGltf, whaleGltf, bossGltf]);
+
   const enemyRefs = useRef<(THREE.Group | null)[]>([]);
   const shurikenRefs = useRef<(THREE.Mesh | null)[]>([]);
   const gemRefs = useRef<(THREE.Mesh | null)[]>([]);
@@ -161,7 +216,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const partRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   const spawnEnemy = (type: EnemyTypeId) => {
-    const e = world.enemies.find((x) => !x.alive);
+    const [lo, hi] = TYPE_RANGES[type];
+    let e: Enemy | undefined;
+    for (let i = lo; i < hi; i++) {
+      if (!world.enemies[i].alive) {
+        e = world.enemies[i];
+        break;
+      }
+    }
     if (!e) return;
     const T = ENEMY_TYPES[type];
     const scale = 1 + run.block * 0.1;
@@ -255,9 +317,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (!grp) continue;
       grp.visible = e.alive;
       if (e.alive) {
-        grp.position.copy(e.dir).multiplyScalar(R + e.radius * 0.9);
-        const shape = BODY_SHAPE[e.type];
-        grp.scale.set(e.radius * shape[0], e.radius * shape[1], e.radius * shape[2]);
+        grp.position.copy(e.dir).multiplyScalar(R + 0.01);
         // stand on the surface…
         grp.quaternion.setFromUnitVectors(UP, e.dir);
         // …and face the ninja (yaw around the local up axis)
@@ -268,15 +328,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           const yaw = Math.atan2(_axis.crossVectors(_f0, t).dot(e.dir), _f0.dot(t));
           grp.rotateY(yaw);
         }
-        // squash-and-stretch scuttle
+        // scuttle bounce (model scale lives on the clone; group carries wobble)
         const wob = 1 + Math.sin(e.t * 9) * 0.06;
-        grp.scale.y *= wob;
-        const body = grp.children[0] as THREE.Mesh;
-        const m = body.material as THREE.MeshStandardMaterial;
-        const T = ENEMY_TYPES[e.type];
-        m.color.set(T.color);
-        m.emissive.set(T.color);
-        m.emissiveIntensity = e.hp < e.maxHp * 0.35 ? 1.1 : 0.4;
+        grp.scale.set(1, wob, 1);
       }
     }
     for (let i = 0; i < MAX_SHURIKENS; i++) {
@@ -695,29 +749,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     <group>
       {Array.from({ length: MAX_ENEMIES }).map((_, i) => (
         <group key={`e${i}`} ref={(el) => { enemyRefs.current[i] = el; }} visible={false}>
-          {/* body — first child, recolored per type */}
-          <mesh position={[0, 0.55, 0]}>
-            <icosahedronGeometry args={[1, 0]} />
-            <meshStandardMaterial roughness={0.5} metalness={0.1} flatShading />
-          </mesh>
-          {/* glowing eyes, facing forward (+Z = toward the ninja) */}
-          <mesh position={[0.32, 0.75, 0.78]}>
-            <sphereGeometry args={[0.16, 8, 8]} />
-            <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={2.4} />
-          </mesh>
-          <mesh position={[-0.32, 0.75, 0.78]}>
-            <sphereGeometry args={[0.16, 8, 8]} />
-            <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={2.4} />
-          </mesh>
-          {/* horns */}
-          <mesh position={[0.42, 1.3, 0]} rotation={[0, 0, -0.5]}>
-            <coneGeometry args={[0.14, 0.5, 5]} />
-            <meshStandardMaterial color="#11141f" roughness={0.5} />
-          </mesh>
-          <mesh position={[-0.42, 1.3, 0]} rotation={[0, 0, 0.5]}>
-            <coneGeometry args={[0.14, 0.5, 5]} />
-            <meshStandardMaterial color="#11141f" roughness={0.5} />
-          </mesh>
+          <primitive object={enemyClones[i]} scale={MODEL_SCALE[typeForSlot(i)]} />
         </group>
       ))}
       {Array.from({ length: MAX_SHURIKENS }).map((_, i) => (
