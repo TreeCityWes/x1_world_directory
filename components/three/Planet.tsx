@@ -212,7 +212,7 @@ export default function Planet() {
       moveState.pushVX = 0;
       moveState.pushVZ = 0;
     }
-    const contactDrag = moveState.contactSlow ? Math.exp(-5 * dt) : 1;
+    const contactDrag = moveState.contactSlow ? Math.exp(-2.2 * dt) : 1;
     moveState.contactSlow = false;
     v.x *= contactDrag;
     v.z *= contactDrag;

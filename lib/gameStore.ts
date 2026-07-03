@@ -68,6 +68,8 @@ export const run = {
   upgrades: {} as Record<string, number>,
   // effect expiry timestamps (compared against run.t)
   fx: { speed: 0, dmg: 0, rate: 0, xp: 0, shield: 0 },
+  // PERMANENT stacks from captured sites — the ninja grows all run
+  perm: { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 },
   speedMult: 1, // consumed by the planet movement controller
   lastHitAt: -10,
 };
@@ -84,6 +86,7 @@ export function resetRun() {
   run.captured = 0;
   run.upgrades = {};
   run.fx = { speed: 0, dmg: 0, rate: 0, xp: 0, shield: 0 };
+  run.perm = { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 };
   run.speedMult = 1;
   run.lastHitAt = -10;
 }
@@ -94,16 +97,19 @@ export function scoreOf() {
 
 // derived combat numbers (upgrades + timed powerups)
 export function shurikenDamage() {
-  return (10 + 6 * (run.upgrades.damage ?? 0)) * (run.t < run.fx.dmg ? 2 : 1);
+  return (10 + 6 * (run.upgrades.damage ?? 0)) * (1 + Math.min(1.5, 0.1 * run.perm.dmg));
 }
 export function fireCooldown() {
-  return 0.55 * Math.pow(0.88, run.upgrades.firerate ?? 0) * (run.t < run.fx.rate ? 0.5 : 1);
+  return Math.max(0.18, 0.55 * Math.pow(0.88, run.upgrades.firerate ?? 0) * Math.pow(0.94, run.perm.rate));
 }
 export function magnetAngle() {
-  return 0.2 * (1 + 0.6 * (run.upgrades.magnet ?? 0));
+  return 0.2 * (1 + 0.6 * (run.upgrades.magnet ?? 0)) * (1 + 0.08 * run.perm.magnet);
 }
 export function currentSpeedMult() {
-  return (1 + 0.1 * (run.upgrades.speed ?? 0)) * (run.t < run.fx.speed ? 1.5 : 1);
+  return (1 + 0.1 * (run.upgrades.speed ?? 0)) * (1 + Math.min(0.4, 0.05 * run.perm.speed));
+}
+export function xpMult() {
+  return 1 + 0.1 * run.perm.xp;
 }
 
 // ---- React-facing store ----

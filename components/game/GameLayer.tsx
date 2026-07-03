@@ -15,6 +15,7 @@ import {
   run,
   shurikenDamage,
   useGame,
+  xpMult,
   type EnemyTypeId,
 } from "@/lib/gameStore";
 
@@ -189,13 +190,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     const region = regions.find((r) => r.id === id);
     if (!region) return;
     switch (region.kind) {
-      case "validatorTower": run.fx.speed = run.t + 10; break;
-      case "chartBeacon": run.fx.rate = run.t + 10; break;
-      case "dexGate": run.fx.dmg = run.t + 10; break;
-      case "explorerFort": run.fx.shield = run.t + 8; break;
+      case "validatorTower": run.perm.speed++; break;
+      case "chartBeacon": run.perm.rate++; break;
+      case "dexGate": run.perm.dmg++; break;
+      case "explorerFort":
+        run.maxHp += 15;
+        run.hp = Math.min(run.maxHp, run.hp + 15);
+        run.fx.shield = run.t + 8;
+        break;
       case "socialBeacon": run.hp = Math.min(run.maxHp, run.hp + 35); break;
-      case "gameArcade": run.fx.xp = run.t + 15; break;
+      case "gameArcade": run.perm.xp++; break;
       case "oracleShrine":
+        run.perm.magnet++;
         for (const g of world.gems) if (g.alive) g.t = -1; // flag: full magnet
         break;
       case "bridgePortal":
@@ -487,7 +493,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       }
       if (ang < GEM_PICKUP) {
         gm.alive = false;
-        run.xp += gm.xp * (run.t < run.fx.xp ? 2 : 1);
+        run.xp += gm.xp * xpMult();
       }
     }
     if (run.xp >= run.xpNext) {

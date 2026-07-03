@@ -6,14 +6,14 @@ import { useWorld } from "@/lib/store";
 import { UPGRADES, useGame } from "@/lib/gameStore";
 
 const POWER_LABEL: Record<string, string> = {
-  validatorTower: "speed surge",
-  chartBeacon: "rapid fire",
-  dexGate: "double damage",
-  explorerFort: "shield",
+  validatorTower: "+5% speed forever",
+  chartBeacon: "+6% fire rate forever",
+  dexGate: "+10% damage forever",
+  explorerFort: "+15 max hp & shield",
   socialBeacon: "heal +35",
-  gameArcade: "double xp",
+  gameArcade: "+10% xp forever",
   bridgePortal: "shockwave",
-  oracleShrine: "coin vacuum",
+  oracleShrine: "coin vacuum & +magnet",
 };
 
 /** Right screen during a survival run: capture progress + targets + build. */
