@@ -235,6 +235,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const wakeRefs = useRef<(THREE.Mesh | null)[]>([]);
   const partRefs = useRef<(THREE.Mesh | null)[]>([]);
   const haloRef = useRef<THREE.Mesh | null>(null);
+  const haloFillRef = useRef<THREE.Mesh | null>(null);
+  const magnetRef = useRef<THREE.Mesh | null>(null);
 
   const spawnEnemy = (type: EnemyTypeId) => {
     const [lo, hi] = TYPE_RANGES[type];
@@ -433,21 +435,50 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         mesh.scale.setScalar(0.035 * (p.life / 0.45));
       }
     }
-    // Ion Halo ring hugging the surface around the ninja
+    // Ion Halo: molten filled disc + bright rim, hugging the surface
     const haloMesh = haloRef.current;
-    if (haloMesh) {
+    const haloFill = haloFillRef.current;
+    {
       const h = haloAngle();
       const show = h > 0 && world.started;
-      haloMesh.visible = show;
+      const pulse = 1 + Math.sin(run.t * 5) * 0.04;
+      if (haloMesh) {
+        haloMesh.visible = show;
+        if (show) {
+          haloMesh.position.copy(world.pLocal).multiplyScalar(R + 0.025);
+          haloMesh.quaternion.setFromUnitVectors(UP, world.pLocal);
+          haloMesh.rotateX(Math.PI / 2);
+          haloMesh.scale.setScalar(R * Math.sin(h) * pulse);
+          (haloMesh.material as THREE.MeshBasicMaterial).opacity = run.upgrades.meltdown
+            ? 0.95
+            : 0.7;
+        }
+      }
+      if (haloFill) {
+        haloFill.visible = show;
+        if (show) {
+          haloFill.position.copy(world.pLocal).multiplyScalar(R + 0.018);
+          haloFill.quaternion.setFromUnitVectors(UP, world.pLocal);
+          haloFill.rotateX(-Math.PI / 2);
+          haloFill.scale.setScalar(R * Math.sin(h) * pulse);
+          (haloFill.material as THREE.MeshBasicMaterial).opacity =
+            (run.upgrades.meltdown ? 0.22 : 0.13) + Math.sin(run.t * 5) * 0.04;
+        }
+      }
+    }
+    // Coin Magnet: shimmering cyan ring at the exact pickup radius
+    const magnetMesh = magnetRef.current;
+    if (magnetMesh) {
+      const show = world.started;
+      magnetMesh.visible = show;
       if (show) {
-        haloMesh.position.copy(world.pLocal).multiplyScalar(R + 0.02);
-        haloMesh.quaternion.setFromUnitVectors(UP, world.pLocal);
-        haloMesh.rotateX(Math.PI / 2);
-        const pulse = 1 + Math.sin(run.t * 5) * 0.04;
-        haloMesh.scale.setScalar(R * Math.sin(h) * pulse);
-        (haloMesh.material as THREE.MeshBasicMaterial).opacity = run.upgrades.meltdown
-          ? 0.8
-          : 0.45;
+        magnetMesh.position.copy(world.pLocal).multiplyScalar(R + 0.012);
+        magnetMesh.quaternion.setFromUnitVectors(UP, world.pLocal);
+        magnetMesh.rotateX(Math.PI / 2);
+        magnetMesh.rotateZ(run.t * 0.8); // slow shimmer spin
+        magnetMesh.scale.setScalar(R * Math.sin(magnetAngle()));
+        (magnetMesh.material as THREE.MeshBasicMaterial).opacity =
+          0.14 + ((run.upgrades.magnet ?? 0) > 0 ? 0.1 : 0) + Math.sin(run.t * 2.5) * 0.05;
       }
     }
     // arc lightning flash
@@ -920,13 +951,35 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <meshStandardMaterial emissiveIntensity={1.8} roughness={0.3} />
         </mesh>
       ))}
-      {/* Ion Halo — the burning aura ring */}
+      {/* Ion Halo — bright rim + molten fill */}
       <mesh ref={haloRef} visible={false}>
-        <torusGeometry args={[1, 0.015, 8, 48]} />
+        <torusGeometry args={[1, 0.02, 8, 48]} />
         <meshBasicMaterial
-          color="#f0c75e"
+          color="#ffb02e"
           transparent
-          opacity={0.45}
+          opacity={0.7}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh ref={haloFillRef} visible={false}>
+        <circleGeometry args={[1, 40]} />
+        <meshBasicMaterial
+          color="#ff7a1a"
+          transparent
+          opacity={0.13}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {/* Coin Magnet — pickup-radius shimmer ring (8-segment = dashed look) */}
+      <mesh ref={magnetRef} visible={false}>
+        <torusGeometry args={[1, 0.008, 6, 8]} />
+        <meshBasicMaterial
+          color="#7dd3fc"
+          transparent
+          opacity={0.16}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
