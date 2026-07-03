@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import Planet from "@/components/three/Planet";
 import Character from "@/components/three/Character";
 import Rig from "@/components/three/Rig";
@@ -25,9 +26,10 @@ export default function Experience() {
           gl={{ antialias: true, alpha: true }}
           dpr={[1, 1.5]}
         >
-          {/* night lighting: cool moon key + hemisphere + blue fills (no dead-black limb) */}
-          <ambientLight intensity={0.5} color="#8ea3c4" />
-          <hemisphereLight intensity={0.4} color="#6e8fd8" groundColor="#0a0e1a" />
+          {/* single key light → a real lit/dark terminator on the globe; the
+              fresnel atmosphere + a faint cool back-fill keep the night limb
+              alive instead of a dead-black edge */}
+          <ambientLight intensity={0.15} color="#8ea3c4" />
           <directionalLight
             position={[5, 8, 4]}
             intensity={2.1}
@@ -36,8 +38,7 @@ export default function Experience() {
             shadow-mapSize={[1024, 1024]}
             shadow-bias={-0.0005}
           />
-          <directionalLight position={[-6, -2, -4]} intensity={0.7} color="#3b82f6" />
-          <directionalLight position={[0, -6, 6]} intensity={0.3} color="#5a7bd0" />
+          <directionalLight position={[-6, -2, -4]} intensity={0.28} color="#3b82f6" />
 
           {/* useTexture & co. suspend — everything lives under Suspense */}
           <Suspense fallback={null}>
@@ -48,6 +49,18 @@ export default function Experience() {
             <Character />
             <Rig />
           </Suspense>
+
+          {/* post: bloom on the emissive beacons/eyes/blades + soft vignette */}
+          <EffectComposer multisampling={8}>
+            <Bloom
+              intensity={0.6}
+              luminanceThreshold={0.55}
+              luminanceSmoothing={0.3}
+              radius={0.7}
+              mipmapBlur
+            />
+            <Vignette offset={0.3} darkness={0.6} />
+          </EffectComposer>
         </Canvas>
         <Overlay />
       </div>
