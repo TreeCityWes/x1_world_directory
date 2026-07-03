@@ -24,9 +24,10 @@ export default function Overlay() {
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
       {/* top-left: controls hint only (top-center belongs to the focus header) */}
-      <p className="absolute left-5 top-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink max-md:hidden">
-        <span className="mr-1 rounded border border-gold/60 px-1.5 py-0.5 text-gold">w a s d</span>{" "}
-        run the world
+      <p className="absolute left-5 top-4 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-dim max-md:hidden">
+        keyboard:{" "}
+        <span className="rounded border border-gold/60 px-1.5 py-0.5 text-gold">w a s d</span>{" "}
+        <span className="text-ink">run the world</span>
       </p>
       <p className="absolute left-4 top-3 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim md:hidden">
         drag to spin · pad to run
