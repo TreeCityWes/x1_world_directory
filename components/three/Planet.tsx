@@ -35,16 +35,23 @@ const SITE_SCALE = 0.44; // 55 landmarks — keep them small so the world breath
 const ATMOSPHERE = new THREE.ShaderMaterial({
   vertexShader: /* glsl */ `
     varying vec3 vNormal;
+    varying vec3 vView;
     void main() {
       vNormal = normalize(normalMatrix * normal);
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vView = normalize(-mv.xyz); // per-fragment view vector (stable at the silhouette)
+      gl_Position = projectionMatrix * mv;
     }
   `,
   fragmentShader: /* glsl */ `
     varying vec3 vNormal;
+    varying vec3 vView;
     void main() {
-      float intensity = pow(0.66 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
-      gl_FragColor = vec4(0.18, 0.32, 0.68, 1.0) * intensity;
+      // proper view-vector fresnel, softened with smoothstep so the rim can't
+      // alias/shimmer — the old +Z approximation flickered at the silhouette
+      float rim = 1.0 - abs(dot(normalize(vNormal), vView));
+      float glow = smoothstep(0.55, 1.0, rim) * 0.6;
+      gl_FragColor = vec4(0.16, 0.34, 0.74, 1.0) * glow;
     }
   `,
   blending: THREE.AdditiveBlending,
@@ -263,10 +270,8 @@ export default function Planet() {
       if (st.selectedId) st.select(null);
     }
 
-    // the world slowly breathes (frozen for reduced-motion users)
-    g.scale.setScalar(
-      prefersReducedMotion.current ? 1 : 1 + Math.sin(state.clock.elapsedTime * 0.9) * 0.006,
-    );
+    // the world no longer "breathes" — the scale pulse throbbed against the
+    // fixed atmosphere shell and read as flicker; the idle spin carries the life
 
     // proximity panel updates only matter while exploring
     if (gMode === "explore") {
@@ -345,7 +350,7 @@ export default function Planet() {
       <OrbitDust />
 
       {/* atmosphere glow (doesn't rotate — it's light, not land) */}
-      <mesh scale={1.08}>
+      <mesh scale={1.04}>
         <sphereGeometry args={[PLANET_RADIUS, 48, 48]} />
         <primitive object={ATMOSPHERE} attach="material" />
       </mesh>
