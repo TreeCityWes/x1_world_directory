@@ -136,18 +136,19 @@ export default function Character() {
             <sphereGeometry args={[0.03, 10, 10]} />
             <meshStandardMaterial color={BLUE} roughness={0.5} />
           </mesh>
-          {/* dark face mask panel with pale eyes */}
-          <mesh position={[0, 0.645, 0.108]}>
-            <boxGeometry args={[0.17, 0.075, 0.05]} />
-            <meshStandardMaterial color={MASK} roughness={0.55} />
+          {/* mask opening: a curved band hugging the hood (no boxy corners) */}
+          <mesh position={[0, 0.66, 0]}>
+            <sphereGeometry args={[0.144, 24, 8, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.14]} />
+            <meshStandardMaterial color={MASK} roughness={0.6} />
           </mesh>
-          <mesh position={[0.042, 0.652, 0.136]}>
-            <sphereGeometry args={[0.014, 10, 10]} />
-            <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={1.1} />
+          {/* glowing eyes floating just proud of the band */}
+          <mesh position={[0.042, 0.652, 0.139]}>
+            <sphereGeometry args={[0.015, 10, 10]} />
+            <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={1.4} />
           </mesh>
-          <mesh position={[-0.042, 0.652, 0.136]}>
-            <sphereGeometry args={[0.014, 10, 10]} />
-            <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={1.1} />
+          <mesh position={[-0.042, 0.652, 0.139]}>
+            <sphereGeometry args={[0.015, 10, 10]} />
+            <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={1.4} />
           </mesh>
 
           {/* blue scarf: collar + trailing tail */}
