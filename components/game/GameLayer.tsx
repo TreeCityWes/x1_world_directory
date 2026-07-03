@@ -108,7 +108,7 @@ const TARGET_SIZE: Record<EnemyTypeId, number> = {
   goblin: 0.15,
   gremlin: 0.2,
   whale: 0.26, // violet elder skull (the whale model is now boss #1)
-  boss: 0.45, // THE WHALE — ninja-sized, just… a whale
+  boss: 0.62, // THE WHALE — a touch bigger than the ninja, boss presence
 };
 useGLTF.preload(MODEL_PATH.goblin);
 useGLTF.preload(MODEL_PATH.gremlin);
