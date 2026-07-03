@@ -938,6 +938,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         applySitePower(id);
         sfx.capture();
         world.captured.add(id);
+        useGame.setState((s) => ({ capturedIds: [...s.capturedIds, id] }));
         run.captured = world.captured.size;
         if (world.captured.size >= regions.length) {
           store.setActiveSites([]);

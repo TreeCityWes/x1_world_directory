@@ -22,6 +22,7 @@ const POWER_LABEL: Record<string, string> = {
 function GamePanel() {
   const hud = useGame((s) => s.hud);
   const best = useGame((s) => s.best);
+  const capturedIds = useGame((s) => s.capturedIds);
   const activeSites = useGame((s) => s.activeSites);
   const owned = Object.entries(hud.upgrades);
   const total = regions.length;
@@ -38,7 +39,7 @@ function GamePanel() {
           best {best}
         </p>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto p-5">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5">
         {/* who's running */}
         <ProfileCard />
 
@@ -143,10 +144,47 @@ function GamePanel() {
           <Leaderboard />
         </div>
 
-        <p className="mt-5 font-mono text-[9px] uppercase leading-relaxed tracking-[0.15em] text-ink-dim/70">
-          capture all {total} projects to win · glowing sites grant powers · shurikens aim where
-          you run
-        </p>
+        {/* the conquest board: every project as an LED — dim until captured */}
+        <div className="mt-auto pt-5">
+          <div className="flex items-baseline justify-between">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+              ecosystem grid
+            </p>
+            <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim/60">
+              {hud.captured} lit · {total - hud.captured} dark
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-11 gap-1.5 max-md:grid-cols-9">
+            {regions.map((r) => {
+              const lit = capturedIds.includes(r.id);
+              return (
+                <motion.div
+                  key={r.id}
+                  title={r.name}
+                  animate={
+                    lit
+                      ? { scale: [1, 1.6, 1], opacity: 1 }
+                      : { scale: 1, opacity: 1 }
+                  }
+                  transition={{ duration: 0.45, ease: "easeOut" }}
+                  className="aspect-square rounded-[3px] transition-colors duration-300"
+                  style={
+                    lit
+                      ? { background: r.accent, boxShadow: `0 0 10px ${r.accent}` }
+                      : {
+                          background: "rgba(255,255,255,0.045)",
+                          border: "1px solid rgba(255,255,255,0.09)",
+                        }
+                  }
+                />
+              );
+            })}
+          </div>
+          <p className="mt-4 font-mono text-[9px] uppercase leading-relaxed tracking-[0.15em] text-ink-dim/70">
+            capture all {total} projects to win · glowing sites grant powers · shurikens aim where
+            you run
+          </p>
+        </div>
       </div>
     </aside>
   );

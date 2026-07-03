@@ -223,6 +223,7 @@ type GameStore = {
   offerLevelUp: (choices: string[]) => void;
   pick: (id: string) => void;
   setActiveSites: (ids: string[]) => void;
+  capturedIds: string[];
 };
 
 const emptyHud = (): Hud => ({
@@ -248,13 +249,14 @@ export const useGame = create<GameStore>((set) => ({
   hud: emptyHud(),
   choices: [],
   activeSites: [],
+  capturedIds: [],
   best: 0,
   finalScore: 0,
   start: (diff) => {
     resetRun(diff ?? run.difficulty);
     const best =
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
-    set({ mode: "play", hud: emptyHud(), choices: [], activeSites: [], best });
+    set({ mode: "play", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best });
   },
   openMenu: () => {
     resetRun();
