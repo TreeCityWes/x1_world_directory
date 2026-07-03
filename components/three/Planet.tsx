@@ -194,6 +194,9 @@ export default function Planet() {
       // map to planet angular velocity (ω_x moves the ninja -Z, ω_z moves +X)
       v.x += ACC * mult * dt * -mz;
       v.z += ACC * mult * dt * mx;
+      moveState.inputActive = fwd !== 0 || side !== 0;
+    } else {
+      moveState.inputActive = false;
     }
 
     // knockback from enemy contact + heavy legs while shoving through them

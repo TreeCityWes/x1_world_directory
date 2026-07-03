@@ -17,4 +17,11 @@ export const moveState = {
   pushVZ: 0,
   /** true while shoving through an enemy — Planet applies extra drag this frame */
   contactSlow: false,
+  /** true only while movement keys are held — camera follow ignores knockback */
+  inputActive: false,
 };
+
+// debug handle for automated tests (read-only use)
+if (typeof window !== "undefined") {
+  (window as unknown as Record<string, unknown>).__x1_move = moveState;
+}

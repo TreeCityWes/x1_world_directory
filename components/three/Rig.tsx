@@ -25,8 +25,9 @@ export default function Rig() {
     const playing = useGame.getState().mode !== "explore";
 
     if (playing) {
-      // follow azimuth — only when movement is away-ish/lateral (≤ ~105°)
-      if (moveState.speed > 0.25) {
+      // follow azimuth — only for DELIBERATE movement (keys held, not
+      // knockback shoves) that is away-ish/lateral (≤ ~105°)
+      if (moveState.inputActive && moveState.speed > 0.25) {
         const mAz = Math.atan2(-moveState.vx, -moveState.vz);
         const delta = wrapPI(mAz - moveState.camAz);
         if (Math.abs(delta) < 1.85) {

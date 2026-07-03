@@ -168,7 +168,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   };
 
   const pickSites = (count: number, exclude: string[]) => {
-    const pool = regions.filter((r) => !exclude.includes(r.id));
+    // never spawn a powerup under the ninja's feet (free instant capture)
+    const pool = regions.filter(
+      (r) =>
+        !exclude.includes(r.id) &&
+        _v.set(...r.dir).angleTo(world.pLocal) > CAPTURE_ANGLE + 0.2,
+    );
     const out: string[] = [];
     while (out.length < count && pool.length > 0) {
       const i = Math.floor(Math.random() * pool.length);
@@ -356,7 +361,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             if (t) {
               // push direction = away from the enemy, converted to world space
               _v.copy(t).multiplyScalar(-1).applyQuaternion(g.quaternion);
-              const MAG = 0.5;
+              const MAG = 0.35;
               moveState.pushVX += -_v.z * MAG; // ω_x moves the ninja along -Z
               moveState.pushVZ += _v.x * MAG; // ω_z moves the ninja along +X
             }
