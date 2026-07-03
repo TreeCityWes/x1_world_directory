@@ -97,13 +97,13 @@
   },
   {
     "category": "Infrastructure",
-    "project": "X1 Nodes / XEN Pub",
+    "project": "XEN PUB",
     "domain": "xen.pub",
     "builder": "Jozef"
   },
   {
     "category": "Launchpad",
-    "project": "Degen / DGN Launchpad",
+    "project": "Degen Launchpad",
     "domain": "degen.fyi",
     "builder": "Jason"
   },

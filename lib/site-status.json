@@ -159,26 +159,6 @@
     "telegram": "https://t.me/X1NameService",
     "checkedAt": "2026-07-03T13:12:23.939Z"
   },
-  "x1-nodes-xen-pub-xen-pub": {
-    "ok": true,
-    "note": "HTTP 200",
-    "domain": "xen.pub",
-    "project": "X1 Nodes / XEN Pub",
-    "description": "Real-time XEN crypto stats across 15+ blockchains. Track supply, burns, staking, DBXEN, FENIX, XenBlocks and more — all in one place.",
-    "twitter": "https://x.com/xenpub",
-    "telegram": "",
-    "checkedAt": "2026-07-03T13:12:29.149Z"
-  },
-  "degen-dgn-launchpad-degen-fyi": {
-    "ok": true,
-    "note": "HTTP 200",
-    "domain": "degen.fyi",
-    "project": "Degen / DGN Launchpad",
-    "description": "Degens + Chaos + 2 Blockchains",
-    "twitter": "https://x.com/phonkmasta228",
-    "telegram": "https://t.me/phonkmasta",
-    "checkedAt": "2026-07-03T13:12:33.244Z"
-  },
   "prime-miner-primeminer-xyz": {
     "ok": true,
     "note": "HTTP 200 +gate +gate",
@@ -268,5 +248,25 @@
     "twitter": "",
     "telegram": "https://t.me/+yDcqqTGMNC4yNjdj",
     "checkedAt": "2026-07-03T13:14:41.977Z"
+  },
+  "xen-pub-xen-pub": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "xen.pub",
+    "project": "XEN PUB",
+    "description": "Real-time XEN crypto stats across 15+ blockchains. Track supply, burns, staking, DBXEN, FENIX, XenBlocks and more — all in one place.",
+    "twitter": "https://x.com/xenpub",
+    "telegram": "",
+    "checkedAt": "2026-07-03T13:12:29.149Z"
+  },
+  "degen-launchpad-degen-fyi": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "degen.fyi",
+    "project": "Degen Launchpad",
+    "description": "Degens + Chaos + 2 Blockchains",
+    "twitter": "https://x.com/phonkmasta228",
+    "telegram": "https://t.me/phonkmasta",
+    "checkedAt": "2026-07-03T13:12:33.244Z"
   }
 }
