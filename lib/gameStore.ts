@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { sfx } from "@/lib/sound";
 
 /**
  * X1 Ninja Survivors — game state. Authoritative per-frame numbers live in the
@@ -267,6 +268,7 @@ export const useGame = create<GameStore>((set) => ({
       best = Math.max(score, Number(localStorage.getItem(BEST_KEY) ?? 0));
       localStorage.setItem(BEST_KEY, String(best));
     }
+    sfx.death();
     set({ mode: "dead", finalScore: score, best, hud: emptyHud() });
   },
   win: () => {
@@ -276,11 +278,15 @@ export const useGame = create<GameStore>((set) => ({
       best = Math.max(score, Number(localStorage.getItem(BEST_KEY) ?? 0));
       localStorage.setItem(BEST_KEY, String(best));
     }
+    sfx.win();
     set({ mode: "won", finalScore: score, best, hud: emptyHud() });
   },
   syncHud: () => set({ hud: emptyHud() }),
   offerLevelUp: (choices) => set({ mode: "levelup", choices, hud: emptyHud() }),
   pick: (id) => {
+    const def = UPGRADES.find((u) => u.id === id);
+    if (def?.requires) sfx.evolve();
+    else sfx.ui();
     run.upgrades[id] = (run.upgrades[id] ?? 0) + 1;
     if (id === "vitality") {
       // incremental — preserves Cursed's stat penalty AND fort capture bonuses

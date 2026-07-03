@@ -5,6 +5,8 @@ import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { regions } from "@/lib/regions";
+import { sfx } from "@/lib/sound";
+import Nemesis from "@/components/game/Nemesis";
 import { moveState } from "@/lib/gameState";
 import {
   DIFFICULTIES,
@@ -223,17 +225,6 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     return Array.from({ length: MAX_ENEMIES }, (_, i) => {
       const type = typeForSlot(i);
       const clone = sceneFor[type].clone(true);
-      if (type === "boss") {
-        clone.traverse((o) => {
-          const mesh = o as THREE.Mesh;
-          if (mesh.isMesh && mesh.material) {
-            const m = (mesh.material as THREE.MeshStandardMaterial).clone();
-            m.emissive?.set("#f0c75e");
-            m.emissiveIntensity = 0.45;
-            mesh.material = m;
-          }
-        });
-      }
       return clone;
     });
   }, [goblinGltf, wraithGltf, whaleGltf]);
@@ -369,7 +360,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         // everything floats: heads bob, the whale swims
         const hover =
           e.type === "boss"
-            ? 0.22 + Math.sin(e.t * 2.5) * 0.04
+            ? 0.01 + Math.sin(e.t * 2.5) * 0.015
             : e.type === "whale"
               ? 0.1 + Math.sin(e.t * 2) * 0.025
               : 0.11 + Math.sin(e.t * 4) * 0.03;
@@ -619,6 +610,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     if (run.block > 0 && run.block % 5 === 0 && world.bossAtBlock !== run.block) {
       world.bossAtBlock = run.block;
       spawnEnemy("boss");
+      sfx.boss();
     }
 
     // regeneration (Uptime) ticks continuously
@@ -653,6 +645,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           e.recoilUntil = run.t + 0.45;
           run.hp -= e.dmg * 0.8 * armorMult(); // one chunk, not a melt
           run.lastHitAt = run.t;
+          sfx.bite();
           // knockback: shove the ninja away from the enemy (world-space tangent)
           if (run.t >= world.knockAt) {
             world.knockAt = run.t + 0.3;
@@ -707,6 +700,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           aim.copy(t);
         }
       }
+      sfx.throw();
       const count = 1 + (run.upgrades.multishot ?? 0);
       for (let i = 0; i < count; i++) {
         const s = world.shurikens.find((x) => !x.alive);
@@ -891,6 +885,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (!e.alive || e.hp > 0) continue;
       e.alive = false;
       run.kills++;
+      sfx.kill();
       spawnBurst(e.dir, ENEMY_TYPES[e.type].color, e.type === "boss" ? 14 : 6);
       dropGems(e.dir, e.xp, e.gemSplit);
     }
@@ -905,6 +900,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       }
       if (ang < GEM_PICKUP) {
         gm.alive = false;
+        sfx.coin();
         run.xp += gm.xp * xpMult();
       }
     }
@@ -914,6 +910,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       run.xpNext = 8 + (run.level - 1) * 7;
       const choices = rollChoices();
       if (choices.length > 0) {
+        sfx.levelup();
         store.offerLevelUp(choices);
       } else {
         // everything maxed — the level still pays out (heal + burst of glory)
@@ -930,6 +927,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       _v.set(...region.dir);
       if (_v.angleTo(world.pLocal) < CAPTURE_ANGLE) {
         applySitePower(id);
+        sfx.capture();
         world.captured.add(id);
         run.captured = world.captured.size;
         if (world.captured.size >= regions.length) {
@@ -969,19 +967,23 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     <group>
       {Array.from({ length: MAX_ENEMIES }).map((_, i) => {
         const kind = typeForSlot(i);
-        const wraith = kind === "gremlin" || kind === "boss";
-        const robeR = kind === "boss" ? 0.19 : 0.075;
-        const robeH = kind === "boss" ? 0.42 : 0.18;
+        const wraith = kind === "gremlin";
+        const robeR = 0.075;
+        const robeH = 0.18;
         return (
           <group key={`e${i}`} ref={(el) => { enemyRefs.current[i] = el; }} visible={false}>
-            <primitive object={enemyClones[i]} scale={MODEL_SCALE[kind]} />
+            {kind === "boss" ? (
+              <Nemesis scale={1.05} />
+            ) : (
+              <primitive object={enemyClones[i]} scale={MODEL_SCALE[kind]} />
+            )}
             {wraith && (
               <mesh position={[0, -robeH * 0.55, 0]}>
                 <coneGeometry args={[robeR, robeH, 8, 1, true]} />
                 <meshStandardMaterial
-                  color={kind === "boss" ? "#2a2410" : "#141c33"}
-                  emissive={kind === "boss" ? "#f0c75e" : "#2a4080"}
-                  emissiveIntensity={kind === "boss" ? 0.4 : 0.3}
+                  color="#141c33"
+                  emissive="#2a4080"
+                  emissiveIntensity={0.3}
                   roughness={0.6}
                   side={THREE.DoubleSide}
                 />

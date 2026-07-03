@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useWorld } from "@/lib/store";
 import { useGame } from "@/lib/gameStore";
+import { isMuted, subscribeMute, toggleMute } from "@/lib/sound";
 import FocusHeader from "@/components/ui/FocusHeader";
 import TouchPad from "@/components/ui/TouchPad";
 import GameHUD from "@/components/game/GameHUD";
@@ -16,6 +17,7 @@ export default function Overlay() {
   const mode = useGame((s) => s.mode);
   const openMenu = useGame((s) => s.openMenu);
   const [escArmed, setEscArmed] = useState(false);
+  const mutedUi = useSyncExternalStore(subscribeMute, isMuted, () => false);
   const escTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -103,6 +105,15 @@ export default function Overlay() {
       <h1 className="absolute bottom-4 left-5 text-5xl font-semibold leading-none tracking-tighter max-md:bottom-3 max-md:text-2xl md:text-6xl">
         x1<span className="text-gold">.world</span>
       </h1>
+
+      {/* sound toggle */}
+      <button
+        onClick={() => toggleMute()}
+        aria-label={mutedUi ? "unmute" : "mute"}
+        className="pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 rounded-md border border-white/15 bg-space/70 px-2.5 py-1.5 text-sm backdrop-blur transition-colors hover:border-gold/60 max-md:bottom-20"
+      >
+        {mutedUi ? "🔇" : "🔊"}
+      </button>
 
       {mode === "explore" && <FocusHeader />}
       {escArmed && mode === "play" && (
