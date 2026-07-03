@@ -87,22 +87,28 @@ const _axis = new THREE.Vector3();
 const _t = new THREE.Vector3();
 const _f0 = new THREE.Vector3();
 
-// KayKit Halloween crew (CC0, Kay Lousberg) — limbless creatures that read
-// perfectly while gliding: tumbling jack-o-lanterns and floating skulls.
-// The pool is partitioned into fixed per-type slot ranges so each slot keeps
-// a single pre-cloned model.
+// The cast (kitbashed from CC0 packs — KayKit heads, Quaternius whale):
+//   goblin  = floating goblin skull (KayKit minion head, no body)
+//   gremlin = hooded wraith (KayKit mage head over a procedural robe)
+//   whale   = an actual crypto whale, swimming at you
+//   boss    = giant gold wraith
 const MODEL_PATH: Record<EnemyTypeId, string> = {
-  goblin: "/models/pumpkin_orange_jackolantern.glb",
-  gremlin: "/models/skull.glb",
-  whale: "/models/pumpkin_yellow_jackolantern.glb",
-  boss: "/models/skull.glb",
+  goblin: "/models/goblin_head.glb",
+  gremlin: "/models/wraith_head.glb",
+  whale: "/models/whale.glb",
+  boss: "/models/wraith_head.glb",
 };
 const MODEL_SCALE: Record<EnemyTypeId, number> = {
-  goblin: 0.5,
-  gremlin: 0.45,
-  whale: 0.9,
-  boss: 1.6,
+  goblin: 0.16,
+  gremlin: 0.12,
+  whale: 0.1,
+  boss: 0.3,
 };
+useGLTF.preload(MODEL_PATH.goblin);
+useGLTF.preload(MODEL_PATH.gremlin);
+useGLTF.preload(MODEL_PATH.whale);
+
+// The pool is partitioned into fixed per-type slot ranges.
 const TYPE_RANGES: Record<EnemyTypeId, [number, number]> = {
   goblin: [0, 26],
   gremlin: [26, 42],
@@ -115,11 +121,6 @@ function typeForSlot(i: number): EnemyTypeId {
   if (i < 52) return "whale";
   return "boss";
 }
-useGLTF.preload(MODEL_PATH.goblin);
-useGLTF.preload(MODEL_PATH.gremlin);
-useGLTF.preload(MODEL_PATH.whale);
-useGLTF.preload(MODEL_PATH.boss);
-
 function tangentToward(from: THREE.Vector3, to: THREE.Vector3, out: THREE.Vector3) {
   // unit tangent at `from` pointing along the great circle toward `to`
   out.copy(to).addScaledVector(from, -from.dot(to));
@@ -198,17 +199,16 @@ ARC_LINE.frustumCulled = false;
 export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Group | null> }) {
   const mode = useGame((s) => s.mode);
 
-  // one static clone per pool slot, tinted gold for the boss
+  // one static clone per pool slot; boss clones tinted gold
   const goblinGltf = useGLTF(MODEL_PATH.goblin);
-  const gremlinGltf = useGLTF(MODEL_PATH.gremlin);
+  const wraithGltf = useGLTF(MODEL_PATH.gremlin);
   const whaleGltf = useGLTF(MODEL_PATH.whale);
-  const bossGltf = useGLTF(MODEL_PATH.boss);
   const enemyClones = useMemo(() => {
     const sceneFor: Record<EnemyTypeId, THREE.Object3D> = {
       goblin: goblinGltf.scene,
-      gremlin: gremlinGltf.scene,
+      gremlin: wraithGltf.scene,
       whale: whaleGltf.scene,
-      boss: bossGltf.scene,
+      boss: wraithGltf.scene,
     };
     return Array.from({ length: MAX_ENEMIES }, (_, i) => {
       const type = typeForSlot(i);
@@ -219,14 +219,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           if (mesh.isMesh && mesh.material) {
             const m = (mesh.material as THREE.MeshStandardMaterial).clone();
             m.emissive?.set("#f0c75e");
-            m.emissiveIntensity = 0.35;
+            m.emissiveIntensity = 0.45;
             mesh.material = m;
           }
         });
       }
       return clone;
     });
-  }, [goblinGltf, gremlinGltf, whaleGltf, bossGltf]);
+  }, [goblinGltf, wraithGltf, whaleGltf]);
 
   const enemyRefs = useRef<(THREE.Group | null)[]>([]);
   const shurikenRefs = useRef<(THREE.Mesh | null)[]>([]);
@@ -353,13 +353,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (!grp) continue;
       grp.visible = e.alive;
       if (e.alive) {
-        const skullish = e.type === "gremlin" || e.type === "boss";
-        // skulls float and bob; pumpkins hug the ground
-        const hover = skullish ? 0.09 + Math.sin(e.t * 4) * 0.03 : 0.005;
+        // everything floats: heads bob, the whale swims
+        const hover =
+          e.type === "boss"
+            ? 0.22 + Math.sin(e.t * 2.5) * 0.04
+            : e.type === "whale"
+              ? 0.1 + Math.sin(e.t * 2) * 0.025
+              : 0.11 + Math.sin(e.t * 4) * 0.03;
         grp.position.copy(e.dir).multiplyScalar(R + hover);
-        // stand on the surface…
         grp.quaternion.setFromUnitVectors(UP, e.dir);
-        // …and face the ninja (yaw around the local up axis)
+        // face the ninja (yaw around the local up axis)
         const t = tangentToward(e.dir, world.pLocal, _t);
         if (t) {
           _f0.set(0, 0, 1).applyQuaternion(grp.quaternion);
@@ -367,16 +370,17 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           const yaw = Math.atan2(_axis.crossVectors(_f0, t).dot(e.dir), _f0.dot(t));
           grp.rotateY(yaw);
         }
-        if (skullish) {
-          // menacing chatter tilt
-          grp.rotateX(Math.sin(e.t * 6) * 0.12);
-          const wob = 1 + Math.sin(e.t * 9) * 0.05;
-          grp.scale.set(1, wob, 1);
+        // per-type body language
+        if (e.type === "whale") {
+          grp.rotateZ(Math.sin(e.t * 2) * 0.12); // swim roll
+          grp.rotateX(Math.sin(e.t * 1.4) * 0.08); // pitch
+        } else if (e.type === "boss") {
+          grp.rotateX(Math.sin(e.t * 2) * 0.06); // slow menace
         } else {
-          // pumpkins tumble-roll toward you
-          grp.rotateX(e.t * e.speed * 6);
-          grp.scale.set(1, 1, 1);
+          grp.rotateX(Math.sin(e.t * 6) * 0.14); // chatter
         }
+        const wob = 1 + Math.sin(e.t * 9) * 0.04;
+        grp.scale.set(1, wob, 1);
       }
     }
     for (let i = 0; i < MAX_SHURIKENS; i++) {
@@ -907,11 +911,29 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
 
   return (
     <group>
-      {Array.from({ length: MAX_ENEMIES }).map((_, i) => (
-        <group key={`e${i}`} ref={(el) => { enemyRefs.current[i] = el; }} visible={false}>
-          <primitive object={enemyClones[i]} scale={MODEL_SCALE[typeForSlot(i)]} />
-        </group>
-      ))}
+      {Array.from({ length: MAX_ENEMIES }).map((_, i) => {
+        const kind = typeForSlot(i);
+        const wraith = kind === "gremlin" || kind === "boss";
+        const robeR = kind === "boss" ? 0.19 : 0.075;
+        const robeH = kind === "boss" ? 0.42 : 0.18;
+        return (
+          <group key={`e${i}`} ref={(el) => { enemyRefs.current[i] = el; }} visible={false}>
+            <primitive object={enemyClones[i]} scale={MODEL_SCALE[kind]} />
+            {wraith && (
+              <mesh position={[0, -robeH * 0.55, 0]}>
+                <coneGeometry args={[robeR, robeH, 8, 1, true]} />
+                <meshStandardMaterial
+                  color={kind === "boss" ? "#2a2410" : "#141c33"}
+                  emissive={kind === "boss" ? "#f0c75e" : "#2a4080"}
+                  emissiveIntensity={kind === "boss" ? 0.4 : 0.3}
+                  roughness={0.6}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+            )}
+          </group>
+        );
+      })}
       {Array.from({ length: MAX_SHURIKENS }).map((_, i) => (
         <mesh key={`s${i}`} ref={(el) => { shurikenRefs.current[i] = el; }} visible={false}>
           <boxGeometry args={[0.05, 0.008, 0.05]} />
