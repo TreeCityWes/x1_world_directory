@@ -34,12 +34,14 @@ export default function Rig() {
         }
       }
       const az = moveState.camAz + state.pointer.x * 0.05;
-      // chase framing: ninja lower-center, surface ahead visible to the horizon
-      const dh = 4.6 * Math.max(1, 0.85 / aspect); // back off on narrow panes
+      // NEAR TOP-DOWN (Vampire Survivors legibility on a sphere): high above
+      // the ninja, tilted slightly behind his facing. From up here the visible
+      // cap covers ~55° ahead / ~80° behind — the whole action bubble.
+      const dh = 1.7;
       const px = Math.sin(az) * dh;
       const pz = Math.cos(az) * dh;
-      const py = 4.6 - state.pointer.y * 0.35;
-      _look.set(-Math.sin(az) * 2.4, 1.55, -Math.cos(az) * 2.4); // ahead of the ninja
+      const py = 6.6 * Math.max(1, 0.9 / aspect) - state.pointer.y * 0.3;
+      _look.set(-Math.sin(az) * 0.8, 2.25, -Math.cos(az) * 0.8); // just ahead of the ninja
       cam.position.x = THREE.MathUtils.damp(cam.position.x, px, 3.2, dt);
       cam.position.y = THREE.MathUtils.damp(cam.position.y, py, 3.2, dt);
       cam.position.z = THREE.MathUtils.damp(cam.position.z, pz, 3.2, dt);
