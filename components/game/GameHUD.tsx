@@ -1,7 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { regions } from "@/lib/regions";
 import { UPGRADES, useGame } from "@/lib/gameStore";
+
+const TOTAL_SITES = regions.length;
 
 /**
  * DOM HUD for survival runs: HP/XP bars, run stats, level-up cards, death
@@ -62,7 +65,9 @@ export default function GameHUD() {
         <span className="mx-2 text-ink-dim">·</span>lv {hud.level}
         <span className="mx-2 text-ink-dim">·</span>{hud.kills} kills
         <span className="mx-2 text-ink-dim">·</span>
-        <span className="text-cyan">{hud.captured} sites</span>
+        <span className="text-cyan">
+          {hud.captured}/{TOTAL_SITES} sites
+        </span>
       </div>
 
       {/* quit chip */}
@@ -111,6 +116,50 @@ export default function GameHUD() {
                 })}
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* victory screen — every ecosystem project captured */}
+      <AnimatePresence>
+        {mode === "won" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/70 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              className="rounded-2xl border border-gold/50 bg-[rgba(9,13,28,0.95)] p-8 text-center shadow-[0_0_60px_rgba(240,199,94,0.25)]"
+            >
+              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
+                🥷 ecosystem complete — all {TOTAL_SITES} projects captured
+              </p>
+              <p className="mt-3 text-5xl font-semibold tracking-tight text-gold">{finalScore}</p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+                score (incl. 1000 conquest bonus) · best {best}
+              </p>
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
+                {Math.floor(hud.time / 60)}m {Math.floor(hud.time % 60)}s · {hud.block} blocks ·{" "}
+                {hud.kills} kills
+              </p>
+              <div className="mt-6 flex justify-center gap-3">
+                <button
+                  onClick={start}
+                  className="rounded-md bg-gold px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-space transition-all hover:-translate-y-0.5 hover:bg-[#ffd97a]"
+                >
+                  run it back
+                </button>
+                <button
+                  onClick={quit}
+                  className="rounded-md border border-white/15 px-6 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
+                >
+                  explore
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

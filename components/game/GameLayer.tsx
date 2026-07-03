@@ -41,7 +41,7 @@ const SHURIKEN_TTL = 1.1;
 const GEM_PICKUP = 0.055;
 const CAPTURE_ANGLE = 0.26;
 const ACTIVE_SITES = 3;
-const SITE_RESPAWN = 8;
+const SITE_RESPAWN = 2.5;
 
 type Enemy = {
   alive: boolean;
@@ -125,6 +125,7 @@ const world = {
       bossAtBlock: 0,
       siteIds: [] as string[],
       siteRespawnAt: 0,
+  captured: new Set<string>(),
       syncAt: 0,
   knockAt: 0,
       started: false,
@@ -172,6 +173,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     const pool = regions.filter(
       (r) =>
         !exclude.includes(r.id) &&
+        !world.captured.has(r.id) &&
         _v.set(...r.dir).angleTo(world.pLocal) > CAPTURE_ANGLE + 0.2,
     );
     const out: string[] = [];
@@ -275,6 +277,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.spawnAt = 0;
       world.knockAt = 0;
       world.bossAtBlock = 0;
+      world.captured.clear();
       world.siteIds = pickSites(ACTIVE_SITES, []);
       store.setActiveSites(world.siteIds);
     }
@@ -504,7 +507,13 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       _v.set(...region.dir);
       if (_v.angleTo(world.pLocal) < CAPTURE_ANGLE) {
         applySitePower(id);
-        run.captured++;
+        world.captured.add(id);
+        run.captured = world.captured.size;
+        if (world.captured.size >= regions.length) {
+          store.setActiveSites([]);
+          store.win();
+          return;
+        }
         world.siteIds = world.siteIds.filter((x) => x !== id);
         world.siteRespawnAt = run.t + SITE_RESPAWN;
         store.setActiveSites(world.siteIds);

@@ -5,12 +5,24 @@ import { regions } from "@/lib/regions";
 import { useWorld } from "@/lib/store";
 import { UPGRADES, useGame } from "@/lib/gameStore";
 
-/** Right screen during a survival run: live run stats + owned upgrades. */
+const POWER_LABEL: Record<string, string> = {
+  validatorTower: "speed surge",
+  chartBeacon: "rapid fire",
+  dexGate: "double damage",
+  explorerFort: "shield",
+  socialBeacon: "heal +35",
+  gameArcade: "double xp",
+  bridgePortal: "shockwave",
+  oracleShrine: "coin vacuum",
+};
+
+/** Right screen during a survival run: capture progress + targets + build. */
 function GamePanel() {
   const hud = useGame((s) => s.hud);
   const best = useGame((s) => s.best);
   const activeSites = useGame((s) => s.activeSites);
   const owned = Object.entries(hud.upgrades);
+  const total = regions.length;
   const sites = activeSites
     .map((id) => regions.find((r) => r.id === id))
     .filter((r): r is (typeof regions)[number] => Boolean(r));
@@ -25,12 +37,55 @@ function GamePanel() {
         </p>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
-        <div className="grid grid-cols-2 gap-2 font-mono text-[11px] uppercase tracking-[0.15em]">
+        {/* the quest: capture every ecosystem project */}
+        <div className="rounded-lg border border-gold/30 bg-space-2/40 px-4 py-3">
+          <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.18em]">
+            <span className="text-gold">capture the ecosystem</span>
+            <span className="text-ink">
+              {hud.captured} / {total}
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-space/80">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-gold-deep to-gold transition-[width] duration-300"
+              style={{ width: `${(hud.captured / total) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+          current targets
+        </p>
+        <div className="mt-2 space-y-2">
+          {sites.map((r) => (
+            <div
+              key={r.id}
+              className="flex items-center gap-3 overflow-hidden rounded-lg border border-white/10 bg-space-2/30 p-2"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- site captures */}
+              <img
+                src={r.screenshot}
+                alt={r.name}
+                className="aspect-[8/5] w-20 shrink-0 rounded border border-white/10 object-cover object-top"
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{r.name}</p>
+                <p
+                  className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.15em]"
+                  style={{ color: r.accent }}
+                >
+                  ⚡ {POWER_LABEL[r.kind] ?? r.category}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2 font-mono text-[11px] uppercase tracking-[0.15em]">
           {[
             ["block", hud.block],
             ["level", hud.level],
             ["kills", hud.kills],
-            ["sites", hud.captured],
           ].map(([label, value]) => (
             <div key={label} className="rounded-lg border border-white/10 bg-space-2/40 px-3 py-2">
               <p className="text-ink-dim/70">{label}</p>
@@ -39,7 +94,7 @@ function GamePanel() {
           ))}
         </div>
 
-        <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">upgrades</p>
+        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">upgrades</p>
         <div className="mt-2 space-y-1.5">
           {owned.length === 0 && (
             <p className="text-xs text-ink-dim">collect XN coins to level up</p>
@@ -61,26 +116,9 @@ function GamePanel() {
           })}
         </div>
 
-        <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-          powerup sites
-        </p>
-        <div className="mt-2 space-y-1.5">
-          {sites.map((r) => (
-            <div
-              key={r.id}
-              className="flex items-center gap-2 rounded-md border border-white/8 bg-space-2/30 px-3 py-1.5 text-sm"
-            >
-              <span
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: r.accent, boxShadow: `0 0 8px ${r.accent}` }}
-              />
-              {r.name}
-            </div>
-          ))}
-        </div>
-
-        <p className="mt-6 font-mono text-[9px] uppercase leading-relaxed tracking-[0.15em] text-ink-dim/70">
-          survive the blocks · capture glowing sites for powers · shurikens aim where you run
+        <p className="mt-5 font-mono text-[9px] uppercase leading-relaxed tracking-[0.15em] text-ink-dim/70">
+          capture all {total} projects to win · glowing sites grant powers · shurikens aim where
+          you run
         </p>
       </div>
     </aside>

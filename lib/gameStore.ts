@@ -8,7 +8,7 @@ import { create } from "zustand";
  * snapshot ~4x/s for the DOM HUD, plus mode/choices/sites which change rarely.
  */
 
-export type GameMode = "explore" | "play" | "levelup" | "dead";
+export type GameMode = "explore" | "play" | "levelup" | "dead" | "won";
 
 // ---- registries (ported from the original X1 Ninja Survivors) ----
 
@@ -133,6 +133,7 @@ type GameStore = {
   start: () => void;
   quit: () => void;
   die: () => void;
+  win: () => void;
   syncHud: () => void;
   offerLevelUp: (choices: string[]) => void;
   pick: (id: string) => void;
@@ -178,6 +179,15 @@ export const useGame = create<GameStore>((set) => ({
       localStorage.setItem(BEST_KEY, String(best));
     }
     set({ mode: "dead", finalScore: score, best, hud: emptyHud() });
+  },
+  win: () => {
+    const score = scoreOf() + 1000; // full-ecosystem bonus
+    let best = 0;
+    if (typeof window !== "undefined") {
+      best = Math.max(score, Number(localStorage.getItem(BEST_KEY) ?? 0));
+      localStorage.setItem(BEST_KEY, String(best));
+    }
+    set({ mode: "won", finalScore: score, best, hud: emptyHud() });
   },
   syncHud: () => set({ hud: emptyHud() }),
   offerLevelUp: (choices) => set({ mode: "levelup", choices, hud: emptyHud() }),
