@@ -113,12 +113,20 @@ try {
     const m = txt.match(/(\d+):(\d{2})/);
     return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
   };
+  // Poll until the clock DECREASES. The game loop clamps dt at 0.05s/frame,
+  // so on a software-GL CI runner at ~3fps game time crawls (~0.15 game-s
+  // per wall-s) — a fixed 2.5s gap reads the same mm:ss twice and lies.
   await page.waitForTimeout(1500);
   const t1 = await clock();
-  await page.waitForTimeout(2500);
-  const t2 = await clock();
+  let t2 = t1;
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(1000);
+    t2 = await clock();
+    if (t1 !== null && t2 !== null && t2 < t1) break;
+  }
   if (t1 === null || t2 === null) fail(`countdown not found in HUD (t1=${t1}, t2=${t2})`);
-  else if (t2 >= t1) fail(`countdown not ticking (${t1}s -> ${t2}s)`);
+  else if (t2 >= t1) fail(`countdown not ticking (stuck at ${t1}s for 45s)`);
   else pass(`countdown ticks (${t1}s -> ${t2}s)`);
 
   // real rendering: accumulate draw calls over ~400ms (info.autoReset zeroes
