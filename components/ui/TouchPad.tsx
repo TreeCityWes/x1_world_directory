@@ -47,8 +47,13 @@ export default function TouchPad() {
   return (
     <div
       ref={base}
-      className="pointer-events-auto absolute bottom-4 right-4 grid h-28 w-28 select-none place-items-center rounded-full border border-cyan/30 bg-[rgba(9,13,28,0.55)] backdrop-blur md:hidden"
-      style={{ touchAction: "none" }}
+      className="pointer-events-auto absolute grid h-28 w-28 select-none place-items-center rounded-full border border-cyan/30 bg-[rgba(9,13,28,0.55)] backdrop-blur md:hidden"
+      style={{
+        touchAction: "none",
+        // clear the iOS home indicator / curved corners
+        bottom: "max(1rem, env(safe-area-inset-bottom))",
+        right: "max(1rem, env(safe-area-inset-right))",
+      }}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         move(e.clientX, e.clientY);

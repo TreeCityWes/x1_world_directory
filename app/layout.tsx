@@ -12,9 +12,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const TITLE = "x1.world — explore the X1 ecosystem";
+const TITLE = "x1.world — explore the X1 ecosystem · play X1 Ninja Survivors";
 const DESCRIPTION =
-  "An interactive 3D world of the X1 blockchain ecosystem. Drive a little ninja around a living network planet — every landmark is a real X1 project, with live screenshots, health checks, and links.";
+  "A 3D world of the X1 blockchain ecosystem — and a game. Pick your fighter (X1 Ninja, Jack Levin, THEO, CAPY), survive the crypto horde, capture every real X1 project, slay THE WHALE, and inscribe your score on X1 mainnet. Every landmark is a live project with screenshots and links.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://x1.world"),

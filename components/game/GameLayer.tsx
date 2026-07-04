@@ -503,7 +503,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       case "explorerFort":
         run.maxHp += 15;
         run.hp = Math.min(run.maxHp, run.hp + 15);
-        run.fx.shield = run.t + 8;
+        // never SHORTEN an active shield (CAPY's cycle shares this slot)
+        run.fx.shield = Math.max(run.fx.shield, run.t + 8);
         break;
       case "socialBeacon": run.hp = Math.min(run.maxHp, run.hp + 35); break;
       case "gameArcade": run.perm.xp++; break;
@@ -1119,12 +1120,13 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         spawnEnemy(p.type, p.dir);
       }
     }
-    // Bear Market boss every 5 blocks
+    // Bear Market boss every 5 blocks — if the pool is full (e.g. the final
+    // Nemesis is hogging a slot), retry next frame instead of skipping forever
     if (run.block > 0 && run.block % 5 === 0 && world.bossAtBlock !== run.block) {
-      world.bossAtBlock = run.block;
       const boss = spawnEnemy("boss");
-      sfx.boss();
       if (boss) {
+        world.bossAtBlock = run.block;
+        sfx.boss();
         useGame.setState({
           bossCard: boss.bossKind === "whale" ? "THE WHALE SURFACES" : "YOUR SHADOW ARRIVES",
           bossCardAt: Date.now(),
