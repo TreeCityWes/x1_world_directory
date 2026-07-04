@@ -99,6 +99,26 @@ const _aT = new THREE.Vector3();
 const _aSite = new THREE.Vector3();
 const REGION_BY_ID = new Map(regions.map((r) => [r.id, r]));
 
+// Jack's XEN coin face: bold white X on transparency (black disc behind it)
+let xCoinTex: THREE.CanvasTexture | null = null;
+function getXCoinTexture() {
+  if (xCoinTex) return xCoinTex;
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const ctx = c.getContext("2d")!;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 22;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(36, 36);
+  ctx.lineTo(92, 92);
+  ctx.moveTo(92, 36);
+  ctx.lineTo(36, 92);
+  ctx.stroke();
+  xCoinTex = new THREE.CanvasTexture(c);
+  return xCoinTex;
+}
+
 // floating site-name banners over active targets — free advertising
 const siteLabelCache = new Map<string, THREE.CanvasTexture>();
 function getSiteLabel(name: string) {
@@ -310,6 +330,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const slashRef = useRef<THREE.Mesh | null>(null);
   const scanRef = useRef<THREE.Mesh | null>(null);
   const reticleRef = useRef<THREE.Mesh | null>(null);
+  const coinRefs = useRef<(THREE.Group | null)[]>([]);
 
   const spawnEnemy = (type: EnemyTypeId) => {
     const [lo, hi] = TYPE_RANGES[type];
@@ -529,20 +550,27 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     }
     for (let i = 0; i < MAX_SHURIKENS; i++) {
       const mesh = shurikenRefs.current[i];
+      const coin = coinRefs.current[i];
       const s = world.shurikens[i];
       if (!mesh) continue;
-      mesh.visible = s.alive;
-      if (s.alive) {
+      const isCoin = s.alive && s.kind === "xcoin";
+      // xcoin renders from its own pool: black disc + spinning white X
+      if (coin) {
+        coin.visible = isCoin;
+        if (isCoin) {
+          coin.position.copy(s.pos).multiplyScalar(R + 0.07);
+          coin.quaternion.setFromUnitVectors(UP, s.pos);
+          coin.rotateX(Math.PI / 2); // stand the disc upright
+          coin.rotateZ(s.spin * 0.6); // arcade spin around the vertical
+        }
+      }
+      mesh.visible = s.alive && !isCoin;
+      if (mesh.visible) {
         mesh.position.copy(s.pos).multiplyScalar(R + 0.07);
         mesh.quaternion.setFromUnitVectors(UP, s.pos);
         mesh.rotateY(s.spin);
         const pm = mesh.material as THREE.MeshStandardMaterial;
-        if (s.kind === "xcoin") {
-          mesh.scale.setScalar(2.1);
-          pm.color.set("#f0c75e");
-          pm.emissive.set("#f5f5f5");
-          pm.emissiveIntensity = 1.2;
-        } else if (s.kind === "pulse") {
+        if (s.kind === "pulse") {
           mesh.scale.setScalar(1.4);
           pm.color.set("#67e8f9");
           pm.emissive.set("#67e8f9");
@@ -1328,6 +1356,27 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <boxGeometry args={[0.05, 0.008, 0.05]} />
           <meshStandardMaterial color="#c7d0e2" emissive="#7dd3fc" emissiveIntensity={0.9} metalness={0.8} roughness={0.2} />
         </mesh>
+      ))}
+      {/* Jack's XEN coins — black disc, bold white X on both faces */}
+      {Array.from({ length: MAX_SHURIKENS }).map((_, i) => (
+        <group key={`xc${i}`} ref={(el) => { coinRefs.current[i] = el; }} visible={false}>
+          <mesh>
+            <cylinderGeometry args={[0.055, 0.055, 0.016, 22]} />
+            <meshStandardMaterial
+              color="#0b0b0d"
+              metalness={0.7}
+              roughness={0.3}
+              emissive="#23232e"
+              emissiveIntensity={0.5}
+            />
+          </mesh>
+          {[-1, 1].map((f) => (
+            <mesh key={f} position={[0, f * 0.0095, 0]} rotation={[f === 1 ? -Math.PI / 2 : Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[0.048, 22]} />
+              <meshBasicMaterial map={getXCoinTexture()} transparent toneMapped={false} />
+            </mesh>
+          ))}
+        </group>
       ))}
       {/* compass arrows to the active capture targets — head + shaft so they
           read as ARROWS, not tiny traffic cones */}
