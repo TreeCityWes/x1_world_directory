@@ -64,22 +64,18 @@ export default function Character() {
       if (legL.current) legL.current.rotation.set(0, 0, 0);
       if (legR.current) legR.current.rotation.set(0, 0, 0);
     } else {
-      // Gait tuning per LEG-ISSUE.md: the legs always animated, but (a) the
-      // fore/aft stride lives on the camera's depth axis, and (b) the big
-      // whole-body bounce lifted feet off the ground TOGETHER — which is
-      // exactly what floating looks like. So: bounce small, stride visible
-      // via a full-cycle SCISSOR on z (legs spread/cross, reads from
-      // behind), and a planted contact shadow does the grounding.
+      // ninja + jack are RIGGED now (SkinnedHero): their GLB Walk/Run cycles
+      // own the bounce and stride, so the procedural gait must NOT stack on
+      // top — a double-bounce is exactly the old float. They keep a light
+      // lean only. THEO/CAPY (unrigged) keep the full procedural treatment.
+      const rigged = charId === "ninja" || charId === "jack";
       if (bob.current) {
-        bob.current.position.y =
-          hover + 0.02 * Math.sin(t * 2.2) + 0.06 * Math.abs(Math.sin(phase.current)) * speedNorm;
-        bob.current.rotation.x = 0.22 * speedNorm;
-        bob.current.rotation.y =
-          Math.sin(phase.current) * (charId === "jack" ? 0.16 : 0.1) * speedNorm;
-        // Jack's carved legs (splitJackLegs) do the striding now — the
-        // waddle roll stays as a light accent, not the whole gait
-        bob.current.rotation.z =
-          charId === "jack" ? Math.sin(phase.current) * 0.09 * speedNorm : 0;
+        bob.current.position.y = rigged
+          ? hover
+          : hover + 0.02 * Math.sin(t * 2.2) + 0.06 * Math.abs(Math.sin(phase.current)) * speedNorm;
+        bob.current.rotation.x = (rigged ? 0.1 : 0.22) * speedNorm;
+        bob.current.rotation.y = rigged ? 0 : Math.sin(phase.current) * 0.1 * speedNorm;
+        bob.current.rotation.z = 0;
       }
 
       // arms: gentle sway idle, big swing running
