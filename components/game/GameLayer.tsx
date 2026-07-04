@@ -740,15 +740,15 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         const wob = 1 + Math.sin(e.t * 9) * 0.04;
         const shake = windup ? 1 + Math.sin(run.t * 30) * 0.07 : 1;
         grp.scale.set(shake, wob * (windup ? 1.1 : 1), shake);
-        // THEO's scan mark — a lock-on chip bobbing above analyzed enemies
+        // THEO's scan mark — the ground ring breathes via opacity only
+        // (its transform is baked by the pool freeze; no matrix writes)
         const halo = markRefs.current[i];
         if (halo) {
           const marked = e.markedUntil > run.t;
           halo.visible = marked;
           if (marked) {
-            halo.position.y = 0.52 + Math.sin(run.t * 5 + i) * 0.04;
-            halo.rotation.y = run.t * 2.5;
-            halo.updateMatrix(); // pool children are matrix-frozen — compose by hand
+            (halo.material as THREE.MeshBasicMaterial).opacity =
+              0.55 + Math.sin(run.t * 6 + i) * 0.2;
           }
         }
       }
@@ -945,10 +945,19 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           const beam = g.children[0] as THREE.Mesh;
           const ringFx = g.children[1] as THREE.Mesh;
           const ring2 = g.children[2] as THREE.Mesh;
+          const core = g.children[3] as THREE.Mesh;
+          const outer = g.children[4] as THREE.Mesh;
           // the pillar ERUPTS (fast ease-out rise) then burns off
           const rise = 1 - Math.pow(1 - Math.min(1, k * 2.4), 3);
           beam.scale.set(1 - k * 0.5, 0.25 + rise * 1.5, 1 - k * 0.5);
           (beam.material as THREE.MeshBasicMaterial).opacity = 0.75 * (1 - k * k);
+          outer.scale.set(1 - k * 0.3, 0.25 + rise * 1.5, 1 - k * 0.3);
+          (outer.material as THREE.MeshBasicMaterial).opacity = 0.26 * (1 - k * k);
+          // white-hot core POPS in the first quarter, gone by half
+          const kc = Math.min(1, k * 4);
+          core.visible = k < 0.5;
+          core.scale.setScalar(Math.max(0.001, 0.05 + 0.17 * (1 - Math.pow(1 - kc, 3))));
+          (core.material as THREE.MeshBasicMaterial).opacity = 0.9 * Math.max(0, 1 - k * 2.2);
           // gold shockwave first, cyan echo chasing it
           const k1 = Math.min(1, k * 1.7);
           ringFx.scale.setScalar(Math.max(0.02, 0.6 * (1 - Math.pow(1 - k1, 2))));
@@ -1779,8 +1788,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         cfx.active = true;
         cfx.dir.copy(_v);
         cfx.t0 = run.t;
-        spawnBurst(_v, "#ffd97a", 8);
-        spawnBurst(_v, "#7dd3fc", 4);
+        spawnBurst(_v, "#ffd97a", 14);
+        spawnBurst(_v, "#7dd3fc", 7);
         world.captured.add(id);
         useGame.setState((s) => ({ capturedIds: [...s.capturedIds, id] }));
         run.captured = world.captured.size;
@@ -1845,15 +1854,26 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
                 <RugMob />
               </group>
             )}
-            {/* THEO scan-lock: a small chip hovering ABOVE the mob — any
-                shape drawn AROUND the mob read as a rendering glitch */}
+            {/* THEO scan-lock: a flat cyan ring on the GROUND under the mob
+                — same visual language as the red spawn-warning rings, and
+                nothing floats near the sprite (chips/diamonds up there read
+                as glowing-box glitches from the top-down camera) */}
             <mesh
               ref={(el) => { markRefs.current[i] = el; }}
               visible={false}
-              position={[0, 0.52, 0]}
+              position={[0, 0.02, 0]}
+              rotation={[-Math.PI / 2, 0, 0]}
             >
-              <octahedronGeometry args={[0.045]} />
-              <meshBasicMaterial color="#67e8f9" toneMapped={false} />
+              <ringGeometry args={[0.26, 0.3, 26]} />
+              <meshBasicMaterial
+                color="#67e8f9"
+                transparent
+                opacity={0.7}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+                side={THREE.DoubleSide}
+                toneMapped={false}
+              />
             </mesh>
           </group>
         );
@@ -2008,6 +2028,31 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
               color="#7dd3fc"
               transparent
               opacity={0.55}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+              toneMapped={false}
+            />
+          </mesh>
+          {/* white-hot core flash — the POP of the claim */}
+          <mesh position={[0, 0.08, 0]}>
+            <sphereGeometry args={[1, 16, 16]} />
+            <meshBasicMaterial
+              color="#fff6dc"
+              transparent
+              opacity={0.9}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+          {/* wide soft outer pillar around the hot beam */}
+          <mesh position={[0, 0.65, 0]}>
+            <cylinderGeometry args={[0.09, 0.16, 1.3, 12, 1, true]} />
+            <meshBasicMaterial
+              color="#f0c75e"
+              transparent
+              opacity={0.22}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               side={THREE.DoubleSide}

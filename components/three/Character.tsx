@@ -52,6 +52,7 @@ export default function Character() {
       if (bob.current) {
         bob.current.position.y = charId === "theo" ? 0.03 : 0;
         bob.current.rotation.x = 0;
+        bob.current.rotation.y = 0;
         bob.current.rotation.z = 0;
       }
       if (armL.current) armL.current.rotation.x = 0;
@@ -59,24 +60,29 @@ export default function Character() {
       if (legL.current) legL.current.rotation.x = 0;
       if (legR.current) legR.current.rotation.x = 0;
     } else {
-      // idle bob + run bounce + lean into the run
+      // idle bob + run bounce + lean into the run. The camera is nearly
+      // TOP-DOWN, so pure limb rotation foreshortens to nothing — the gait
+      // must also live in cues that read from above: a step hop and a
+      // step-frequency yaw shimmy.
       if (bob.current) {
         bob.current.position.y =
-          hover + 0.02 * Math.sin(t * 2.2) + 0.05 * Math.abs(Math.sin(phase.current)) * speedNorm;
+          hover + 0.02 * Math.sin(t * 2.2) + 0.09 * Math.abs(Math.sin(phase.current)) * speedNorm;
         bob.current.rotation.x = 0.22 * speedNorm;
-        // Jack has no leg joints (pose-baked GLB) — a step-frequency waddle
-        // sways his whole body so he strides instead of gliding
+        bob.current.rotation.y =
+          Math.sin(phase.current) * (charId === "jack" ? 0.13 : 0.07) * speedNorm;
+        // Jack has no leg joints (pose-baked GLB) — a strong waddle roll
+        // sways his body so he STOMPS instead of gliding
         bob.current.rotation.z =
-          charId === "jack" ? Math.sin(phase.current) * 0.07 * speedNorm : 0;
+          charId === "jack" ? Math.sin(phase.current) * 0.13 * speedNorm : 0;
       }
 
       // arms: gentle sway idle, big swing running
       const swing = Math.sin(phase.current) * (0.12 + 0.7 * speedNorm);
       if (armL.current) armL.current.rotation.x = swing;
       if (armR.current) armR.current.rotation.x = -swing;
-      // legs stride contralateral to the arms (ninja only — jack waddles)
-      if (legL.current) legL.current.rotation.x = -swing * 0.9;
-      if (legR.current) legR.current.rotation.x = swing * 0.9;
+      // legs stride contralateral to the arms, exaggerated for the top view
+      if (legL.current) legL.current.rotation.x = -swing * 1.4;
+      if (legR.current) legR.current.rotation.x = swing * 1.4;
 
       // scarf trails and flutters with speed
       if (scarf.current) {

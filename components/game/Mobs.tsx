@@ -10,7 +10,9 @@ import { monoFont } from "@/lib/canvasFont";
 // that carries the SAME message — glitch hex on the Bug, a gwei ticker on
 // the Gas Wisp.
 
-// hex-glitch carapace band for the Bug — code crawling on the shell
+// glitch carapace band for the Bug — mobs render at 0.2 scale, so text is
+// mush; BOLD abstract corruption (broken bars + chromatic offsets) reads
+// as "digital glitch" at any distance
 let glitchTex: THREE.CanvasTexture | null = null;
 function getGlitchTexture() {
   if (glitchTex) return glitchTex;
@@ -18,23 +20,32 @@ function getGlitchTexture() {
   c.width = 256;
   c.height = 128;
   const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "rgba(20, 12, 3, 0.92)";
+  ctx.fillStyle = "rgba(16, 9, 2, 0.92)";
   ctx.beginPath();
   ctx.roundRect(10, 22, 236, 84, 14);
   ctx.fill();
-  ctx.font = monoFont(700, 21);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  const rows = ["0xDEAD BEEF 51", "F00D 0xC0DE 7F", "0BAD 1DEA 0x66"];
-  rows.forEach((row, i) => {
-    ctx.fillStyle = i === 1 ? "rgba(253, 224, 71, 0.95)" : "rgba(251, 191, 36, 0.55)";
-    ctx.fillText(row, 22, 45 + i * 25);
+  // corrupted-barcode rows: thick amber blocks with dropouts
+  const rows = [
+    [18, 34, 12, 30, 8, 46, 20],
+    [40, 10, 26, 18, 34, 12, 44],
+    [12, 42, 16, 36, 10, 28, 30],
+  ];
+  rows.forEach((widths, r) => {
+    let x = 18;
+    const y = 32 + r * 24;
+    widths.forEach((w, j) => {
+      if (j % 2 === 0) {
+        ctx.fillStyle = r === 1 ? "rgba(253, 224, 71, 0.95)" : "rgba(251, 191, 36, 0.6)";
+        ctx.fillRect(x, y, w, 14);
+      }
+      x += w + 4;
+    });
   });
-  // chromatic glitch slivers — the one digital tell
-  ctx.fillStyle = "rgba(103, 232, 249, 0.7)";
-  ctx.fillRect(10, 38, 236, 2);
-  ctx.fillStyle = "rgba(244, 114, 182, 0.55)";
-  ctx.fillRect(10, 84, 236, 2);
+  // chromatic offset slivers — the glitch signature
+  ctx.fillStyle = "rgba(103, 232, 249, 0.85)";
+  ctx.fillRect(10, 46, 236, 4);
+  ctx.fillStyle = "rgba(244, 114, 182, 0.7)";
+  ctx.fillRect(10, 82, 236, 4);
   glitchTex = new THREE.CanvasTexture(c);
   return glitchTex;
 }
