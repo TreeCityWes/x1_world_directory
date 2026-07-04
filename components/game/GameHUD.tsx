@@ -4,10 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { POWER_LABEL, regions } from "@/lib/regions";
 import { DIFFICULTIES, UPGRADES, run, upgradeView, useGame, type DifficultyId } from "@/lib/gameStore";
-import { CHARACTERS, CHARACTER_ORDER } from "@/lib/characters";
+import { CHARACTERS, CHARACTER_ORDER, type WeaponKind } from "@/lib/characters";
 import CharacterPreview from "@/components/game/CharacterPreview";
 import { useProfile } from "@/lib/profile";
 import { explorerTx, inscribeRun } from "@/lib/inscribe";
+import { sfx } from "@/lib/sound";
+
+// weapon glyph per kind — the roster card's emblem
+const WEAPON_GLYPH: Record<WeaponKind, string> = {
+  shuriken: "✦",
+  xcoin: "◎",
+  pulse: "⌁",
+  slash: "⚔",
+};
 
 const TOTAL_SITES = regions.length;
 
@@ -58,7 +67,7 @@ function StatBar({ label, v, accent }: { label: string; v: number; accent: strin
         />
       </div>
       <span className="w-8 shrink-0 font-mono text-[8px] tabular-nums text-ink-dim">
-        ×{v.toFixed(2)}
+        {Math.round(v * 100)}%
       </span>
     </div>
   );
@@ -73,45 +82,69 @@ function CharacterSelect() {
 
   return (
     <div className="mx-auto mt-3 w-full max-w-3xl px-4 text-left">
-      {/* roster row */}
-      <div className="grid grid-cols-5 gap-2 max-md:grid-cols-3">
+      {/* roster: CHARACTERS, not tabs — tall cards with the class fantasy
+          readable in two seconds (archetype + hook + best-for) */}
+      <div className="grid grid-cols-5 gap-2 max-md:grid-cols-2">
         {CHARACTER_ORDER.map((id) => {
           const c = CHARACTERS[id];
           const sel = id === selected;
           return (
-            <button
+            <motion.button
               key={id}
-              onClick={() => c.unlocked && setCharacter(id)}
+              whileHover={c.unlocked ? { y: -4 } : undefined}
+              whileTap={c.unlocked ? { scale: 0.94 } : undefined}
+              onClick={() => {
+                if (!c.unlocked || sel) return;
+                sfx.ui();
+                setCharacter(id);
+              }}
               disabled={!c.unlocked}
-              className={`rounded-xl border-2 px-2.5 py-2 text-left backdrop-blur-md transition-all ${
+              className={`flex flex-col rounded-xl border-2 px-2.5 pb-2.5 pt-2 text-left backdrop-blur-md transition-colors ${
                 sel
                   ? ""
                   : c.unlocked
-                    ? "border-white/15 bg-space/80 hover:-translate-y-0.5 hover:border-white/40"
+                    ? "border-white/15 bg-space/80 hover:border-white/40"
                     : "border-white/10 bg-space/60 opacity-40"
               }`}
               style={
                 sel
                   ? {
                       borderColor: c.colors.band,
-                      boxShadow: `0 0 22px ${c.colors.band}44`,
-                      background: `linear-gradient(160deg, ${c.colors.band}24, rgba(9,13,28,0.92))`,
+                      boxShadow: `0 0 26px ${c.colors.band}55`,
+                      background: `linear-gradient(160deg, ${c.colors.band}2e, rgba(9,13,28,0.92))`,
                     }
                   : undefined
               }
             >
+              {/* emblem: weapon glyph in the identity color */}
               <span
-                className="block h-1 w-8 rounded-full"
-                style={{ background: c.unlocked ? c.colors.band : "#4b5563" }}
-              />
+                className="grid h-10 w-full place-items-center rounded-lg text-2xl leading-none"
+                style={{
+                  color: c.unlocked ? c.colors.band : "#4b5563",
+                  background: `radial-gradient(ellipse 80% 90% at 50% 50%, ${
+                    c.unlocked ? c.colors.band : "#4b5563"
+                  }22, transparent 75%)`,
+                  textShadow: c.unlocked ? `0 0 12px ${c.colors.band}88` : undefined,
+                }}
+              >
+                {c.unlocked ? WEAPON_GLYPH[c.weapon.kind] : "🔒"}
+              </span>
               <p className="mt-1.5 truncate text-sm font-bold leading-tight">{c.name}</p>
               <p
-                className="truncate font-mono text-[8px] uppercase tracking-[0.12em] text-ink-dim"
-                style={sel ? { color: c.colors.band } : undefined}
+                className="truncate font-mono text-[8px] uppercase tracking-[0.12em]"
+                style={{ color: c.unlocked ? c.colors.band : "#6b7280" }}
               >
-                {c.unlocked ? (sel ? "▸ selected" : c.title) : "coming soon"}
+                {c.unlocked ? c.archetype : "coming soon"}
               </p>
-            </button>
+              <p className="mt-1 text-[10px] leading-snug text-ink-dim">{c.hook}</p>
+              <p className="mt-auto pt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-ink-dim/70">
+                {sel ? (
+                  <span style={{ color: c.colors.band }}>▸ selected</span>
+                ) : (
+                  <>best for: {c.bestFor}</>
+                )}
+              </p>
+            </motion.button>
           );
         })}
       </div>
@@ -122,9 +155,10 @@ function CharacterSelect() {
           className="relative overflow-hidden rounded-2xl border-2 backdrop-blur-md"
           style={{
             borderColor: `${accent}66`,
-            // dark suits vanish on flat near-black — the podium sits in a
-            // BRIGHT accent-lit studio well so every silhouette reads
-            background: `radial-gradient(ellipse 100% 80% at 50% 36%, ${accent}59 0%, ${accent}26 45%, rgba(16,22,44,0.85) 82%)`,
+            // dark suits vanish on flat near-black — an accent-lit well,
+            // OVERSIZED past the card edges so it reads as stage lighting
+            // instead of a printed circle
+            background: `radial-gradient(ellipse 150% 110% at 50% 28%, ${accent}42 0%, ${accent}1c 48%, rgba(14,20,40,0.9) 90%)`,
           }}
         >
           <div className="h-56 max-md:h-44">
@@ -141,24 +175,31 @@ function CharacterSelect() {
           </div>
         </div>
         <div className="rounded-2xl border-2 border-white/10 bg-space/85 px-4 py-3 backdrop-blur-md">
-          <p className="font-mono text-[9px] uppercase tracking-[0.18em]" style={{ color: accent }}>
+          {/* hierarchy: the REASON to pick them first — stats last */}
+          <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-ink-dim/70">
+            ability
+          </p>
+          <p className="mt-0.5 text-sm font-bold leading-tight" style={{ color: accent }}>
             ⚔ {ch.weapon.name}
           </p>
           <p className="mt-0.5 text-xs text-ink-dim">{ch.weapon.desc}</p>
-          <div className="mt-2.5 space-y-1.5">
+          <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.2em] text-ink-dim/70">
+            passive
+          </p>
+          <p className="mt-0.5 text-xs font-semibold" style={{ color: accent }}>
+            ★ {ch.passive}
+          </p>
+          <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.2em] text-ink-dim/70">
+            stats
+          </p>
+          <div className="mt-1 space-y-1">
             <StatBar label="vitality" v={ch.hp} accent="#4ade80" />
             <StatBar label="damage" v={ch.dmg} accent="#ff8c6b" />
             <StatBar label="speed" v={ch.speed} accent="#7dd3fc" />
             <StatBar label="fire rate" v={Math.max(0.2, 2 - ch.cooldown)} accent="#f0c75e" />
             <StatBar label="fortune" v={ch.luck} accent="#c084fc" />
           </div>
-          <p
-            className="mt-2.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em]"
-            style={{ color: accent }}
-          >
-            ★ {ch.passive}
-          </p>
-          <p className="mt-2 text-xs leading-relaxed text-ink-dim">{ch.playstyle}</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-dim/80">{ch.playstyle}</p>
         </div>
       </div>
     </div>
@@ -383,6 +424,9 @@ export default function GameHUD() {
   const deathCause = useGame((s) => s.deathCause);
   const bossCard = useGame((s) => s.bossCard);
   const bossCardAt = useGame((s) => s.bossCardAt);
+  const character = useGame((s) => s.character);
+  // difficulty is a SELECTION now, committed by the big start button
+  const [diff, setDiff] = useState<DifficultyId>("normal");
   const scoreSubmit = useGame((s) => s.scoreSubmit);
   const [bossCardVisible, setBossCardVisible] = useState(false);
   useEffect(() => {
@@ -628,21 +672,42 @@ export default function GameHUD() {
               <div className="mt-3 flex flex-wrap items-stretch justify-center gap-3 px-4">
                 {(Object.keys(DIFFICULTIES) as DifficultyId[]).map((id, i) => {
                   const d = DIFFICULTIES[id];
+                  const selDiff = id === diff;
+                  const tone =
+                    id === "cursed" ? "#a78bfa" : id === "hard" ? "#e0563f" : "#7dd3fc";
                   return (
                     <motion.button
                       key={id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.07 }}
-                      onClick={() => start(id)}
-                      className={`w-48 rounded-xl border p-4 text-left backdrop-blur-md transition-all hover:-translate-y-1 ${
+                      whileHover={{ y: -3 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => {
+                        if (selDiff) return;
+                        sfx.ui();
+                        setDiff(id);
+                      }}
+                      className={`relative w-44 rounded-xl border-2 p-3.5 text-left backdrop-blur-md transition-colors ${
                         id === "cursed"
-                          ? "border-[#a78bfa]/50 bg-[rgba(20,10,32,0.92)] hover:border-[#a78bfa] hover:shadow-[0_0_30px_rgba(167,139,250,0.3)]"
+                          ? "bg-[rgba(20,10,32,0.92)]"
                           : id === "hard"
-                            ? "border-[#e0563f]/50 bg-[rgba(28,12,10,0.92)] hover:border-[#e0563f] hover:shadow-[0_0_30px_rgba(224,86,63,0.3)]"
-                            : "border-cyan/40 bg-[rgba(9,13,28,0.92)] hover:border-cyan hover:shadow-[0_0_30px_rgba(125,211,252,0.3)]"
+                            ? "bg-[rgba(28,12,10,0.92)]"
+                            : "bg-[rgba(9,13,28,0.92)]"
                       }`}
+                      style={{
+                        borderColor: selDiff ? tone : `${tone}44`,
+                        boxShadow: selDiff ? `0 0 26px ${tone}55` : undefined,
+                      }}
                     >
+                      {selDiff && (
+                        <span
+                          className="absolute right-2 top-2 rounded-full border px-1.5 py-0.5 font-mono text-[7px] font-bold uppercase tracking-[0.14em]"
+                          style={{ color: tone, borderColor: `${tone}88`, background: `${tone}1a` }}
+                        >
+                          selected
+                        </span>
+                      )}
                       <p className="text-lg font-semibold tracking-tight">{d.name}</p>
                       <p className="mt-1 text-xs leading-relaxed text-ink-dim">{d.desc}</p>
                       <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-gold">
@@ -652,12 +717,30 @@ export default function GameHUD() {
                   );
                 })}
               </div>
-              <button
-                onClick={quit}
-                className="mt-5 rounded-md border border-white/15 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
+              {/* the CTA — the screen finally ends in a button, not a shrug */}
+              <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-dim">
+                selected: <span className="text-ink">{CHARACTERS[character].name}</span> ·{" "}
+                <span className="text-ink">{DIFFICULTIES[diff].name}</span>
+              </p>
+              <motion.button
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  sfx.ui();
+                  start(diff);
+                }}
+                className="mt-2 rounded-xl border-2 border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-10 py-3 font-mono text-sm font-bold uppercase tracking-[0.2em] text-space shadow-[0_0_32px_rgba(240,199,94,0.5)]"
               >
-                back to explore
-              </button>
+                ▶ start {DIFFICULTIES[diff].name} run
+              </motion.button>
+              <div>
+                <button
+                  onClick={quit}
+                  className="mt-4 rounded-md border border-white/15 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
+                >
+                  back to explore
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

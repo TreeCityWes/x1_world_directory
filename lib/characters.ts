@@ -13,6 +13,12 @@ export type CharacterDef = {
   id: CharacterId;
   name: string;
   title: string;
+  /** roster-card archetype label — the class fantasy in two words */
+  archetype: string;
+  /** one-line hook: why you'd pick them, readable in 2 seconds */
+  hook: string;
+  /** "best for:" — the pick guidance */
+  bestFor: string;
   description: string;
   playstyle: string;
   weapon: { kind: WeaponKind; name: string; desc: string; pierce?: number };
@@ -48,6 +54,9 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     id: "ninja",
     name: "X1 Ninja",
     title: "the balanced blade",
+    archetype: "Balanced Starter",
+    hook: "Fast and simple — every shuriken pierces 2 enemies",
+    bestFor: "your first run",
     description: "Balanced starter. Shurikens pierce through two enemies.",
     playstyle: "Reliable, fast, simple — and every star pierces: one throw, two kills.",
     weapon: { kind: "shuriken", name: "Piercing Shuriken", desc: "stars that pierce 2 enemies", pierce: 2 },
@@ -73,6 +82,9 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     id: "jack",
     name: "Jack Levin",
     title: "the founder",
+    archetype: "AoE Bomber",
+    hook: "Slow, heavy throws — every coin detonates in an area",
+    bestFor: "clearing whole packs",
     description: "Founder burst character. Uses exploding X coins.",
     playstyle: "Slow, deliberate throws — each gold-and-white X coin detonates in an area. Devastating against packs.",
     weapon: { kind: "xcoin", name: "XEN Network Attack", desc: "X coins that explode like bombs" },
@@ -99,6 +111,9 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     id: "theo",
     name: "THEO",
     title: "the x1 ai",
+    archetype: "AI Chain Caster",
+    hook: "Auto-lock pulses that chain between enemies",
+    bestFor: "auto-aim + upgrade control",
     description: "AI utility character. Smart targeting, chaining pulses, more options.",
     playstyle: "Prompt pulses lock on anywhere, chain to a second target, and glitch enemies backwards. His FTS5 Scan marks the field for +50% damage — and the AI surfaces 4 upgrade choices instead of 3.",
     weapon: { kind: "pulse", name: "AI Prompt Pulse", desc: "auto-locked pulses that chain between enemies" },
@@ -126,6 +141,9 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     id: "capy",
     name: "CAPY",
     title: "validator protector",
+    archetype: "Tank Validator",
+    hook: "Wades in with a sweeping cleave + cycling shield",
+    bestFor: "surviving cursed runs",
     description: "Tank melee. Validator Shield: immune 2.5s of every 10s.",
     playstyle: "Wades in and cleaves. The Validator Shield cycles — 2.5s immune, 7.5s exposed — so time your dives.",
     weapon: { kind: "slash", name: "Bad Block Slash", desc: "sweeping cleave in front of you" },
@@ -154,6 +172,9 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     id: "mystery",
     name: "???",
     title: "coming soon",
+    archetype: "???",
+    hook: "A new challenger approaches",
+    bestFor: "???",
     description: "A new challenger approaches.",
     playstyle: "Unrevealed.",
     weapon: { kind: "shuriken", name: "???", desc: "unknown" },

@@ -1,10 +1,63 @@
 "use client";
 
-import { Suspense, useRef } from "react";
+import { Suspense, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import CharacterBody from "@/components/three/CharacterBody";
 import { CHARACTERS, type CharacterId } from "@/lib/characters";
+
+const N_MOTES = 16;
+
+/** Slow accent motes orbiting and rising around the podium — alive, not
+ *  static, without reading as a shape (the flat halo disc read as slop). */
+function Motes({ color }: { color: string }) {
+  const ref = useRef<THREE.Points>(null);
+  const seeds = useMemo(
+    () =>
+      Array.from({ length: N_MOTES }, (_, i) => ({
+        a: (i / N_MOTES) * Math.PI * 2,
+        r: 0.32 + (i % 5) * 0.055,
+        sp: 0.18 + (i % 3) * 0.09,
+        ph: i * 0.613,
+      })),
+    [],
+  );
+  const initial = useMemo(() => new Float32Array(N_MOTES * 3), []);
+  useFrame((state) => {
+    // write through the live attribute, not a captured array — keeps the
+    // React compiler's immutability contract intact
+    const attr = ref.current?.geometry.getAttribute("position") as
+      | THREE.BufferAttribute
+      | undefined;
+    if (!attr) return;
+    const arr = attr.array as Float32Array;
+    const t = state.clock.elapsedTime;
+    for (let i = 0; i < N_MOTES; i++) {
+      const s = seeds[i];
+      const a = s.a + t * 0.25;
+      arr[i * 3] = Math.cos(a) * s.r;
+      arr[i * 3 + 1] = -0.36 + ((t * s.sp + s.ph) % 1) * 0.85;
+      arr[i * 3 + 2] = Math.sin(a) * s.r;
+    }
+    attr.needsUpdate = true;
+  });
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[initial, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        color={color}
+        size={0.02}
+        sizeAttenuation
+        transparent
+        opacity={0.75}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </points>
+  );
+}
 
 /** Per-character podium framing: the camera is fixed, so each body is
  *  scaled and lifted to CENTER it vertically — without this, short CAPY
@@ -40,7 +93,9 @@ function Turntable({ charId, yFeet, scale }: { charId: CharacterId; yFeet: numbe
 export default function CharacterPreview({ charId }: { charId: CharacterId }) {
   const pal = CHARACTERS[charId].colors;
   const f = FRAME[charId];
-  const yFeet = -(f.h * f.s) / 2;
+  // +0.06: bias the body ABOVE true center — the nameplate gradient eats
+  // the bottom of the card, so optical center sits higher than geometric
+  const yFeet = -(f.h * f.s) / 2 + 0.06;
   return (
     <Canvas
       dpr={[1, 1.5]}
@@ -58,17 +113,7 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
       <Suspense fallback={null}>
         <Turntable charId={charId} yFeet={yFeet} scale={f.s} />
       </Suspense>
-      {/* bright accent halo behind the silhouette — the studio backdrop */}
-      <mesh position={[0, 0.05, -0.8]}>
-        <circleGeometry args={[1.05, 40]} />
-        <meshBasicMaterial
-          color={pal.band}
-          transparent
-          opacity={0.3}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
+      <Motes color={pal.band} />
       {/* podium ring at the character's feet, in their signature color */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, yFeet - 0.008, 0]}>
         <ringGeometry args={[0.3, 0.34, 48]} />
@@ -86,7 +131,7 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
         <meshBasicMaterial
           color={pal.band}
           transparent
-          opacity={0.12}
+          opacity={0.06}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}
