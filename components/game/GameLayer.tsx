@@ -6,6 +6,7 @@ import { useGLTF } from "@react-three/drei";
 import { mergeVertices } from "three-stdlib";
 import * as THREE from "three";
 import { regions } from "@/lib/regions";
+import { monoFont } from "@/lib/canvasFont";
 import { sfx } from "@/lib/sound";
 import Nemesis from "@/components/game/Nemesis";
 import { BugMob, GasWisp, RugMob } from "@/components/game/Mobs";
@@ -140,7 +141,7 @@ function getDmgTexture(text: string, crit: boolean) {
   c.width = 128;
   c.height = 64;
   const ctx = c.getContext("2d")!;
-  ctx.font = `900 ${crit ? 44 : 34}px 'Courier New', monospace`;
+  ctx.font = monoFont(900, crit ? 44 : 34);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.lineWidth = 7;
@@ -168,11 +169,11 @@ function getSiteLabel(name: string) {
   c.width = 512;
   c.height = 128;
   const ctx = c.getContext("2d")!;
-  let size = 58;
-  ctx.font = `800 ${size}px Arial, sans-serif`;
+  let size = 56;
+  ctx.font = monoFont(800, size);
   while (ctx.measureText(name).width > 470 && size > 26) {
     size -= 4;
-    ctx.font = `800 ${size}px Arial, sans-serif`;
+    ctx.font = monoFont(800, size);
   }
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";

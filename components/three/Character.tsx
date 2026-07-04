@@ -73,7 +73,9 @@ export default function Character() {
   });
 
   return (
-    <group position={[0, PLANET_RADIUS - 0.02, 0]} scale={0.5}>
+    // scale 0.42: heroes read small against the horde — the world should
+    // dwarf the runner (owner call; hitboxes unchanged, visual only)
+    <group position={[0, PLANET_RADIUS - 0.02, 0]} scale={0.42}>
       {/* hero lighting — the character must pop against the dark world */}
       <pointLight position={[0.5, 0.9, 0.9]} intensity={1.8} distance={2.8} color="#dbe6ff" />
       <pointLight position={[-0.6, 0.7, -0.8]} intensity={1.3} distance={2.6} color={aura} />

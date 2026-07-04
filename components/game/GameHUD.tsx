@@ -264,10 +264,10 @@ function CaptureFlash() {
             initial={{ scale: 1.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.04 }}
-            className="mt-1 text-5xl font-black italic tracking-tight max-md:text-3xl"
+            className="mt-1 text-3xl font-black italic tracking-tight max-md:text-xl"
             style={{
               color: "#fff",
-              textShadow: `0 0 18px ${flash.accent}, 0 0 40px ${flash.accent}88, 0 2px 4px rgba(0,0,0,0.6)`,
+              textShadow: `0 0 12px ${flash.accent}, 0 0 28px ${flash.accent}88, 0 2px 4px rgba(0,0,0,0.6)`,
             }}
           >
             {flash.name}
@@ -276,7 +276,7 @@ function CaptureFlash() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18 }}
-            className="mt-2 rounded-full border-2 px-4 py-1 font-mono text-sm font-bold uppercase tracking-[0.18em] backdrop-blur max-md:text-xs"
+            className="mt-1.5 rounded-full border px-3 py-0.5 font-mono text-xs font-bold uppercase tracking-[0.18em] backdrop-blur max-md:text-[10px]"
             style={{
               color: flash.accent,
               borderColor: `${flash.accent}aa`,
@@ -528,13 +528,13 @@ export default function GameHUD() {
             className="pointer-events-none absolute inset-x-0 top-24 z-40 grid place-items-center max-md:top-32"
           >
             <div
-              className="rounded-xl border-2 border-[#ff4d4d]/70 bg-[rgba(28,8,10,0.88)] px-8 py-3.5 text-center backdrop-blur"
-              style={{ boxShadow: "0 0 60px rgba(255,77,77,0.4)" }}
+              className="rounded-xl border-2 border-[#ff4d4d]/70 bg-[rgba(28,8,10,0.88)] px-6 py-2.5 text-center backdrop-blur"
+              style={{ boxShadow: "0 0 40px rgba(255,77,77,0.35)" }}
             >
               <p className="font-mono text-[9px] uppercase tracking-[0.34em] text-[#ff8a8a]">
                 ⚠ boss detected
               </p>
-              <p className="mt-1 text-2xl font-black tracking-[0.06em] text-[#ff4d4d] max-md:text-lg">
+              <p className="mt-1 text-xl font-black tracking-[0.06em] text-[#ff4d4d] max-md:text-base">
                 {bossCard}
               </p>
             </div>

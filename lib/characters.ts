@@ -137,7 +137,9 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     luck: 1,
     xp: 1,
     passive: "Validator Shield: immune 2.5s of every 10s",
-    model: { size: 0.65 },
+    // longest dim is his LENGTH (quadruped) — 0.52 long ≈ 0.34 tall, a stout
+    // little capybara next to the ~0.78-tall bipeds instead of a moose
+    model: { size: 0.52 },
     unlocked: true,
     colors: {
       hood: "#7a5f3d",

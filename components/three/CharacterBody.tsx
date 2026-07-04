@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { CHARACTERS, type CharacterId, type CharacterDef } from "@/lib/characters";
+import { monoFont } from "@/lib/canvasFont";
 
 // x1.ninja logo palette: charcoal hood + electric-blue headband/X + gold
 // katana furniture + steel blades.
@@ -296,16 +297,19 @@ export default function CharacterBody({
     [broGltf, theoSize],
   );
   // the hat IS the persona — oversized, trimmed like the X1 Ninja:
-  // royal-blue band with gold piping
+  // royal-blue band with gold piping. Measured: the robot's boxy head is
+  // ~0.44 wide but the hat's crown tube is only ~0.26, so the head can never
+  // sit INSIDE the crown — the brim must rest ON the flat head top instead.
+  // Brim target 0.87× body height keeps it overhanging the head.
   const theoHat = useMemo(
     () =>
-      normClone(hatGltf.scene, 0.48, {
+      normClone(hatGltf.scene, theoSize * 0.87, {
         recolor: {
           F44336: { color: "#1e4fd8", emissive: "#1e4fd8", emissiveIntensity: 0.7 },
           FFCC88: { color: GOLD, emissive: "#c9921e", emissiveIntensity: 0.3 },
         },
       }),
-    [hatGltf],
+    [hatGltf, theoSize],
   );
   const jack = useMemo(() => {
     // full body, legs included — the legless float read as broken, and the
@@ -331,7 +335,7 @@ export default function CharacterBody({
     c.width = 256;
     c.height = 128;
     const ctx = c.getContext("2d")!;
-    ctx.font = "900 74px Arial, sans-serif";
+    ctx.font = monoFont(900, 70);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#0b0b0d";
@@ -358,12 +362,16 @@ export default function CharacterBody({
       <group>
         <primitive object={theoBody} />
         {/* group wrapper: the position prop must not clobber normClone's
-            centering offset on the hat itself; buckle spun to the front */}
-        <group position={[0, 0.605, 0]} rotation={[0, Math.PI, 0]}>
+            centering offset on the hat itself; buckle spun to the front.
+            Brim seated at 0.99× head-top so the skull tucks INSIDE the brim
+            solid instead of cresting through it. */}
+        <group position={[0, theoSize * 0.99, 0]} rotation={[0, Math.PI, 0]}>
           <primitive object={theoHat} />
         </group>
-        {/* glowing blue eyes, proud of the faceplate (red is for enemies) */}
-        <mesh position={[0.052, 0.47, 0.16]}>
+        {/* glowing blue eyes, proud of the faceplate (red is for enemies) —
+            the screen's outer surface is at z≈0.194, so the eye centers must
+            clear it or they vanish inside the plate */}
+        <mesh position={[0.052, 0.47, 0.188]}>
           <sphereGeometry args={[0.024, 8, 8]} />
           <meshStandardMaterial
             color="#4f7dff"
@@ -372,7 +380,7 @@ export default function CharacterBody({
             toneMapped={false}
           />
         </mesh>
-        <mesh position={[-0.052, 0.47, 0.16]}>
+        <mesh position={[-0.052, 0.47, 0.188]}>
           <sphereGeometry args={[0.024, 8, 8]} />
           <meshStandardMaterial
             color="#4f7dff"
