@@ -19,7 +19,10 @@ const _target = new THREE.Quaternion();
  * leans, swings its limbs, and its scarf flutters harder the faster it runs.
  */
 export default function Character() {
-  const charId = useGame((s) => s.character);
+  // Explore mode is always the X1 Ninja — you only pick a hero in the game.
+  // (The store's `character` persists your last game pick via localStorage,
+  // which would otherwise leak Jack/THEO/CAPY into the walkable globe.)
+  const charId = useGame((s) => (s.mode === "explore" ? "ninja" : s.character));
   // the aura wears the character's identity color — cyan is not a default
   const aura = CHARACTERS[charId].colors.band;
   const yaw = useRef<THREE.Group>(null);
