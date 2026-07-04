@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
-import { DIFFICULTIES, UPGRADES, useGame, type DifficultyId } from "@/lib/gameStore";
+import { DIFFICULTIES, UPGRADES, run, useGame, type DifficultyId } from "@/lib/gameStore";
+import { useProfile } from "@/lib/profile";
+import { explorerTx, inscribeRun } from "@/lib/inscribe";
 
 const TOTAL_SITES = regions.length;
 
@@ -16,6 +18,75 @@ const DEATH_FLAVOR: Record<string, string> = {
   "boss:nemesis": "slain by your own shadow",
 };
 const ONBOARD_KEY = "x1world_onboarded";
+
+/** Inscribe-on-X1 + view-leaderboard row for the end-of-run screens. */
+function InscribeRow({ score }: { score: number }) {
+  const wallet = useProfile((s) => s.wallet);
+  const name = useProfile((s) => s.name);
+  const [st, setSt] = useState<{ k: "idle" | "busy" | "done"; sig?: string; err?: string }>({
+    k: "idle",
+  });
+
+  const doInscribe = async () => {
+    if (st.k !== "idle") return;
+    setSt({ k: "busy" });
+    const r = await inscribeRun({
+      name,
+      score,
+      diff: run.difficulty,
+      captured: run.captured,
+      total: TOTAL_SITES,
+    });
+    setSt(r.sig ? { k: "done", sig: r.sig } : { k: "idle", err: r.error });
+  };
+
+  const viewBoard = () => {
+    useGame.getState().openMenu();
+    document.getElementById("x1-leaderboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  return (
+    <div className="mt-4">
+      <div className="flex flex-wrap justify-center gap-2">
+        {st.k === "done" && st.sig ? (
+          <a
+            href={explorerTx(st.sig)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-[#4ade80]/50 bg-[#4ade80]/10 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.15em] text-[#4ade80] transition-colors hover:border-[#4ade80]"
+          >
+            ⛓ inscribed on x1 — view transaction ↗
+          </a>
+        ) : (
+          <button
+            onClick={() => void doInscribe()}
+            disabled={st.k === "busy" || !wallet}
+            title={wallet ? "write this score to X1 mainnet forever" : "connect your wallet first"}
+            className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-gold transition-all hover:-translate-y-px hover:border-gold hover:shadow-[0_0_16px_rgba(240,199,94,0.35)] disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+          >
+            {st.k === "busy" ? "inscribing…" : "⛓ inscribe score on x1"}
+          </button>
+        )}
+        <button
+          onClick={viewBoard}
+          className="rounded-md border border-cyan/40 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.15em] text-cyan transition-colors hover:border-cyan"
+        >
+          🏆 view leaderboard
+        </button>
+      </div>
+      {!wallet && st.k === "idle" && !st.err && (
+        <p className="mt-1.5 font-mono text-[8px] uppercase tracking-[0.12em] text-ink-dim/60">
+          connect your wallet to inscribe your score on x1 mainnet
+        </p>
+      )}
+      {st.err && (
+        <p className="mt-1.5 font-mono text-[8px] uppercase tracking-[0.12em] text-[#ff8c6b]">
+          {st.err}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /**
  * DOM HUD for survival runs: HP/XP bars, run stats, level-up cards, death
@@ -255,6 +326,7 @@ export default function GameHUD() {
                 {Math.floor(hud.time / 60)}m {Math.floor(hud.time % 60)}s · {hud.block} blocks ·{" "}
                 {hud.kills} kills
               </p>
+              <InscribeRow score={finalScore} />
               <div className="mt-6 flex justify-center gap-3">
                 <button
                   onClick={() => start()}
@@ -298,6 +370,7 @@ export default function GameHUD() {
               <div className="mt-4 space-y-1 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
                 <p>{hud.block} blocks survived · {hud.kills} kills · {hud.captured} sites</p>
               </div>
+              <InscribeRow score={finalScore} />
               <div className="mt-6 flex justify-center gap-3">
                 <button
                   onClick={() => start()}

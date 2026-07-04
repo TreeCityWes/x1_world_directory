@@ -21,6 +21,11 @@ type InjectedProvider = {
   ) => Promise<{ signature: Uint8Array } | Uint8Array>;
 };
 
+/** The raw injected provider — for transaction flows (inscribe). */
+export function getWalletProvider() {
+  return getProvider();
+}
+
 /** Sign an arbitrary message with the connected wallet → base64, or null. */
 export async function signWithWallet(message: string): Promise<string | null> {
   const p = getProvider();

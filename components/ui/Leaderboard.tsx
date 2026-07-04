@@ -47,7 +47,7 @@ export default function Leaderboard() {
   }, [mode]);
 
   return (
-    <div>
+    <div id="x1-leaderboard">
       <div className="flex items-baseline justify-between">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
           🏆 global leaderboard
