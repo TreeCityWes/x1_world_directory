@@ -43,9 +43,10 @@ export function BugMob() {
         <sphereGeometry args={[1, 12, 10]} />
         <meshStandardMaterial color="#0c1c11" emissive="#39ff88" emissiveIntensity={0.2} roughness={0.35} />
       </mesh>
-      {/* it literally says BUG on it */}
-      <mesh position={[0, 0.2, -0.3]} rotation={[-Math.PI / 2 + 0.18, 0, 0]}>
-        <planeGeometry args={[0.52, 0.26]} />
+      {/* it literally says BUG on it — floated clear of the shell so the
+          abdomen can't poke through the middle of the word */}
+      <mesh position={[0, 0.31, -0.3]} rotation={[-Math.PI / 2 + 0.15, 0, 0]}>
+        <planeGeometry args={[0.56, 0.28]} />
         <meshBasicMaterial
           map={getLabelTexture("BUG", "#39ff88", "#04120a")}
           transparent
@@ -164,57 +165,45 @@ export function RugMob() {
   const TRIM = "#f0c75e";
   return (
     <group position={[0, 0.1, 0]}>
-      {/* carpet body — three flat segments in a frozen ripple */}
-      <mesh position={[0, 0.02, -0.55]} rotation={[0.14, 0, 0]}>
-        <boxGeometry args={[0.8, 0.035, 0.5]} />
+      {/* carpet body — dead flat, one deck height */}
+      <mesh position={[0, 0.02, -0.4]}>
+        <boxGeometry args={[0.8, 0.035, 0.8]} />
         <meshStandardMaterial color={RUG} roughness={0.85} />
       </mesh>
-      <mesh position={[0, 0.06, -0.08]} rotation={[-0.12, 0, 0]}>
-        <boxGeometry args={[0.8, 0.035, 0.5]} />
+      <mesh position={[0, 0.02, 0.35]}>
+        <boxGeometry args={[0.8, 0.035, 0.7]} />
         <meshStandardMaterial color={RUG_DARK} roughness={0.85} />
-      </mesh>
-      {/* front third — flat, just a whisper of lift at the leading edge */}
-      <mesh position={[0, 0.05, 0.38]} rotation={[0.18, 0, 0]}>
-        <boxGeometry args={[0.8, 0.035, 0.55]} />
-        <meshStandardMaterial color={RUG} roughness={0.8} />
       </mesh>
       {/* gold border running along both long edges (carpet frame) */}
       {[-1, 1].map((s) => (
-        <group key={s}>
-          <mesh position={[s * 0.37, 0.045, -0.32]} rotation={[0.02, 0, 0]}>
-            <boxGeometry args={[0.07, 0.04, 0.95]} />
-            <meshStandardMaterial color={TRIM} metalness={0.5} roughness={0.4} emissive="#c9921e" emissiveIntensity={0.25} />
-          </mesh>
-          <mesh position={[s * 0.37, 0.06, 0.38]} rotation={[0.18, 0, 0]}>
-            <boxGeometry args={[0.07, 0.04, 0.55]} />
-            <meshStandardMaterial color={TRIM} metalness={0.5} roughness={0.4} emissive="#c9921e" emissiveIntensity={0.25} />
-          </mesh>
-        </group>
+        <mesh key={s} position={[s * 0.37, 0.03, -0.05]}>
+          <boxGeometry args={[0.07, 0.04, 1.5]} />
+          <meshStandardMaterial color={TRIM} metalness={0.5} roughness={0.4} emissive="#c9921e" emissiveIntensity={0.25} />
+        </mesh>
       ))}
       {/* center medallion — the classic carpet diamond */}
-      <mesh position={[0, 0.085, -0.1]} rotation={[-0.12, Math.PI / 4, 0]}>
+      <mesh position={[0, 0.045, -0.1]} rotation={[0, Math.PI / 4, 0]}>
         <boxGeometry args={[0.26, 0.02, 0.26]} />
         <meshStandardMaterial color={TRIM} metalness={0.55} roughness={0.35} emissive="#c9921e" emissiveIntensity={0.35} />
       </mesh>
-      {/* eyes sitting on the front edge, glaring ahead */}
-      <mesh position={[0.15, 0.15, 0.6]}>
-        <sphereGeometry args={[0.06, 8, 8]} />
+      {/* eyes on the leading edge, glaring ahead */}
+      <mesh position={[0.15, 0.08, 0.68]}>
+        <sphereGeometry args={[0.055, 8, 8]} />
         <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={3} toneMapped={false} />
       </mesh>
-      <mesh position={[-0.15, 0.15, 0.6]}>
-        <sphereGeometry args={[0.06, 8, 8]} />
+      <mesh position={[-0.15, 0.08, 0.68]}>
+        <sphereGeometry args={[0.055, 8, 8]} />
         <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={3} toneMapped={false} />
       </mesh>
-      {/* fringe tassels on the back edge */}
+      {/* fringe tassels, flat on both ends */}
       {[-0.3, -0.15, 0, 0.15, 0.3].map((x) => (
-        <mesh key={x} position={[x, 0, -0.83]} rotation={[0.35, 0, 0]}>
+        <mesh key={x} position={[x, 0.02, -0.87]}>
           <boxGeometry args={[0.06, 0.025, 0.14]} />
           <meshStandardMaterial color={TRIM} roughness={0.6} />
         </mesh>
       ))}
-      {/* gold fringe on the leading edge */}
       {[-0.28, -0.14, 0, 0.14, 0.28].map((x) => (
-        <mesh key={`f${x}`} position={[x, 0.1, 0.68]} rotation={[0.18, 0, 0]}>
+        <mesh key={`f${x}`} position={[x, 0.02, 0.76]}>
           <boxGeometry args={[0.06, 0.025, 0.13]} />
           <meshStandardMaterial color={TRIM} roughness={0.55} emissive="#c9921e" emissiveIntensity={0.4} />
         </mesh>
