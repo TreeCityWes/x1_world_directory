@@ -11,8 +11,16 @@ const MASK = "#171c28";
 const GOLD = "#f0c75e";
 const STEEL = "#c7d0e2";
 
-/** Clone a GLB scene normalized: longest dimension -> target, feet on y=0. */
-function normClone(scene: THREE.Object3D, target: number, tint?: { color: string; metal?: number }) {
+type MatOverride = Partial<{ color: string; emissive: string; emissiveIntensity: number }>;
+
+/** Clone a GLB scene normalized: longest dimension -> target, feet on y=0.
+ *  `tint` recolors everything (robot treatment); `recolor` retints specific
+ *  materials by their authored name (brand accents on stock models). */
+function normClone(
+  scene: THREE.Object3D,
+  target: number,
+  opts?: { tint?: { color: string; metal?: number }; recolor?: Record<string, MatOverride> },
+) {
   const clone = scene.clone(true);
   const box = new THREE.Box3().setFromObject(clone);
   const size = box.getSize(new THREE.Vector3());
@@ -20,17 +28,29 @@ function normClone(scene: THREE.Object3D, target: number, tint?: { color: string
   const center = box.getCenter(new THREE.Vector3());
   clone.scale.setScalar(k);
   clone.position.set(-center.x * k, -box.min.y * k, -center.z * k);
-  if (tint) {
+  if (opts?.tint || opts?.recolor) {
+    const patch = (orig: THREE.Material) => {
+      const m = (orig as THREE.MeshStandardMaterial).clone();
+      if (opts.tint) {
+        m.map = null; // the baked skin texture would fight the tint
+        m.color?.set(opts.tint.color);
+        m.metalness = opts.tint.metal ?? 0.5;
+        m.roughness = 0.45;
+      }
+      const over = opts.recolor?.[m.name];
+      if (over) {
+        if (over.color) m.color?.set(over.color);
+        if (over.emissive) m.emissive?.set(over.emissive);
+        if (over.emissiveIntensity !== undefined) m.emissiveIntensity = over.emissiveIntensity;
+      }
+      return m;
+    };
     clone.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (mesh.isMesh && mesh.material) {
-        const m = (mesh.material as THREE.MeshStandardMaterial).clone();
-        m.map = null; // the baked skin texture would fight the tint
-        m.color?.set(tint.color);
-        m.metalness = tint.metal ?? 0.5;
-        m.roughness = 0.45;
-        mesh.material = m;
-      }
+      if (!mesh.isMesh || !mesh.material) return;
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map(patch)
+        : patch(mesh.material);
     });
   }
   return clone;
@@ -82,14 +102,58 @@ export default function CharacterBody({
   const capyGltf = useGLTF("/models/capybara.glb");
   const broGltf = useGLTF("/models/cryptobro.glb");
   const hatGltf = useGLTF("/models/tophat.glb");
+  const ninjaGltf = useGLTF("/models/ninja.glb");
+  const jackGltf = useGLTF("/models/jack.glb");
   const capyBody = useMemo(() => normClone(capyGltf.scene, 0.95), [capyGltf]);
   const theoBody = useMemo(
-    () => normClone(broGltf.scene, 0.85, { color: "#9aa3b2", metal: 0.65 }),
+    () => normClone(broGltf.scene, 0.85, { tint: { color: "#9aa3b2", metal: 0.65 } }),
     [broGltf],
   );
   const theoHat = useMemo(() => normClone(hatGltf.scene, 0.3), [hatGltf]);
+  const ninjaBody = useMemo(
+    () =>
+      normClone(ninjaGltf.scene, 0.82, {
+        recolor: {
+          // brand pass: charcoal-blue suit, electric-blue belt + eyes
+          Ninja_Main: { color: "#141925" },
+          Belt: { color: "#1e6fff", emissive: "#1e6fff", emissiveIntensity: 0.5 },
+          Eye_White: { color: "#7dd3fc", emissive: "#7dd3fc", emissiveIntensity: 0.9 },
+        },
+      }),
+    [ninjaGltf],
+  );
+  const jackBody = useMemo(
+    () => normClone(jackGltf.scene, 0.95, { recolor: { White: { color: "#f5f5f5" } } }),
+    [jackGltf],
+  );
+  const xenTex = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 128;
+    const ctx = c.getContext("2d")!;
+    ctx.font = "900 74px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#0b0b0d";
+    ctx.fillText("XEN", 128, 64);
+    return new THREE.CanvasTexture(c);
+  }, []);
 
   if (charId === "capy") return <primitive object={capyBody} />;
+
+  if (charId === "jack")
+    return (
+      <group>
+        <primitive object={jackBody} />
+        {/* the XEN tee — his whole personality */}
+        <mesh position={[0, 0.62, 0.078]}>
+          <planeGeometry args={[0.24, 0.12]} />
+          <meshBasicMaterial map={xenTex} transparent depthWrite={false} />
+        </mesh>
+      </group>
+    );
+
+  if (charId === "ninja") return <primitive object={ninjaBody} />;
 
   if (charId === "theo")
     return (
@@ -198,3 +262,5 @@ export default function CharacterBody({
 useGLTF.preload("/models/capybara.glb");
 useGLTF.preload("/models/cryptobro.glb");
 useGLTF.preload("/models/tophat.glb");
+useGLTF.preload("/models/ninja.glb");
+useGLTF.preload("/models/jack.glb");
