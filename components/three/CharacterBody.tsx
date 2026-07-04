@@ -283,6 +283,7 @@ export default function CharacterBody({
   const broGltf = useGLTF("/models/cryptobro.glb");
   const hatGltf = useGLTF("/models/tophat.glb");
   const jackGltf = useGLTF("/models/jack.glb");
+  // capybara.glb ships pre-smoothed (scripts/smooth-model.mjs)
   const capyBody = useMemo(() => normClone(capyGltf.scene, 0.95), [capyGltf]);
   const theoBody = useMemo(
     () => normClone(broGltf.scene, 0.62, { tint: { color: "#9aa3b2", metal: 0.65 } }),
@@ -298,11 +299,20 @@ export default function CharacterBody({
   );
   const jack = useMemo(() => {
     const body = normClone(jackGltf.scene, 0.78, {
-      recolor: { White: { color: "#f5f5f5" } },
-      hide: ["Hair"], // the model ships with a ponytail; Jack's is a buzz cut
+      recolor: {
+        // a normal guy: short brown hair, plain white tee
+        Hair: { color: "#4a2f15" },
+        Hair2: { color: "#553a1d" },
+        Shirt: { color: "#f2f2f2" },
+        Shirt2: { color: "#e9e9e9" },
+      },
     });
-    const box = new THREE.Box3().setFromObject(body);
-    return { body, top: box.max.y, front: box.max.z };
+    // pin the tee print to the real chest surface (bbox lies — limbs poke
+    // forward of the chest in the idle pose)
+    body.updateMatrixWorld(true);
+    const ray = new THREE.Raycaster(new THREE.Vector3(0, 0.54, 1), new THREE.Vector3(0, 0, -1));
+    const hit = ray.intersectObject(body, true)[0];
+    return { body, chestZ: hit ? hit.point.z : 0.07 };
   }, [jackGltf]);
   const xenTex = useMemo(() => {
     const c = document.createElement("canvas");
@@ -323,14 +333,9 @@ export default function CharacterBody({
     return (
       <group>
         <primitive object={jack.body} />
-        {/* brown buzz cut hugging the skull */}
-        <mesh position={[0, jack.top - 0.055, -0.006]} scale={[1, 0.85, 1.04]}>
-          <sphereGeometry args={[0.062, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
-          <meshStandardMaterial color="#4a3320" roughness={0.85} />
-        </mesh>
-        {/* the XEN tee — pinned to the measured chest */}
-        <mesh position={[0, jack.top * 0.66, jack.front + 0.003]}>
-          <planeGeometry args={[0.17, 0.085]} />
+        {/* the XEN tee — pinned to the raycast chest surface */}
+        <mesh position={[0, 0.54, jack.chestZ + 0.004]}>
+          <planeGeometry args={[0.15, 0.075]} />
           <meshBasicMaterial map={xenTex} transparent alphaTest={0.4} />
         </mesh>
       </group>
@@ -340,7 +345,7 @@ export default function CharacterBody({
     return (
       <group>
         <primitive object={theoBody} />
-        <primitive object={theoHat} position={[0, 0.53, 0]} />
+        <primitive object={theoHat} position={[0, 0.605, 0]} />
         {/* burning red eyes, proud of the faceplate */}
         <mesh position={[0.052, 0.47, 0.16]}>
           <sphereGeometry args={[0.024, 8, 8]} />

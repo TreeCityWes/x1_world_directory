@@ -61,9 +61,9 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     colors: {
       hood: "#232936",
       suit: "#1a1f2c",
-      band: "#39c7f5",
-      scarf: "#1e6fff",
-      eyes: "#7dd3fc",
+      band: "#1e4fd8",
+      scarf: "#1638b8",
+      eyes: "#4f7dff",
       belt: "#f0c75e",
     },
   },
