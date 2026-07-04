@@ -38,7 +38,7 @@ export default function Leaderboard() {
           }
         });
       },
-      mode === "dead" || mode === "won" ? 900 : 0,
+      mode === "dead" || mode === "won" || mode === "timeup" ? 900 : 0,
     );
     return () => {
       stale = true;

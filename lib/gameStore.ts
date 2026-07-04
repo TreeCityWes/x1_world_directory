@@ -12,7 +12,16 @@ import { useProfile } from "@/lib/profile";
  * snapshot ~4x/s for the DOM HUD, plus mode/choices/sites which change rarely.
  */
 
-export type GameMode = "explore" | "menu" | "play" | "paused" | "levelup" | "dead" | "won";
+export type GameMode = "explore" | "menu" | "play" | "paused" | "levelup" | "dead" | "won" | "timeup";
+
+// The run is a TIME ATTACK: every player gets the same clock, and the
+// leaderboard is the best score inside it. Beat the map (all sites + final
+// boss) before the bell for the win + conquest bonus; otherwise the bell
+// ends the run where you stand. This is what stops "avoid the bosses and
+// farm the horde forever" — score is bounded by the window, not by how long
+// you can survive. scoreOf() caps its time term at this same value so the
+// two can never drift.
+export const RUN_SECONDS = 420; // 7 minutes
 
 export const DIFFICULTIES = {
   normal: {
@@ -192,7 +201,7 @@ export function resetRun(diff?: DifficultyId, character?: CharacterId) {
 }
 
 export function scoreOf() {
-  const T = Math.min(600, run.t); // survival time caps at 10 minutes
+  const T = Math.min(RUN_SECONDS, run.t); // survival time caps at the run clock
   // linear time term — the old T² quadratically rewarded circle-running;
   // kills, damage, and captures are the score now, surviving is the floor
   const base = (T * 40 + run.kills * 40 + run.damage / 2) / 100 + run.captured * 50;
@@ -288,6 +297,7 @@ type GameStore = {
   quit: () => void;
   deathCause: string;
   die: () => void;
+  timeUp: () => void;
   win: () => void;
   syncHud: () => void;
   offerLevelUp: (choices: string[]) => void;
@@ -383,6 +393,32 @@ export const useGame = create<GameStore>((set, get) => ({
       finalScore: score,
       best,
       deathCause: run.killedBy,
+      scoreSubmit: named ? "sending" : "",
+      hud: emptyHud(),
+    });
+  },
+  timeUp: () => {
+    // Time-attack ending: the clock ran out. Scores like a death (no conquest
+    // bonus — you only get that by actually finishing), but it's the EXPECTED
+    // way most runs end, so it gets its own neutral screen, not a death card.
+    const score = scoreOf();
+    let best = 0;
+    if (typeof window !== "undefined") {
+      best = Math.max(score, Number(localStorage.getItem(BEST_KEY) ?? 0));
+      localStorage.setItem(BEST_KEY, String(best));
+    }
+    sfx.win(); // a "you made it to the bell" flourish, not the death sting
+    const pt = useProfile.getState();
+    const named = !!pt.name.trim();
+    if (named) {
+      void submitScore({ name: pt.name, wallet: pt.wallet, score, diff: run.difficulty }).then(
+        (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
+      );
+    }
+    set({
+      mode: "timeup",
+      finalScore: score,
+      best,
       scoreSubmit: named ? "sending" : "",
       hud: emptyHud(),
     });

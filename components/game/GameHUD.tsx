@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { POWER_LABEL, regions } from "@/lib/regions";
-import { DIFFICULTIES, UPGRADES, run, upgradeView, useGame, type DifficultyId } from "@/lib/gameStore";
+import { DIFFICULTIES, RUN_SECONDS, UPGRADES, run, upgradeView, useGame, type DifficultyId } from "@/lib/gameStore";
 import { CHARACTERS, CHARACTER_ORDER, type WeaponKind } from "@/lib/characters";
 import CharacterPreview from "@/components/game/CharacterPreview";
 import { useProfile } from "@/lib/profile";
@@ -450,6 +450,11 @@ export default function GameHUD() {
     localStorage.setItem(ONBOARD_KEY, "1");
   };
 
+  // time-attack countdown (hud.time refreshes ~4x/s — plenty for mm:ss)
+  const remaining = Math.max(0, RUN_SECONDS - hud.time);
+  const clock = `${Math.floor(remaining / 60)}:${String(Math.floor(remaining % 60)).padStart(2, "0")}`;
+  const lowTime = remaining <= 30;
+
   return (
     <>
       {/* damage vignette */}
@@ -499,6 +504,8 @@ export default function GameHUD() {
             <span className="mx-2 text-ink-dim">·</span>
           </>
         )}
+        <span className={lowTime ? "animate-pulse text-[#ff4d4d]" : "text-cyan"}>⏱ {clock}</span>
+        <span className="mx-2 text-ink-dim">·</span>
         <span className="text-gold">block {hud.block}</span>
         <span className="mx-2 text-ink-dim">·</span>lv {hud.level}
         <span className="mx-2 text-ink-dim">·</span>{hud.kills} kills
@@ -905,6 +912,67 @@ export default function GameHUD() {
               )}
               <div className="mt-4 space-y-1 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
                 <p>{hud.block} blocks survived · {hud.kills} kills · {hud.captured} sites</p>
+              </div>
+              <InscribeRow score={finalScore} />
+              <div className="mt-6 flex justify-center gap-3">
+                <button
+                  onClick={() => start()}
+                  className="rounded-md bg-gold px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-space transition-all hover:-translate-y-0.5 hover:bg-[#ffd97a]"
+                >
+                  run it back
+                </button>
+                <button
+                  onClick={quit}
+                  className="rounded-md border border-white/15 px-6 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
+                >
+                  explore
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* time-attack bell — the clock ran out. The EXPECTED end for most runs,
+          so it's a neutral score bank, not a death card. */}
+      <AnimatePresence>
+        {mode === "timeup" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/70 backdrop-blur-sm max-md:fixed"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              className="rounded-2xl border border-cyan/40 bg-[rgba(9,13,28,0.95)] p-8 text-center shadow-[0_0_50px_rgba(57,199,245,0.2)] max-md:mx-3 max-md:my-4 max-md:p-5"
+            >
+              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-cyan">
+                ⏱ time&apos;s up — the bell rings
+              </p>
+              <p className="mt-3 text-5xl font-semibold tracking-tight max-md:text-4xl">{finalScore}</p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+                score · best {best}
+              </p>
+              {scoreSubmit === "ok" && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#4ade80]">
+                  ✓ recorded on the global leaderboard
+                </p>
+              )}
+              {scoreSubmit === "fail" && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#ff8c6b]">
+                  ⚠ leaderboard unreachable — score kept locally
+                </p>
+              )}
+              {finalScore > 500000 && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim/70">
+                  board entries cap at 500,000
+                </p>
+              )}
+              <div className="mt-4 space-y-1 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
+                <p>{hud.block} blocks · {hud.kills} kills · {hud.captured}/{TOTAL_SITES} sites</p>
+                <p className="text-ink-dim/70">capture every site + slay the boss before the bell for +1000</p>
               </div>
               <InscribeRow score={finalScore} />
               <div className="mt-6 flex justify-center gap-3">
