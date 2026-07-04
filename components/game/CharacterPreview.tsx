@@ -6,16 +6,28 @@ import * as THREE from "three";
 import CharacterBody from "@/components/three/CharacterBody";
 import { CHARACTERS, type CharacterId } from "@/lib/characters";
 
+/** Per-character podium framing: the camera is fixed, so each body is
+ *  scaled and lifted to CENTER it vertically — without this, short CAPY
+ *  sat at the floor under a column of dead space, overlapping the
+ *  nameplate, while tall-hatted THEO grazed the top edge. */
+const FRAME: Record<CharacterId, { h: number; s: number }> = {
+  ninja: { h: 0.78, s: 1 },
+  jack: { h: 0.8, s: 1 },
+  theo: { h: 0.92, s: 0.95 }, // includes the hat
+  capy: { h: 0.35, s: 1.5 }, // stout quadruped — podium zoom, not to scale
+  mystery: { h: 0.78, s: 1 },
+};
+
 /** Slow turntable + idle bob, like a fighting-game select podium. */
-function Turntable({ charId }: { charId: CharacterId }) {
+function Turntable({ charId, yFeet, scale }: { charId: CharacterId; yFeet: number; scale: number }) {
   const g = useRef<THREE.Group>(null);
   useFrame((state, dt) => {
     if (!g.current) return;
     g.current.rotation.y += dt * 0.7;
-    g.current.position.y = -0.47 + Math.sin(state.clock.elapsedTime * 1.8) * 0.012;
+    g.current.position.y = yFeet + Math.sin(state.clock.elapsedTime * 1.8) * 0.012;
   });
   return (
-    <group ref={g} position={[0, -0.47, 0]}>
+    <group ref={g} position={[0, yFeet, 0]} scale={scale}>
       <CharacterBody charId={charId} />
     </group>
   );
@@ -27,6 +39,8 @@ function Turntable({ charId }: { charId: CharacterId }) {
  */
 export default function CharacterPreview({ charId }: { charId: CharacterId }) {
   const pal = CHARACTERS[charId].colors;
+  const f = FRAME[charId];
+  const yFeet = -(f.h * f.s) / 2;
   return (
     <Canvas
       dpr={[1, 1.5]}
@@ -34,15 +48,29 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
       gl={{ antialias: true, alpha: true }}
       onCreated={({ camera }) => camera.lookAt(0, -0.02, 0)}
     >
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[2, 3, 2]} intensity={1.7} color="#dbe6ff" />
-      <pointLight position={[-2, 1, -1.5]} intensity={14} color={pal.band} />
-      <pointLight position={[0, -0.5, 2]} intensity={5} color="#dbe6ff" />
+      {/* dark suits on a dark page need separation: brighter key, a hot
+          white rim from behind-above, and the accent wash from the side */}
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[2, 3, 2]} intensity={2.2} color="#dbe6ff" />
+      <directionalLight position={[0, 2.4, -3]} intensity={2.6} color="#ffffff" />
+      <pointLight position={[-2, 1, -1.5]} intensity={16} color={pal.band} />
+      <pointLight position={[0, -0.5, 2]} intensity={6} color="#dbe6ff" />
       <Suspense fallback={null}>
-        <Turntable charId={charId} />
+        <Turntable charId={charId} yFeet={yFeet} scale={f.s} />
       </Suspense>
-      {/* podium ring in the character's signature color */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.48, 0]}>
+      {/* soft accent halo behind the silhouette — reads even on pure black */}
+      <mesh position={[0, 0.05, -0.8]}>
+        <circleGeometry args={[0.85, 40]} />
+        <meshBasicMaterial
+          color={pal.band}
+          transparent
+          opacity={0.14}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* podium ring at the character's feet, in their signature color */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, yFeet - 0.008, 0]}>
         <ringGeometry args={[0.3, 0.34, 48]} />
         <meshBasicMaterial
           color={pal.band}
@@ -53,12 +81,12 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
           side={THREE.DoubleSide}
         />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.485, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, yFeet - 0.012, 0]}>
         <circleGeometry args={[0.3, 48]} />
         <meshBasicMaterial
           color={pal.band}
           transparent
-          opacity={0.1}
+          opacity={0.12}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}

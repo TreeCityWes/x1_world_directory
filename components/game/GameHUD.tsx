@@ -119,8 +119,13 @@ function CharacterSelect() {
       {/* dossier: live 3D preview + stats + weapon + signature */}
       <div className="mt-2 grid grid-cols-[240px_1fr] gap-2 max-md:grid-cols-1">
         <div
-          className="relative overflow-hidden rounded-2xl border-2 bg-space/85 backdrop-blur-md"
-          style={{ borderColor: `${accent}55` }}
+          className="relative overflow-hidden rounded-2xl border-2 backdrop-blur-md"
+          style={{
+            borderColor: `${accent}55`,
+            // dark suits vanish on flat near-black — a soft accent-lit well
+            // behind the podium gives every silhouette an edge to read on
+            background: `radial-gradient(ellipse 90% 70% at 50% 40%, ${accent}2e 0%, ${accent}14 40%, rgba(9,13,28,0.88) 78%)`,
+          }}
         >
           <div className="h-56 max-md:h-44">
             <CharacterPreview charId={selected} />
