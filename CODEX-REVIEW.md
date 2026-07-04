@@ -13,9 +13,16 @@ Verification:
   `next`/`postcss` and `@solana/web3.js`/`uuid`. Do not run the suggested
   `npm audit fix --force`; it proposes breaking downgrades.
 
+> **Status update (2026-07-04, post-`bad2a4a`/`b86d6a6`/`5dd6872`):** Must Fix
+> 1–3 and Should Fix 4–7 are all FIXED in the current tree — see the
+> resolution notes appended to each item. Only the Residual Security Notes
+> (8–10) remain open, and those are design-session/upstream items.
+
 ## Must Fix
 
 1. **Final boss can still be bypassed if the boss pool is full**
+   — ✅ FIXED `bad2a4a`: `world.finalWanted` retries the spawn every frame
+   until a slot frees; victory additionally gates on `world.finalSpawned`.
    - `components/game/GameLayer.tsx:417` finds a free boss slot from the fixed
      boss range.
    - `components/game/GameLayer.tsx:426` returns `undefined` when no slot is
@@ -30,6 +37,8 @@ Verification:
      victory until the final boss has successfully spawned and then died.
 
 2. **Supabase read failure can overwrite a personal best**
+   — ✅ FIXED `bad2a4a`: `!cur.ok` now throws (`sb read <status>`) instead of
+   being treated as an empty row set; the upsert never runs on a failed read.
    - `app/api/leaderboard/route.ts:105` reads the current score.
    - `app/api/leaderboard/route.ts:106` treats `!cur.ok` as an empty row set.
    - `app/api/leaderboard/route.ts:107` then allows an upsert.
@@ -39,6 +48,8 @@ Verification:
      best-only writes inside a database function/constraint.
 
 3. **Explore tab still abandons active runs immediately**
+   — ✅ FIXED `bad2a4a`: during `play` the Explore tab pauses into the
+   resume/abandon choice instead of quitting.
    - `components/ui/Overlay.tsx:66` calls `quit()` directly whenever mode is not
      `explore`.
    - Impact: Esc/P now pause safely, but clicking the Explore tab during
@@ -49,6 +60,8 @@ Verification:
 ## Should Fix
 
 4. **Pending-spawn overflow can still fall back to instant spawns**
+   — ✅ FIXED `bad2a4a`: a saturated pending pool defers the rest of the
+   burst (`if (!p) break`) instead of spawning untelegraphed.
    - `components/game/GameLayer.tsx:254` grows the pending warning pool to 40.
    - `components/game/GameLayer.tsx:1152` still falls back when all pending
      warning slots are active.
@@ -60,6 +73,9 @@ Verification:
      defer `world.spawnAt` until a pending slot frees.
 
 5. **Character placement config is still incomplete**
+   — ✅ FIXED `5dd6872`: CharacterBody honors `model.size` AND `model.lift`
+   from the registry; THEO's hat placement is derived from `model.size`
+   (`e362aec`) instead of a hardcoded offset.
    - `lib/characters.ts:31` defines `model.lift`.
    - `components/three/CharacterBody.tsx:286` only reads model sizes.
    - CAPY, THEO, and Jack placement still depends on local hardcoded offsets
@@ -69,6 +85,8 @@ Verification:
      screens for every character.
 
 6. **Directory sorting remains mouse-only**
+   — ✅ FIXED `5dd6872`: sortable headers are real `<button>`s inside `<th>`
+   with `aria-sort` announcing the current order.
    - `components/ui/Directory.tsx:82` uses clickable `<th>` elements for sort.
    - Impact: keyboard and assistive-tech users cannot operate or understand the
      sort state.
@@ -76,6 +94,8 @@ Verification:
      expose `aria-sort`.
 
 7. **Placeholder screenshot palette can reintroduce retired violet**
+   — ✅ FIXED `bad2a4a`: `scripts/gen-screenshots.js` ACCENTS synced with
+   `lib/regions.ts` (violet → teal).
    - `lib/regions.ts:139` correctly uses the live non-violet accent set.
    - `scripts/gen-screenshots.js:20` still includes `#a78bfa`.
    - Impact: regenerating placeholder project images can bring back the old

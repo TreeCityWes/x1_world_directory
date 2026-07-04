@@ -332,6 +332,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   // THE WHALE (boss #1) is the only GLB left — regular mobs are procedural
   // crypto creatures now (Mobs.tsx). Clones only for the boss slots.
   const whaleGltf = useGLTF(WHALE_GLB);
+  const whaleHatGltf = useGLTF("/models/tophat.glb"); // fat-cat accessory
   // the real CC0 shuriken model, flattened into one normalized geometry the
   // whole projectile pool can share
   const shurikenGltf = useGLTF("/models/shuriken.glb");
@@ -386,9 +387,59 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           mesh.material = m;
         }
       });
+      // fat-cat pass: gold-banded top hat + monocle-and-chain. The menace was
+      // all in the shader — one accessory flips the read from "animal" to
+      // "whale (investor)" (GLM design review; ninja_game/ASSETS.md agrees).
+      // Whale local space after centering: y ±0.164, z ±0.525, nose +z.
+      const gold = new THREE.MeshStandardMaterial({
+        color: "#f0c75e",
+        metalness: 0.8,
+        roughness: 0.3,
+        emissive: "#c9921e",
+        emissiveIntensity: 0.35,
+      });
+      const hat = whaleHatGltf.scene.clone(true);
+      hat.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh || !mesh.material) return;
+        const m = (mesh.material as THREE.MeshStandardMaterial).clone();
+        if (m.name === "F44336" || m.name === "FFCC88") {
+          m.color?.set("#f0c75e");
+          m.emissive?.set("#c9921e");
+          m.emissiveIntensity = 0.35;
+        }
+        mesh.material = m;
+      });
+      // measured whale top surface (clone space): back hump peaks y≈0.164 at
+      // z≈-0.1..0.11; head tapers 0.143→0.095 toward the nose at z 0.52.
+      // A small hat buried in that hull was invisible at game distance — go
+      // BIG on the back hump instead: half the whale's width, unmissable.
+      const hbox = new THREE.Box3().setFromObject(hat);
+      const hsize = hbox.getSize(new THREE.Vector3());
+      const hk = 0.55 / (Math.max(hsize.x, hsize.z) || 1);
+      const hcenter = hbox.getCenter(new THREE.Vector3());
+      hat.scale.setScalar(hk);
+      hat.position.set(-hcenter.x * hk, -hbox.min.y * hk, -hcenter.z * hk);
+      const hatSeat = new THREE.Group();
+      hatSeat.add(hat);
+      hatSeat.position.set(0, 0.15, 0.02); // seated on the back hump
+      hatSeat.rotation.x = 0.1; // tipped toward the nose, jauntily
+      clone.add(hatSeat);
+      // monocle ON the right eye (head half-width ≈0.07 at z 0.4 — the first
+      // attempt floated 0.1 off the hull in empty space)
+      const monocle = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.011, 8, 24), gold);
+      monocle.position.set(0.078, 0.055, 0.4);
+      monocle.rotation.y = Math.PI / 2;
+      clone.add(monocle);
+      for (let c = 0; c < 3; c++) {
+        const link = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), gold);
+        link.position.set(0.085, 0.01 - c * 0.035, 0.37 - c * 0.02);
+        clone.add(link);
+      }
+      clone.name = "whale-boss"; // headless verification finds it by name
       return clone;
     });
-  }, [whaleGltf]);
+  }, [whaleGltf, whaleHatGltf]);
 
   const enemyRefs = useRef<(THREE.Group | null)[]>([]);
   const arrowRefs = useRef<(THREE.Mesh | null)[]>([]);
@@ -457,7 +508,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     e.biteAt = 0;
     e.recoilUntil = 0;
     e.markedUntil = 0; // pool slot reuse must not inherit THEO's scan mark
-    e.lungeAt = type === "boss" ? run.t + 4 : Number.POSITIVE_INFINITY;
+    e.lungeAt =
+      type === "boss"
+        ? run.t + 4
+        : type === "rug"
+          ? run.t + 2.5 + Math.random() * 2 // rugs pull on a staggered clock
+          : Number.POSITIVE_INFINITY;
     e.windupUntil = 0;
     // boss ladder: THE WHALE first, then your dark mirror — alternating after
     if (type === "boss") e.bossKind = world.bossCount++ % 2 === 0 ? "whale" : "nemesis";
@@ -672,9 +728,15 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           }
         } else {
           grp.rotateX(Math.sin(e.t * 6) * 0.14); // chatter
+          // the rug PULL: rear up like a cobra during the windup — the
+          // dodgeable tell — then nose-down as it snaps forward
+          if (e.type === "rug") {
+            if (run.t < e.windupUntil) grp.rotateX(-0.55);
+            else if (run.t < e.windupUntil + 0.45) grp.rotateX(0.3);
+          }
         }
-        // windup shake: the boss visibly coils before its charge
-        const windup = e.type === "boss" && run.t < e.windupUntil;
+        // windup shake: boss coils before its charge, the rug quivers mid-rear
+        const windup = (e.type === "boss" || e.type === "rug") && run.t < e.windupUntil;
         const wob = 1 + Math.sin(e.t * 9) * 0.04;
         const shake = windup ? 1 + Math.sin(run.t * 30) * 0.07 : 1;
         grp.scale.set(shake, wob * (windup ? 1.1 : 1), shake);
@@ -1241,16 +1303,20 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const inHalo = halo > 0 && e.dir.angleTo(world.pLocal) < halo + e.radius / R;
       // Core Meltdown: the halo is a tar pit
       const slow = inHalo && meltdown ? 0.45 : 1;
-      // bosses telegraph: rear back for 0.8s (red flare), then CHARGE
+      // telegraphed charges: bosses rear back 0.8s (red flare) then CHARGE;
+      // rugs do a quick 0.35s rear-up then a short snap-forward — the pull.
+      // Net rug pressure is a touch higher than a flat walk, but now it
+      // arrives in dodgeable bursts instead of a glue-to-you glide.
       let bossMult = 1;
-      if (e.type === "boss") {
+      if (e.type === "boss" || e.type === "rug") {
+        const rug = e.type === "rug";
         if (run.t >= e.lungeAt) {
-          e.windupUntil = run.t + 0.8;
-          e.lungeAt = run.t + 6.5 + Math.random() * 2;
-          spawnBurst(e.dir, "#ff4d4d", 6);
+          e.windupUntil = run.t + (rug ? 0.35 : 0.8);
+          e.lungeAt = run.t + (rug ? 4.5 : 6.5) + Math.random() * 2;
+          if (!rug) spawnBurst(e.dir, "#ff4d4d", 6);
         }
-        if (run.t < e.windupUntil) bossMult = 0.12;
-        else if (run.t < e.windupUntil + 1.1) bossMult = 2.5;
+        if (run.t < e.windupUntil) bossMult = rug ? 0.05 : 0.12;
+        else if (run.t < e.windupUntil + (rug ? 0.45 : 1.1)) bossMult = rug ? 3.2 : 2.5;
       }
       // after biting, an enemy backs off briefly instead of gluing to you
       const recoiling = run.t < e.recoilUntil;

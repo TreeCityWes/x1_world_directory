@@ -250,7 +250,7 @@ function CaptureFlash() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="pointer-events-none absolute inset-x-0 top-[34%] z-40 flex flex-col items-center text-center max-md:top-[28%]"
+          className="pointer-events-none absolute inset-x-0 top-[15%] z-40 flex flex-col items-center text-center max-md:top-[20%]"
         >
           <motion.p
             initial={{ scale: 0.6, y: 18, letterSpacing: "0.4em" }}
@@ -264,7 +264,7 @@ function CaptureFlash() {
             initial={{ scale: 1.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.04 }}
-            className="mt-1 text-3xl font-black italic tracking-tight max-md:text-xl"
+            className="mt-1 text-2xl font-black italic tracking-tight max-md:text-lg"
             style={{
               color: "#fff",
               textShadow: `0 0 12px ${flash.accent}, 0 0 28px ${flash.accent}88, 0 2px 4px rgba(0,0,0,0.6)`,

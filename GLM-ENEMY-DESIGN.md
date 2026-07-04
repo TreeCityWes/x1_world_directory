@@ -175,19 +175,21 @@ backed by Geist Mono, used by all four call sites. One system, one tone.
 
 ## Prioritized action list
 
-1. **Recolor the Bug** off CAPY-green (wasp-amber) — fixes the only hard
-   color-bible violation. ~5 material swaps.
+1. ~~**Recolor the Bug** off CAPY-green (wasp-amber)~~ ✅ `e362aec` — amber
+   body/legs/mandibles/antennae, red eyes kept.
 2. **Nemesis-as-selected-hero-reskin** — the single biggest boss-roster upgrade;
-   reuses loaded GLBs.
-3. **Unify canvas text on Geist Mono** — one helper, four call sites; retires
-   Arial + Courier New.
-4. **Drop the literal "BUG"/"GAS" decals**, replace with the glitch-texture /
-   gwei-flicker proposed above.
-5. **Whale accessory + coin-sack trail** — flips the boss from "animal" to
-   "investor" and ties it to the economy.
-6. **Rug pull-lunge** — ties the mob's best pun to its motion + gives a
-   dodgeable tell.
-7. Gas Wisp chart-spike fin + cyan-hot smoke edge.
+   reuses loaded GLBs. *(open — the remaining high-impact bet)*
+3. ~~**Unify canvas text on Geist Mono**~~ ✅ `e362aec` — `lib/canvasFont.ts`
+   backs site banners, damage numbers, mob decals, and the XEN tee.
+4. ~~**Drop the literal "BUG"/"GAS" decals**~~ ✅ `e362aec` — Bug wears a
+   glitch-hex band; Gas Wisp runs a live 212→487→990 gwei ticker.
+5. ~~**Whale accessory**~~ ✅ game-feel pass — gold-banded top hat seated on
+   the measured back hump + monocle on the right eye. *(coin-sack trail still
+   open — economy tie-in)*
+6. ~~**Rug pull-lunge**~~ ✅ game-feel pass — 0.35s cobra rear-up (tell), then
+   a 0.45s snap-forward on a staggered per-rug clock; rides the boss
+   telegraph rails.
+7. Gas Wisp chart-spike fin + cyan-hot smoke edge. *(open)*
 
 Items 1, 3, and 4 are cheap and tone-raising; 2 is the high-impact design
 bet. The cast's *concepts* are genuinely strong (the crypto puns are the best
