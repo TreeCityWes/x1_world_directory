@@ -4,8 +4,8 @@
 > mode machine, asset pipeline, and a numbered finding register. Cross-check
 > `GLM-REVIEW.md` and `CODEX-REVIEW.md`.
 >
-> **Processed:** `0c72ff6` (Codex + GLM), `ca8efb4` (Grok quick wins). Status
-> column on each finding reflects post-commit state.
+> **Processed:** through `2f9071c` (Codex/GLM → Grok quick wins → loop batches
+> `c57e3ec`–`a557d96`). Per-ID resolution: **§ Loop resolution log** below.
 
 ---
 
@@ -25,7 +25,7 @@
 
 | Function | Formula |
 | --- | --- |
-| `shurikenDamage()` | `(10 + 6×damageLv) × (1 + min(1.5, 0.1×perm.dmg)) × char.dmg` |
+| `shurikenDamage()` | `(10 + 6×damageLv) × (1 + min(1.5, 0.1×perm.dmg)) × char.dmg × diff.statMult` |
 | `fireCooldown()` | `max(0.15, 0.55×char.cooldown × 0.88^firerate × 0.94^perm.rate)` |
 | `magnetAngle()` | `min(1.1, 0.15×(1 + 0.6×magnetLv) × (1 + 0.08×perm.magnet))` rad |
 | `currentSpeedMult()` | `(1 + 0.1×speedLv) × (1 + min(0.4, 0.05×perm.speed)) × diff.statMult × char.speed × finalStand` |
@@ -36,7 +36,7 @@
 | `xpMult()` | `(1 + 0.1×perm.xp) × char.xp` |
 | `haloAngle()` | `(0.16 + 0.03×haloLv) × (meltdown ? 1.6 : 1)` |
 
-**Note:** Cursed `statMult` (0.7) applies to HP/speed via `resetRun` / `currentSpeedMult`, not to `shurikenDamage()` — COMBAT-06.
+**Note:** Cursed `statMult` (0.7) applies to HP, speed, and outgoing damage — fixed `2013539` (COMBAT-06).
 
 ### Secondary damage (flat — does not use `shurikenDamage()`)
 
@@ -62,21 +62,21 @@
 ## Appendix B — Spawn and boss lifecycle
 
 ```
-Regular mob ──► world.pending (0.7s ring) ──► spawnEnemy
-Block % 5 boss ──► spawnEnemy INSTANT (retry if pool full since ca8efb4)
-Finale (5 sites left) ──► spawnEnemy INSTANT + 2.5× HP Nemesis
+Regular mob ──► world.pending (0.7s ring, pool 40) ──► hatch retries until slot frees
+Block % 5 boss ──► spawnEnemy INSTANT + full-screen nameplate (by design)
+Finale (5 sites left) ──► spawnEnemy INSTANT + 2.5× HP Nemesis + nameplate
 Boss pool: slots 52–56 only (4 total)
 ```
 
 | Event | Telegraph? | Status |
 | --- | --- | --- |
-| Regular mob | 0.7s red ring | shipped |
-| Pending pool full (12 slots) | instant bypass | COMBAT-08 open |
-| Block % 5 boss | none | COMBAT-01 open |
-| Finale Nemesis | nameplate only | COMBAT-01 open |
+| Regular mob | 0.7s red ring; hatch retries | fixed `c57e3ec` |
+| Pending pool (40 slots) | ring stays until spawn lands | fixed `c57e3ec` |
+| Block % 5 boss | nameplate (not ground ring) | by design |
+| Finale Nemesis | nameplate | by design |
 | Gremlin lunge | speed wobble | partial |
 
-**Partial fix `ca8efb4`:** `bossAtBlock` stamped only when `spawnEnemy("boss")` succeeds; retries next frame instead of skipping the block forever.
+**`ca8efb4`:** `bossAtBlock` only stamped on successful spawn. **`c57e3ec`:** pending 12→40; hatch does not clear ring without payoff.
 
 ---
 
@@ -186,40 +186,40 @@ Status: **open** | **partial** | **fixed** | **deferred**
 
 ### Combat
 
-| ID | P | Finding | Status |
-| --- | --- | --- | --- |
-| COMBAT-01 | P1 | Boss/finale spawns skip 0.7s telegraph | open |
-| COMBAT-02 | P1 | Shield HUD shows for all chars; hex VFX CAPY-only | open |
-| COMBAT-03 | P1 | CAPY slash aim stale when idle | open |
-| COMBAT-04 | P1 | `pick()` no validation against `choices` | open |
-| COMBAT-05 | P2 | Halo/arc/katana/wake ignore damage upgrades | open |
-| COMBAT-06 | P2 | Cursed statMult not applied to outgoing damage | open |
-| COMBAT-07 | P2 | Evolution queue: first ready evo only | open |
-| COMBAT-08 | P2 | Pending pool overflow → instant spawn | open |
-| COMBAT-09 | P3 | `sfx.boss()` when spawn fails | open |
-| COMBAT-10 | P3 | Dead `run.fx.speed/dmg/rate/xp` fields | open |
+| ID | P | Finding | Status | Commit |
+| --- | --- | --- | --- | --- |
+| COMBAT-01 | P1 | Boss/finale spawns skip ground-ring telegraph | by design | — |
+| COMBAT-02 | P1 | Shield hex VFX CAPY-only | fixed | `c57e3ec` |
+| COMBAT-03 | P1 | CAPY slash aim stale when idle | fixed | `c57e3ec` |
+| COMBAT-04 | P1 | `pick()` no validation against `choices` | fixed | `c57e3ec` |
+| COMBAT-05 | P2 | Halo/arc/katana/wake ignore damage upgrades | rejected | — |
+| COMBAT-06 | P2 | Cursed statMult not on outgoing damage | fixed | `2013539` |
+| COMBAT-07 | P2 | Evolution queue: first ready evo only | fixed | `2013539` |
+| COMBAT-08 | P2 | Pending pool overflow → instant spawn | fixed | `c57e3ec` |
+| COMBAT-09 | P3 | `sfx.boss()` when spawn fails | fixed | verified |
+| COMBAT-10 | P3 | Dead `run.fx.speed/dmg/rate/xp` fields | fixed | `2013539` |
 
 ### Security
 
-| ID | P | Finding | Status |
-| --- | --- | --- | --- |
-| SEC-01 | P1 | Client-trusted scores | deferred |
-| SEC-02 | P1 | Wallet squatting without sig | open |
-| SEC-03 | P1 | Nonce HMAC `"dev-secret"` fallback | open |
-| SEC-04 | P2 | Nonce GET unrate-limited | open |
-| SEC-05 | P2 | HMAC secret = service-role key | open |
-| SEC-06 | P2 | No wallet accountChanged sync | open |
-| SEC-07 | P2 | Guest DELETE deviceId-only | open |
+| ID | P | Finding | Status | Commit |
+| --- | --- | --- | --- | --- |
+| SEC-01 | P1 | Client-trusted scores | deferred | — |
+| SEC-02 | P1 | Wallet squatting without sig | fixed | `35c7988` |
+| SEC-03 | P1 | Nonce HMAC `"dev-secret"` fallback | fixed | `35c7988` |
+| SEC-04 | P2 | Nonce GET unrate-limited | fixed | `35c7988` |
+| SEC-05 | P2 | HMAC secret = service-role key | fixed | `35c7988` |
+| SEC-06 | P2 | No wallet accountChanged sync | open | — |
+| SEC-07 | P2 | Guest DELETE deviceId-only | accepted | — |
 
 ### Performance
 
-| ID | P | Finding | Status |
-| --- | --- | --- | --- |
-| PERF-01 | P2 | 55 RegionSite useFrame + lights | open |
-| PERF-02 | P2 | All GLBs load per CharacterBody | open |
-| PERF-03 | P2 | GasWisp useFrame when invisible | open |
-| PERF-04 | P3 | Arc TubeGeometry dispose/recreate | open |
-| PERF-05 | P3 | Unbounded site label texture cache | open |
+| ID | P | Finding | Status | Commit |
+| --- | --- | --- | --- | --- |
+| PERF-01 | P2 | 55 RegionSite useFrame + lights | partial | `a557d96` |
+| PERF-02 | P2 | All GLBs load per CharacterBody | deferred | — |
+| PERF-03 | P2 | GasWisp useFrame when invisible | fixed | `a557d96` |
+| PERF-04 | P3 | Arc TubeGeometry dispose/recreate | deferred | — |
+| PERF-05 | P3 | Unbounded site label texture cache | fixed | `a557d96` |
 
 ### UX / mobile
 
@@ -274,25 +274,27 @@ Status: **open** | **partial** | **fixed** | **deferred**
 | CAPY/fort shield | P3 open | — | partial | Math.max `ca8efb4` |
 | Win target = regions.length | deferred | — | deferred | — |
 | NetworkLinks missing | — | — | open | — |
-| Boss telegraph gap | — | — | open | deep pass |
-| pick() validation | — | — | open | deep pass |
+| Boss telegraph gap | — | — | by design | nameplate |
+| pick() validation | — | — | fixed | `c57e3ec` |
+| Wallet squatting | — | — | fixed | `35c7988` |
+| Nonce dev-secret | — | — | fixed | `35c7988` |
 
 ---
 
-## Highest-value deep fixes (ordered)
+## Highest-value next (post-loop)
 
-1. COMBAT-01 — boss/finale through `world.pending` telegraph
-2. UX-01 — wallet connect on death/win overlay (mobile)
-3. SEC-01 / SEC-03 — label casual board + fail-closed nonce secret
-4. COMBAT-04 — validate `pick(id)` against `choices`
-5. PERF-01 — instanced landmarks or merged draw calls
-6. COMBAT-05 — unified `playerDps()` for secondary sources
-7. Mobile run ribbon (design session)
-8. Finale player-power scaling (design session)
+1. UX-01 — wallet connect on death/win overlay (mobile)
+2. Mobile run ribbon (design session)
+3. Finale player-power scaling (design session)
+4. SEC-01 — run-token design if competitive integrity matters
+5. Site power balance — break stat-site-first route
+6. PERF-01 — landmark instancing (partial tessellation done)
+7. Difficulty-normalized rankings (design session)
+8. Network links on globe
 
 ---
 
-## Loop resolution log — Opus 4.8 (through `a557d96`)
+## Loop resolution log (through `2f9071c`)
 
 Worked the register in priority batches. Status deltas:
 

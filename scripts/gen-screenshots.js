@@ -17,7 +17,8 @@ fs.mkdirSync(outDir, { recursive: true });
 
 // keep in sync with lib/regions.ts
 const slugify = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const ACCENTS = ["#f0c75e", "#3b82f6", "#7dd3fc", "#a78bfa", "#4ade80", "#fb923c"];
+// keep in sync with lib/regions.ts ACCENTS — violet (#a78bfa) is retired
+const ACCENTS = ["#f0c75e", "#3b82f6", "#7dd3fc", "#2dd4bf", "#4ade80", "#fb923c"];
 const catAccent = new Map();
 const accentFor = (c) => {
   if (!catAccent.has(c)) catAccent.set(c, ACCENTS[catAccent.size % ACCENTS.length]);

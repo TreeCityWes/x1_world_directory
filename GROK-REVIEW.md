@@ -10,43 +10,40 @@
 
 ## Audit processing log (2026-07-04)
 
-Processed with discretion in two commits:
+Three waves processed. Full per-ID log: **`GROK-REVIEW-DEEP.md` § Loop resolution log**.
 
 | Commit | Scope |
 | --- | --- |
-| `0c72ff6` | Codex + GLM picks: pause, i-frames, planet freeze, linear scoring, rug rename, leaderboard rate limit, doc truth |
-| `ca8efb4` | Grok quick wins: fort shield `Math.max`, boss spawn retry, game-aware OG/metadata, iOS safe-area joystick |
+| `0c72ff6` | Codex + GLM: pause, i-frames, planet freeze, linear scoring, rug rename, rate limit, doc truth |
+| `ca8efb4` | Grok quick wins: fort shield `Math.max`, boss retry, OG/metadata, safe-area joystick |
+| `c57e3ec` | Loop batch 1 — P1 combat: telegraph hatch retry, pending 12→40, `pick()` validation, shield VFX all chars, idle CAPY aim |
+| `2013539` | Loop batch 2 — P2 balance: Cursed weakens damage, all ready evos offered, dead `fx` fields removed; COMBAT-05 skipped (keep it hard) |
+| `67cbc96` | Owner touch: center-screen capture bonus flash (power granted) |
+| `35c7988` | Loop batch 3 — security: nonce fail-closed, derived HMAC key, nonce GET rate limit, wallet squatting closed |
+| `a557d96` | Loop batch 4 — perf: idle GasWisp gated, `LOW_GPU` sphere tessellation, texture cache cap |
+| `2f9071c` | Register sync — resolution log through `a557d96` |
 
-**Verified headless:** Esc/P pause overlay shows, resumes clean, run continues.
+**Verified:** pause headless; capture flash live ("SITE CAPTURED" + power label).
 
-### Taken (closed in code or docs)
+### Taken (register closed)
 
-- Pause overlay (Esc/P) — resume / abandon; Esc no longer quits mid-run; esc-confirm leak gone
-- Global 0.4s i-frames after any bite
-- Planet inertia frozen under pause / level-up / death / win
-- `scoreOf` linear time term (T² removed)
-- `whale` mob → `rug` with matching color; dead `MODEL_PATH` entries removed
-- Leaderboard per-IP rate limit (POST 12/min, DELETE 5/min → 429) + `res.ok` handling
-- Doc truth: `CLAUDE.md`, `README.md`, `HANDOFF.md` superseded banner, `GLM-REVIEW` dispositions
-- `openMenu` clears `capturedIds`; `POWER_LABEL` fort 8s note; dead exports/tokens removed
-- Fort shield uses `Math.max` — cannot shorten an active CAPY Validator Shield window
-- Bear Market boss: `bossAtBlock` stamped only on successful spawn; retries next frame when pool full
-- OG/metadata sells Survivors, four characters, THE WHALE, inscribe-on-X1
-- TouchPad respects `env(safe-area-inset-bottom/right)`
+All items above plus: telegraph rings no longer clear without a spawn payoff; unsigned wallet POSTs become guest entries; `sfx.boss` only on successful spawn.
 
-### Deliberately deferred (with rationale)
+### Intentionally not done (documented)
 
-| Item | Why deferred |
+| Item | Disposition |
 | --- | --- |
-| Win-target decoupling from `regions.length` | Build-time constant per deploy, not live-mutating; product identity; revisit past ~70 projects |
-| Score run-tokens / anti-cheat | Needs real design, not a patch |
-| `ninja_game/` archival | Owner call; docs label it a non-built prototype |
-| Finale keyed to player power | Design session |
-| Difficulty-normalized rankings | Design session |
-| Ambient music bed | Design session |
-| Daily seed / weekly mutator | Design session |
-| Boss attack patterns / boss spawn telegraphs | Design session |
-| Mobile run ribbon layout | Design session |
+| COMBAT-05 secondary-DPS scaling | **Rejected** — buffing halo/arc/katana makes the game easier; owner guardrail "keep it hard" |
+| COMBAT-01 boss ground-ring telegraph | **By design** — full-screen nameplate is the boss tell |
+| Win-target decoupling | **Deferred** — build-time constant; revisit past ~70 projects |
+| SEC-01 run-token anti-cheat | **Deferred** — needs real design |
+| `ninja_game/` archival | **Owner call** |
+| Finale player-power key | **Design session** |
+| Difficulty-normalized rankings | **Design session** |
+| Music bed | **Design session** |
+| Daily seed / weekly mutator | **Design session** |
+| Mobile run ribbon | **Design session** |
+| PERF-02 lazy GLB per char | **Deferred** — Suspense/invisible-character risk |
 
 ---
 
@@ -206,11 +203,9 @@ imported. Treat the embedded 3D game as the product.
 
 ### Leaderboard & trust
 
-- **[P1] Scores are client-trusted.** POST body carries `score`; wallet signature
-  proves address ownership, not that a run occurred. Anyone can POST arbitrary
-  scores with a name + deviceId. Label board as casual, add server-issued run
-  tokens, or store replay hashes if competitive integrity matters. **Deferred** —
-  needs real design.
+- **[P1] Scores are client-trusted (SEC-01).** Wallet squatting closed `35c7988`
+  (unsigned wallet → guest entry). Score value itself still client-supplied —
+  **deferred** until run-token design.
 - **[P3] Rankings ignore difficulty.** Hard (1.5×) and Cursed (2×) multiply locally
   but the board sorts raw `score`. **Deferred** — design session.
 - **[P3] No score without name.** `die()` / `win()` only call `submitScore` when
@@ -219,14 +214,11 @@ imported. Treat the embedded 3D game as the product.
 
 ### Game state & edge cases
 
-- **[P3] CAPY shield and fort shield share `run.fx.shield`.** **Partial fix `ca8efb4`**
-  — both use `Math.max` so fort capture cannot shorten an active window. Still one
-  timestamp + HUD/VFX split (hex barrier CAPY-only; fort shows text on other chars).
-  Full split into `fx.capyShield` / `fx.fortShield` remains optional polish.
-- **[P2] Boss pool contention (4 slots).** **Partial fix `ca8efb4`** — scheduled
-  block bosses retry until spawn lands (`bossAtBlock` only stamped on success).
-  Finale Nemesis still instant-spawns into the same pool; grow pool or reserve a
-  finale slot if collisions persist in long runs.
+- ~~**[P3] CAPY shield and fort shield share `run.fx.shield`.**~~ **Fixed `c57e3ec`**
+  — hex barrier renders for any character with active shield; `Math.max` from `ca8efb4`
+  still prevents fort from shortening CAPY window.
+- **[P2] Boss pool contention (4 slots).** **Partial** — block bosses retry (`ca8efb4`);
+  finale still instant-spawns; nameplate telegraph by design (`COMBAT-01`).
 - **[P3] Enemy pool exhaustion is silent.** Goblin pool = 26; when full, spawns
   silently fail. At least HUD feedback ("horde at capacity") or soft cap scaling.
 
@@ -305,49 +297,43 @@ imported. Treat the embedded 3D game as the product.
 
 ## 6. Recently fixed (verify, don't regress)
 
-| Item | Commit | Status |
+See **`GROK-REVIEW-DEEP.md` § Loop resolution log** for per-ID mapping. Highlights:
+
+| Wave | Commit | Items |
 | --- | --- | --- |
-| Pause overlay (Esc/P) | `0c72ff6` | done |
-| Global i-frames (0.4s) | `0c72ff6` | done |
-| `whale` mob → `rug` | `0c72ff6` | done |
-| T² scoring → linear time | `0c72ff6` | done |
-| Planet freeze under modals | `0c72ff6` | done |
-| Level-up time freeze | prior | done |
-| `markedUntil` pool leak | prior | done |
-| `openMenu` clears `capturedIds` | `0c72ff6` | done |
-| SidePanel `upgradeView` | prior | done |
-| Leaderboard rate limiting | `0c72ff6` | done |
-| Vestigial `--accent` CSS token | `0c72ff6` | done |
-| Fort shield `Math.max` (no shorten) | `ca8efb4` | partial |
-| Boss spawn retry when pool full | `ca8efb4` | partial |
-| Game-aware OG/metadata copy | `ca8efb4` | done |
-| TouchPad safe-area insets | `ca8efb4` | done |
+| Codex + GLM | `0c72ff6` | pause, i-frames, linear score, rug, rate limit, docs |
+| Grok quick | `ca8efb4` | fort Math.max, boss retry, OG copy, safe-area |
+| Loop P1 | `c57e3ec` | telegraph hatch, pending×40, pick validation, shield VFX, CAPY aim |
+| Loop P2 | `2013539` | Cursed dmg, all evos, dead fx fields |
+| Owner | `67cbc96` | capture bonus flash |
+| Security | `35c7988` | nonce fail-closed, derived key, wallet squatting |
+| Perf | `a557d96` | GasWisp idle, LOW_GPU tessellation, label cache cap |
 
 ---
 
-## Highest-leverage next (post-`ca8efb4`)
+## Highest-leverage next (post-loop)
 
-Design-tier items worth their own sessions:
+Design sessions only — register is patch-clean:
 
-1. **Mobile run ribbon** — capture count + current targets pinned over canvas on `max-md`
-2. **Finale keyed to player power** — not "5 sites left" alone
-3. **Boss telegraphs + attack patterns** — reuse `world.pending` for boss/finale spawns
-4. **Site power balance** — break stat-site-first solved route
-5. **Leaderboard integrity** — casual label, difficulty tabs, or run-token design
-6. **Tutorialize site loop** — arrows → pad → power → final Nemesis
-7. **Network links** on globe (orphan comment in `Planet.tsx`)
+1. **Mobile run ribbon** + **UX-01** wallet on end screens
+2. **Finale keyed to player power**
+3. **Site power balance** — break stat-site-first route
+4. **SEC-01 run tokens** — if competitive integrity matters
+5. **Difficulty-normalized rankings**
+6. **Tutorialize site loop**
+7. **Network links** on globe
 8. **WebGL / reduced-motion fallback**
-9. **Explore vs game landing** — first-run flow now that metadata sells both
-10. **Deep combat polish** — `pick()` validation, CAPY idle slash aim, secondary-DPS scaling (see `GROK-REVIEW-DEEP.md`)
+9. **Music bed** / **daily seed**
+10. **`ninja_game/`** archive (owner call)
 
-Still owner-call: **`ninja_game/`** archive vs migrate dash/boss telegraph.
+Not planned: secondary-DPS scaling (rejected — easier game); boss ground-rings (nameplate by design).
 
 ---
 
 ## Summary
 
-Codex + GLM P1 fairness gaps and doc drift are largely closed (`0c72ff6`). Grok
-quick wins landed (`ca8efb4`). What remains is **design work**, not emergency fixes:
-mobile run ergonomics, finale/boss drama, site-capture game theory, competitive
-score trust, and the unfinished explore cinematic. See **`GROK-REVIEW-DEEP.md`** for
-formulas, security model, perf hotspots, and the full finding register.
+The audit loop through `2f9071c` closed every patch-tier P1 in the register: combat
+correctness, security hardening, and perf quick wins. Intentional calls are documented
+(COMBAT-05 rejected, COMBAT-01 nameplate-by-design). What remains is product design,
+not bug fixes. **`GROK-REVIEW-DEEP.md`** holds formulas, trust model, and the full
+resolution log for the next auditor.

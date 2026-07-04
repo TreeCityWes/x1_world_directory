@@ -46,3 +46,8 @@ Client Component (see `components/ExperienceLoader.tsx`). Check
   decisions (score integrity, finale tuning, site-route solving, mobile HUD).
 Check items off as you resolve them; don't let these go stale like `HANDOFF.md`
 did.
+
+**Design review:** `GLM-ENEMY-DESIGN.md` — 3D enemy cast + sprite/texture
+critique with concrete proposals (Bug recolor off CAPY-green, Nemesis-as-reskin
+of the selected hero, unify canvas text on Geist Mono, drop literal word
+decals, whale accessory, rug pull-lunge).

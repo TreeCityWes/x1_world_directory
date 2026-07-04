@@ -101,9 +101,12 @@ export async function POST(req: Request) {
     if (!member) return NextResponse.json({ ok: false }, { status: 400 });
     const storedWallet = verified ? wallet : "";
     if (SB_URL && SB_KEY) {
-      // keep personal best only: read current, upsert if beaten
+      // keep personal best only: read current, upsert if beaten. A failed
+      // READ must NOT be treated as "no row" — that could overwrite a higher
+      // personal best with a lower score. Bail with 500 instead.
       const cur = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}&select=score`);
-      const rows = cur.ok ? ((await cur.json()) as { score: number }[]) : [];
+      if (!cur.ok) throw new Error(`sb read ${cur.status}`);
+      const rows = (await cur.json()) as { score: number }[];
       if (rows.length === 0 || rows[0].score < score) {
         const res = await sb("leaderboard?on_conflict=member", {
           method: "POST",

@@ -264,6 +264,7 @@ const world = {
       spawnAt: 0,
       bossAtBlock: 0,
   bossCount: 0,
+  finalWanted: false, // finale requested (≤5 sites left) — spawn may be retried
   finalSpawned: false,
   finalIdx: -1,
       siteIds: [] as string[],
@@ -1076,6 +1077,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       for (const p of world.pending) p.active = false;
       for (const d of world.dmgNums) d.alive = false;
       for (const cf of world.captureFx) cf.active = false;
+      world.finalWanted = false;
       world.finalSpawned = false;
       world.finalIdx = -1;
       world.captured.clear();
@@ -1142,16 +1144,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             break;
           }
         }
-        // telegraph the spawn: a red warning ring pulses for 0.7s first
+        // telegraph the spawn: a red warning ring pulses for 0.7s first.
+        // If all 40 pending slots are busy the field is already saturated —
+        // defer the rest of this burst (they hatch next tick as rings clear)
+        // rather than spawning an untelegraphed enemy.
         const p = world.pending.find((x) => !x.active);
-        if (p) {
-          p.active = true;
-          p.type = type;
-          p.dir.copy(randomDirNear(world.pLocal, 0.9, 1.8));
-          p.at = run.t + 0.7;
-        } else {
-          spawnEnemy(type);
-        }
+        if (!p) break;
+        p.active = true;
+        p.type = type;
+        p.dir.copy(randomDirNear(world.pLocal, 0.9, 1.8));
+        p.at = run.t + 0.7;
       }
     }
     // telegraphed spawns hatch — keep the telegraph alive until a pool slot
@@ -1172,6 +1174,23 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           bossCard: boss.bossKind === "whale" ? "THE WHALE SURFACES" : "YOUR SHADOW ARRIVES",
           bossCardAt: Date.now(),
         });
+      }
+    }
+    // THE FINAL NEMESIS must always appear — retry until a boss slot frees.
+    // Victory is gated on world.finalSpawned, so a full pool at the last
+    // capture can never let the run end without the finale (COMBAT-01 bypass).
+    if (world.finalWanted && !world.finalSpawned) {
+      const fb = spawnEnemy("boss");
+      if (fb) {
+        fb.bossKind = "nemesis";
+        fb.maxHp = fb.hp = fb.maxHp * 2.5;
+        fb.dmg = Math.round(fb.dmg * 1.3);
+        fb.speed *= 1.15;
+        world.finalIdx = world.enemies.indexOf(fb);
+        world.finalSpawned = true;
+        run.finalBossAlive = true;
+        useGame.setState({ bossCard: "THE FINAL NEMESIS AWAKENS", bossCardAt: Date.now() });
+        sfx.boss();
       }
     }
 
@@ -1642,22 +1661,11 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         world.captured.add(id);
         useGame.setState((s) => ({ capturedIds: [...s.capturedIds, id] }));
         run.captured = world.captured.size;
-        // the FINAL BOSS crashes the party when 5 sites remain
-        if (!world.finalSpawned && regions.length - world.captured.size <= 5) {
-          const fb = spawnEnemy("boss");
-          if (fb) {
-            fb.bossKind = "nemesis";
-            fb.maxHp = fb.hp = fb.maxHp * 2.5;
-            fb.dmg = Math.round(fb.dmg * 1.3);
-            fb.speed *= 1.15;
-            world.finalIdx = world.enemies.indexOf(fb);
-            world.finalSpawned = true;
-            run.finalBossAlive = true;
-            useGame.setState({ bossCard: "THE FINAL NEMESIS AWAKENS", bossCardAt: Date.now() });
-            sfx.boss();
-          }
-        }
-        if (world.captured.size >= regions.length && !run.finalBossAlive) {
+        // request the FINAL BOSS at 5 sites left; the actual spawn (with
+        // retry on a full pool) happens in the main loop so it can NEVER be
+        // skipped, and victory is gated on it having spawned
+        if (regions.length - world.captured.size <= 5) world.finalWanted = true;
+        if (world.captured.size >= regions.length && world.finalSpawned && !run.finalBossAlive) {
           store.setActiveSites([]);
           store.win();
           return;
