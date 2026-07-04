@@ -122,6 +122,8 @@ export default function Planet() {
   const sphere = useRef<THREE.Mesh>(null);
   const keys = useKeyboard();
   const vel = useRef({ x: 0, y: 0, z: 0 }); // angular velocity around world axes
+  const touchAz = useRef(0); // camera azimuth FROZEN at stick-press (see below)
+  const touchHeld = useRef(false);
   const dragging = useRef(false); // true while drag-spinning — gates the idle drift
   const lastNear = useRef<string | null>(null);
   const lastClosest = useRef<string | null>(null);
@@ -189,13 +191,23 @@ export default function Planet() {
     // "forward" is always away from the camera, whatever its orbit angle
     if (inputAllowed) {
       const az = moveState.camAz;
-      // keyboard digital + joystick analog, summed then clamped to unit length
-      const fwd = (k.forward ? 1 : 0) - (k.back ? 1 : 0) + touchStick.y;
-      const side = (k.right ? 1 : 0) - (k.left ? 1 : 0) + touchStick.x;
-      // desired surface direction in world space — NORMALIZED so diagonals
-      // aren't √2 faster than cardinal runs
-      let mx = -Math.sin(az) * fwd + Math.cos(az) * side;
-      let mz = -Math.cos(az) * fwd - Math.sin(az) * side;
+      // The stick's reference frame FREEZES at press. Mapping it against the
+      // live camera azimuth creates a feedback loop (stick turns ninja →
+      // camera follows → same thumb now means a new direction → camera
+      // chases forever = the mobile swooping bug). Frozen frame = push left,
+      // camera swings once, settles.
+      if (touchStick.active && !touchHeld.current) touchAz.current = az;
+      touchHeld.current = touchStick.active;
+      const kFwd = (k.forward ? 1 : 0) - (k.back ? 1 : 0);
+      const kSide = (k.right ? 1 : 0) - (k.left ? 1 : 0);
+      // desired surface direction in world space — keyboard uses the live
+      // camera frame, stick uses its press-time frame; NORMALIZED so
+      // diagonals aren't √2 faster than cardinal runs
+      const ta = touchAz.current;
+      let mx = -Math.sin(az) * kFwd + Math.cos(az) * kSide;
+      let mz = -Math.cos(az) * kFwd - Math.sin(az) * kSide;
+      mx += -Math.sin(ta) * touchStick.y + Math.cos(ta) * touchStick.x;
+      mz += -Math.cos(ta) * touchStick.y - Math.sin(ta) * touchStick.x;
       const mlen = Math.hypot(mx, mz);
       if (mlen > 1) {
         mx /= mlen;
@@ -204,7 +216,8 @@ export default function Planet() {
       // map to planet angular velocity (ω_x moves the ninja -Z, ω_z moves +X)
       v.x += ACC * mult * dt * -mz;
       v.z += ACC * mult * dt * mx;
-      moveState.inputActive = fwd !== 0 || side !== 0 || touchStick.active;
+      moveState.inputActive =
+        kFwd !== 0 || kSide !== 0 || touchStick.x !== 0 || touchStick.y !== 0;
     } else {
       moveState.inputActive = false;
     }
