@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { base58, base64 } from "@scure/base";
 import { nonceValid } from "@/lib/nonce";
+import { rateLimited } from "@/lib/ratelimit";
 
 /**
  * Global leaderboard, backed by Supabase (PostgREST — no client dependency).
@@ -20,24 +21,6 @@ type Entry = { name: string; wallet: string; score: number; diff: string; at: nu
 // in-memory fallback store
 const mem = (globalThis as unknown as { __x1lb?: Map<string, Entry> }).__x1lb ?? new Map<string, Entry>();
 (globalThis as unknown as { __x1lb?: Map<string, Entry> }).__x1lb = mem;
-
-// Best-effort per-instance rate limiting — enough to blunt casual spam;
-// provider-level protection is the real wall.
-const rlHits = new Map<string, number[]>();
-function rateLimited(req: Request, kind: string, max: number, windowMs = 60_000) {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "local";
-  const key = `${kind}:${ip}`;
-  const now = Date.now();
-  const hits = (rlHits.get(key) ?? []).filter((t) => now - t < windowMs);
-  if (hits.length >= max) return true;
-  hits.push(now);
-  rlHits.set(key, hits);
-  if (rlHits.size > 5000) rlHits.clear(); // memory backstop
-  return false;
-}
 
 function sb(path: string, init?: RequestInit) {
   return fetch(`${SB_URL}/rest/v1/${path}`, {
@@ -110,8 +93,13 @@ export async function POST(req: Request) {
       }
     }
 
-    const member = deriveMember(wallet, (body as { deviceId?: string }).deviceId);
+    // SEC-02: only claim a wallet's leaderboard slot when the signature
+    // actually verified — an unsigned "wallet" is treated as a guest entry so
+    // nobody can squat an address they don't control (and we don't display it).
+    const deviceId = (body as { deviceId?: string }).deviceId;
+    const member = verified ? `w:${wallet}` : deriveMember("", deviceId);
     if (!member) return NextResponse.json({ ok: false }, { status: 400 });
+    const storedWallet = verified ? wallet : "";
     if (SB_URL && SB_KEY) {
       // keep personal best only: read current, upsert if beaten
       const cur = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}&select=score`);
@@ -121,7 +109,7 @@ export async function POST(req: Request) {
           method: "POST",
           headers: { Prefer: "resolution=merge-duplicates" },
           body: JSON.stringify([
-            { member, name, wallet, score, diff, verified, updated_at: new Date().toISOString() },
+            { member, name, wallet: storedWallet, score, diff, verified, updated_at: new Date().toISOString() },
           ]),
         });
         if (!res.ok) throw new Error(`sb upsert ${res.status}`);
@@ -135,7 +123,7 @@ export async function POST(req: Request) {
       }
     } else {
       const prev = mem.get(member);
-      if (!prev || prev.score < score) mem.set(member, { name, wallet, score, diff, at: Date.now() });
+      if (!prev || prev.score < score) mem.set(member, { name, wallet: storedWallet, score, diff, at: Date.now() });
       else mem.set(member, { ...prev, name });
     }
     return NextResponse.json({ ok: true });
