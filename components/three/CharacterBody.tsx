@@ -1,9 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
+import { SkeletonUtils } from "three-stdlib";
 import * as THREE from "three";
 import { CHARACTERS, type CharacterId, type CharacterDef } from "@/lib/characters";
+import { moveState } from "@/lib/gameState";
+import { prefersReducedMotion } from "@/lib/motion";
 import { monoFont } from "@/lib/canvasFont";
 
 // x1.ninja logo palette: charcoal hood + electric-blue headband/X + gold
@@ -71,111 +75,187 @@ function normClone(
   return clone;
 }
 
-/** Give the pose-baked Jack REAL legs: his GLB has no skeleton, so carve
- *  the mesh at a cut plane below the crotch — triangles of Pants/Socks/Shoes
- *  fully below it bucket into left/right leg geometries (by centroid x),
- *  rebuilt in character space under hip-pivot groups the run loop can swing.
- *  The remainder (waist) stays on the body. */
-function splitJackLegs(body: THREE.Object3D) {
-  const CUT = 0.3; // character space: feet y=0, height 0.78
-  const LEG_MATS = new Set(["Pants", "Shoes", "Socks"]);
-  body.updateMatrixWorld(true);
-  const _p = new THREE.Vector3();
-  const _n = new THREE.Vector3();
-  const nrm = new THREE.Matrix3();
-
-  type Bucket = { pos: number[]; nor: number[]; uv: number[] };
-  const parts: Record<string, { L: Bucket; R: Bucket; rest: Bucket; mat: THREE.Material }> = {};
-  const doomed: THREE.Mesh[] = [];
-
-  body.traverse((o) => {
-    const mesh = o as THREE.Mesh;
-    if (!mesh.isMesh || Array.isArray(mesh.material)) return;
-    const name = (mesh.material as THREE.Material).name;
-    if (!LEG_MATS.has(name)) return;
-    const geo = mesh.geometry.index
-      ? mesh.geometry.toNonIndexed()
-      : (mesh.geometry.clone() as THREE.BufferGeometry);
-    const pos = geo.getAttribute("position") as THREE.BufferAttribute;
-    const nor = geo.getAttribute("normal") as THREE.BufferAttribute | null;
-    const uv = geo.getAttribute("uv") as THREE.BufferAttribute | null;
-    nrm.getNormalMatrix(mesh.matrixWorld);
-    const part =
-      parts[name] ??
-      (parts[name] = {
-        L: { pos: [], nor: [], uv: [] },
-        R: { pos: [], nor: [], uv: [] },
-        rest: { pos: [], nor: [], uv: [] },
-        mat: mesh.material as THREE.Material,
-      });
-    for (let t = 0; t < pos.count; t += 3) {
-      const ws: number[][] = [];
-      const ns: number[][] = [];
-      const uvs: number[][] = [];
-      let below = true;
-      let cx = 0;
-      for (let j = 0; j < 3; j++) {
-        _p.fromBufferAttribute(pos, t + j).applyMatrix4(mesh.matrixWorld);
-        ws.push([_p.x, _p.y, _p.z]);
-        cx += _p.x / 3;
-        if (_p.y >= CUT) below = false;
-        if (nor) {
-          _n.fromBufferAttribute(nor, t + j).applyMatrix3(nrm).normalize();
-          ns.push([_n.x, _n.y, _n.z]);
-        }
-        if (uv) uvs.push([uv.getX(t + j), uv.getY(t + j)]);
-      }
-      const b = below ? (cx < 0 ? part.L : part.R) : part.rest;
-      for (let j = 0; j < 3; j++) {
-        b.pos.push(ws[j][0], ws[j][1], ws[j][2]);
-        if (nor) b.nor.push(ns[j][0], ns[j][1], ns[j][2]);
-        if (uv) b.uv.push(uvs[j][0], uvs[j][1]);
-      }
+/** True world-space bounds of a skinned rig. Box3.setFromObject only reads
+ *  geometry bounding boxes, and a skinned GLB's vertices live in BONE space —
+ *  the measured box comes back ~0.03 units tall and the normalize scale
+ *  explodes. boneTransform() runs the skinning math per-vertex instead. */
+function skinnedBounds(root: THREE.Object3D) {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  const v = new THREE.Vector3();
+  root.traverse((o) => {
+    const sm = o as THREE.SkinnedMesh;
+    if (!sm.isSkinnedMesh) {
+      if ((o as THREE.Mesh).isMesh) box.expandByObject(o);
+      return;
     }
-    doomed.push(mesh);
+    const pos = sm.geometry.getAttribute("position") as THREE.BufferAttribute;
+    const step = Math.max(1, Math.floor(pos.count / 2500)); // sample is plenty
+    for (let i = 0; i < pos.count; i += step) {
+      sm.applyBoneTransform(i, v.fromBufferAttribute(pos, i));
+      box.expandByPoint(v.applyMatrix4(sm.matrixWorld));
+    }
   });
-  doomed.forEach((m) => m.removeFromParent());
+  return box;
+}
 
-  const build = (b: Bucket, offset?: THREE.Vector3) => {
-    const geo = new THREE.BufferGeometry();
-    const p = new Float32Array(b.pos);
-    if (offset) for (let i = 0; i < p.length; i += 3) {
-      p[i] -= offset.x;
-      p[i + 1] -= offset.y;
-      p[i + 2] -= offset.z;
-    }
-    geo.setAttribute("position", new THREE.BufferAttribute(p, 3));
-    if (b.nor.length) geo.setAttribute("normal", new THREE.BufferAttribute(new Float32Array(b.nor), 3));
-    if (b.uv.length) geo.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(b.uv), 2));
-    return geo;
-  };
-  // ONE hip pivot per side (centroid of that side's pants at the cut plane)
-  // shared by every material, or the parts drift apart when swung
-  const hipFor = (side: "L" | "R") => {
-    let sx = 0, sz = 0, n = 0;
-    for (const part of Object.values(parts)) {
-      const b = part[side];
-      for (let i = 0; i < b.pos.length; i += 3) {
-        sx += b.pos[i];
-        sz += b.pos[i + 2];
-        n++;
+/** One animation state for SkinnedHero — resolved by suffix, shortest name
+ *  wins so "Idle" beats "Jump_Idle". */
+function pickClip(clips: THREE.AnimationClip[], suffix: string) {
+  return clips
+    .filter((c) => c.name.toLowerCase().endsWith(suffix.toLowerCase()))
+    .sort((a, b) => a.name.length - b.name.length)[0];
+}
+
+/**
+ * A rigged hero with REAL legs: plays the GLB's own Idle/Walk/Run cycles
+ * through an AnimationMixer, crossfaded and speed-synced to the planet's
+ * surface velocity (moveState.speed). This is what pose-baking threw away —
+ * LEG-ISSUE.md's floating gait was never a tuning problem, it was rigidly
+ * rotating leg chunks standing in for a walk cycle.
+ *
+ * Also used by the select-screen turntable (its own canvas): speed there is
+ * 0, so heroes idle-breathe on the podium for free.
+ */
+function SkinnedHero({
+  url,
+  size,
+  recolor,
+  decal,
+}: {
+  url: string;
+  /** normalized height (longest dimension), feet on y=0 */
+  size: number;
+  recolor?: Record<string, MatOverride>;
+  /** optional plane pinned to a bone (Jack's XEN tee) — rides the animation */
+  decal?: { bone: string; texture: THREE.Texture; width: number; out: number };
+}) {
+  const gltf = useGLTF(url);
+  const current = useRef("idle");
+
+  const clone = useMemo(() => {
+    // SkeletonUtils.clone — a plain clone(true) breaks SkinnedMesh bone bindings
+    const root = SkeletonUtils.clone(gltf.scene);
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      // bind-space bounding boxes are degenerate → three would frustum-cull
+      // the hero the moment its tiny phantom box leaves view
+      mesh.frustumCulled = false;
+      mesh.castShadow = true;
+      const patch = (orig: THREE.Material) => {
+        const m = (orig as THREE.MeshStandardMaterial).clone();
+        const over = recolor?.[m.name];
+        if (over) {
+          if (over.color) m.color?.set(over.color);
+          if (over.emissive) m.emissive?.set(over.emissive);
+          if (over.emissiveIntensity !== undefined) m.emissiveIntensity = over.emissiveIntensity;
+        }
+        return m;
+      };
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map(patch)
+        : patch(mesh.material);
+    });
+
+    // normalize: longest dimension -> size, feet on y=0 (real skinned bounds)
+    const box = skinnedBounds(root);
+    const dims = box.getSize(new THREE.Vector3());
+    const k = size / (Math.max(dims.x, dims.y, dims.z) || 1);
+    const center = box.getCenter(new THREE.Vector3());
+    root.scale.setScalar(k);
+    root.position.set(-center.x * k, -box.min.y * k, -center.z * k);
+    root.updateMatrixWorld(true);
+
+    // decal pinned to a bone so it deforms WITH the torso (a character-space
+    // plane would hang frozen in the air while the chest runs)
+    if (decal) {
+      const bone = root.getObjectByName(decal.bone);
+      if (bone) {
+        const mat = new THREE.MeshBasicMaterial({
+          map: decal.texture,
+          transparent: true,
+          alphaTest: 0.4,
+        });
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.5), mat);
+        // bone spaces carry arbitrary armature scale/rotation — size and aim
+        // the plane in WORLD terms, then convert
+        const ws = bone.getWorldScale(new THREE.Vector3());
+        plane.scale.setScalar(decal.width / (ws.x || 1));
+        const bp = bone.getWorldPosition(new THREE.Vector3());
+        plane.position.copy(bone.worldToLocal(bp.clone().add(new THREE.Vector3(0, 0.02, decal.out))));
+        plane.quaternion.copy(bone.getWorldQuaternion(new THREE.Quaternion()).invert());
+        bone.add(plane);
       }
     }
-    return new THREE.Vector3(n ? sx / n : 0, CUT, n ? sz / n : 0);
-  };
-  const hipL = hipFor("L");
-  const hipR = hipFor("R");
-  const legL = new THREE.Group();
-  const legR = new THREE.Group();
-  const waist = new THREE.Group(); // character space — NOT under the scaled body root
-  legL.position.copy(hipL);
-  legR.position.copy(hipR);
-  for (const { L, R, rest, mat } of Object.values(parts)) {
-    if (rest.pos.length) waist.add(new THREE.Mesh(build(rest), mat));
-    if (L.pos.length) legL.add(new THREE.Mesh(build(L, hipL), mat));
-    if (R.pos.length) legR.add(new THREE.Mesh(build(R, hipR), mat));
-  }
-  return { legL, legR, waist };
+
+    return root;
+  }, [gltf, size, recolor, decal]);
+
+  // mixer + the three locomotion states — built in an effect (ref writes are
+  // a render-phase violation under the react compiler), torn down with the clone
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+  const actsRef = useRef<Record<string, THREE.AnimationAction | undefined>>({});
+  useEffect(() => {
+    const mixer = new THREE.AnimationMixer(clone);
+    const act = (suffix: string) => {
+      const clip = pickClip(gltf.animations, suffix);
+      return clip ? mixer.clipAction(clip) : undefined;
+    };
+    const acts: Record<string, THREE.AnimationAction | undefined> = {
+      idle: act("Idle"),
+      walk: act("Walk"),
+      run: act("Run"),
+    };
+    acts.idle?.play();
+    mixer.update(0); // pose before the next painted frame — no bind-pose flash
+    mixerRef.current = mixer;
+    actsRef.current = acts;
+    current.current = "idle";
+    return () => {
+      mixer.stopAllAction();
+      mixerRef.current = null;
+    };
+  }, [clone, gltf]);
+
+  useFrame((_, dt) => {
+    const mixer = mixerRef.current;
+    if (!mixer) return;
+    const acts = actsRef.current;
+    const speed = moveState.speed; // planet surface velocity, 0..~1.44
+    const next = speed > 0.75 && acts.run ? "run" : speed > 0.12 && acts.walk ? "walk" : "idle";
+    if (next !== current.current) {
+      const from = acts[current.current];
+      const to = acts[next];
+      if (to) {
+        to.reset().play();
+        if (from) to.crossFadeFrom(from, 0.18, false);
+      }
+      current.current = next;
+    }
+    // stride cadence tracks ground speed — feet stop skating.
+    // Reduced-motion: the WALK CYCLE still plays while moving (frozen legs on
+    // a gliding body is the exact "floating" bug this component exists to
+    // kill — and the planet's rotation, the real large-field motion, was
+    // never gated anyway), but the idle clip pins to frame 0 so stopping
+    // settles into a STATIC neutral stance, never a mid-stride freeze-frame.
+    // NOTE: Windows "Show animations" off sets the flag browser-wide — the
+    // owner's own machine runs in this mode.
+    const a = acts[current.current];
+    if (a) {
+      a.timeScale =
+        current.current === "run"
+          ? 0.75 + 0.5 * Math.min(1, speed / 1.44)
+          : current.current === "walk"
+            ? 0.7 + 0.6 * Math.min(1, speed / 0.75)
+            : prefersReducedMotion.current
+              ? 0
+              : 1;
+    }
+    mixer.update(dt);
+  });
+
+  return <primitive object={clone} />;
 }
 
 /** One katana for the crossed pair on the back. */
@@ -410,7 +490,6 @@ export default function CharacterBody({
   const capyGltf = useGLTF("/models/capybara.glb");
   const broGltf = useGLTF("/models/cryptobro.glb");
   const hatGltf = useGLTF("/models/tophat.glb");
-  const jackGltf = useGLTF("/models/jack.glb");
   // per-character placement comes from the registry (CHARACTERS[x].model),
   // not per-asset guesses scattered through this file — size AND lift
   const capySize = CHARACTERS.capy.model?.size ?? 0.65;
@@ -442,27 +521,17 @@ export default function CharacterBody({
       }),
     [hatGltf, theoSize],
   );
-  const jack = useMemo(() => {
-    // full body, legs included — the legless float read as broken, and the
-    // model's arm proportions only work with the legs grounding them
-    const body = normClone(jackGltf.scene, jackSize, {
-      recolor: {
-        // a normal guy: short brown hair, plain white tee
-        Hair: { color: "#4a2f15" },
-        Hair2: { color: "#553a1d" },
-        Shirt: { color: "#f2f2f2" },
-        Shirt2: { color: "#e9e9e9" },
-      },
-    });
-    // pin the tee print to the real chest surface (bbox lies — limbs poke
-    // forward of the chest in the idle pose)
-    body.updateMatrixWorld(true);
-    const ray = new THREE.Raycaster(new THREE.Vector3(0, 0.54, 1), new THREE.Vector3(0, 0, -1));
-    const hit = ray.intersectObject(body, true)[0];
-    // carve the pose-baked mesh into hip-pivoted legs the run loop can swing
-    const { legL, legR, waist } = splitJackLegs(body);
-    return { body, legL, legR, waist, chestZ: hit ? hit.point.z : 0.07 };
-  }, [jackGltf, jackSize]);
+  // stable recolor/decal objects — SkinnedHero memoizes its clone on these
+  const jackRecolor = useMemo(
+    () => ({
+      // a normal guy: short brown hair, plain white tee
+      Hair: { color: "#4a2f15" },
+      Hair2: { color: "#553a1d" },
+      Shirt: { color: "#f2f2f2" },
+      Shirt2: { color: "#e9e9e9" },
+    }),
+    [],
+  );
   const xenTex = useMemo(() => {
     const c = document.createElement("canvas");
     c.width = 256;
@@ -475,6 +544,10 @@ export default function CharacterBody({
     ctx.fillText("XEN", 128, 64);
     return new THREE.CanvasTexture(c);
   }, []);
+  const jackDecal = useMemo(
+    () => ({ bone: "Torso", texture: xenTex, width: 0.15, out: 0.06 }),
+    [xenTex],
+  );
 
   if (charId === "capy")
     return (
@@ -483,21 +556,21 @@ export default function CharacterBody({
       </group>
     );
 
-  if (charId === "jack")
+  if (charId === "jack") {
     return (
       <group position={[0, jackLift, 0]}>
-        <primitive object={jack.body} />
-        <primitive object={jack.waist} />
-        {/* real carved legs — the run loop swings these refs */}
-        <primitive object={jack.legL} ref={legLRef} />
-        <primitive object={jack.legR} ref={legRRef} />
-        {/* the XEN tee — pinned to the raycast chest surface */}
-        <mesh position={[0, 0.54, jack.chestZ + 0.004]}>
-          <planeGeometry args={[0.15, 0.075]} />
-          <meshBasicMaterial map={xenTex} transparent alphaTest={0.4} />
-        </mesh>
+        {/* rigged Quaternius Man — the SAME casual-dev source jack.glb was
+            pose-baked from, with the skeleton and Walk/Run cycles kept.
+            The XEN tee rides the Torso bone through the animation. */}
+        <SkinnedHero
+          url="/models/jack_anim.glb"
+          size={jackSize}
+          recolor={jackRecolor}
+          decal={jackDecal}
+        />
       </group>
     );
+  }
 
   if (charId === "theo")
     return (
@@ -534,6 +607,11 @@ export default function CharacterBody({
       </group>
     );
 
+  // X1 Ninja: the procedural logo-true body — owner call (twice now: 651ac87
+  // and again 2026-07-04): the mark IS the character; no GLB stand-ins. Its
+  // legs always animated — they only ever LOOKED frozen because the owner's
+  // machine runs prefers-reduced-motion (see Character.tsx gait exemption).
+  // The locked "???" slot renders the same body in grey.
   return (
     <NinjaBody
       pal={pal}
@@ -549,4 +627,4 @@ export default function CharacterBody({
 useGLTF.preload("/models/capybara.glb");
 useGLTF.preload("/models/cryptobro.glb");
 useGLTF.preload("/models/tophat.glb");
-useGLTF.preload("/models/jack.glb");
+useGLTF.preload("/models/jack_anim.glb");
