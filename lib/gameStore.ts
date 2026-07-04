@@ -150,8 +150,9 @@ export const run = {
   kills: 0,
   captured: 0,
   upgrades: {} as Record<string, number>,
-  // effect expiry timestamps (compared against run.t)
-  fx: { speed: 0, dmg: 0, rate: 0, xp: 0, shield: 0 },
+  // effect expiry timestamp (compared against run.t) — only the shield is
+  // timed; permanent site buffs live in `perm`
+  fx: { shield: 0 },
   // PERMANENT stacks from captured sites — the ninja grows all run
   perm: { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 },
   speedMult: 1, // consumed by the planet movement controller
@@ -181,7 +182,7 @@ export function resetRun(diff?: DifficultyId, character?: CharacterId) {
   run.kills = 0;
   run.captured = 0;
   run.upgrades = {};
-  run.fx = { speed: 0, dmg: 0, rate: 0, xp: 0, shield: 0 };
+  run.fx = { shield: 0 };
   run.perm = { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 };
   run.speedMult = 1;
   run.lastHitAt = -10;
@@ -200,7 +201,14 @@ export function scoreOf() {
 
 // derived combat numbers (upgrades + timed powerups)
 export function shurikenDamage() {
-  return (10 + 6 * (run.upgrades.damage ?? 0)) * (1 + Math.min(1.5, 0.1 * run.perm.dmg)) * charDef().dmg;
+  // Cursed's statMult (0.7) now weakens outgoing damage too — the mode is
+  // meant to make you 30% weaker, not just squishier. Normal/Hard = ×1.
+  return (
+    (10 + 6 * (run.upgrades.damage ?? 0)) *
+    (1 + Math.min(1.5, 0.1 * run.perm.dmg)) *
+    charDef().dmg *
+    DIFFICULTIES[run.difficulty].statMult
+  );
 }
 export function fireCooldown() {
   return Math.max(0.15, 0.55 * charDef().cooldown * Math.pow(0.88, run.upgrades.firerate ?? 0) * Math.pow(0.94, run.perm.rate));
@@ -422,15 +430,16 @@ export const useGame = create<GameStore>((set, get) => ({
 
 /** Roll 3 distinct upgrade choices weighted like the original game. */
 export function rollChoices(): string[] {
-  // an unlocked evolution jumps the queue as a guaranteed first card
-  const evo = UPGRADES.find(
+  // EVERY ready evolution jumps the queue as a guaranteed card — a second
+  // ready evo must not stay hidden until the next level-up
+  const evos = UPGRADES.filter(
     (u) =>
       u.requires &&
       !(run.upgrades[u.id] ?? 0) &&
       u.requires.every((r) => (run.upgrades[r] ?? 0) >= (UPGRADES.find((x) => x.id === r)?.maxLevel ?? 99)),
   );
   const pool = UPGRADES.filter((u) => u.weight > 0 && (run.upgrades[u.id] ?? 0) < u.maxLevel);
-  const out: string[] = evo ? [evo.id] : [];
+  const out: string[] = evos.map((e) => e.id);
   const candidates = [...pool];
   const want = charDef().choices ?? 3; // THEO's AI surfaces an extra option
   while (out.length < want && candidates.length > 0) {
