@@ -2,113 +2,126 @@
 
 Date: 2026-07-04
 
-Scope: whole-codebase audit focused on character consistency, combat/runtime correctness, UI/mobile, performance, tooling, and security. No code changes were made by Codex for this review.
+Scope: post-Fable whole-codebase audit after commits `0c72ff6` and `ca8efb4`.
+This file replaces the older Codex review; several older findings are now fixed
+and should not be reworked.
 
 Verification:
 - `npm run lint` passes.
 - `npm run build` passes.
-- Current working tree had local WIP in `components/three/Character.tsx` and `components/three/CharacterBody.tsx` during review.
+- `npm audit --omit=dev` reports 5 moderate advisories through
+  `next`/`postcss` and `@solana/web3.js`/`uuid`. Do not blindly run the
+  suggested `npm audit fix --force`; it proposes breaking downgrades.
+- Existing local modification in `GROK-REVIEW.md` was present before this doc
+  update and was left untouched.
 
 ## Must Fix
 
-1. **Leaderboard scores are client-trusted**
-   - `app/api/leaderboard/route.ts` accepts `score` directly from request body and only clamps it to `500_000`.
-   - `lib/leaderboard.ts` submits the client-computed score.
-   - Wallet signatures only prove wallet ownership, not that a real run happened.
-   - Recommendation: label scores as casual/unverified, or add server-issued run tokens / transcript validation.
+1. **Final boss can still be bypassed**
+   - `components/game/GameLayer.tsx:409` returns `undefined` when the boss pool
+     is full.
+   - `components/game/GameLayer.tsx:1620` attempts the final boss once when 5
+     sites remain.
+   - `components/game/GameLayer.tsx:1634` then allows victory when all sites are
+     captured and `run.finalBossAlive` is false.
+   - Impact: if boss slots are full at the last capture, the player can win
+     without fighting the final Nemesis.
+   - Recommendation: reserve/replace a boss slot for the finale, or block
+     victory until the final boss has successfully spawned and then died.
 
-2. **Supabase write failures are ignored**
-   - `app/api/leaderboard/route.ts` awaits POST/PATCH/DELETE calls but does not check `res.ok`.
-   - Failed saves/removals can still return `{ ok: true }`.
-   - Recommendation: check every Supabase response and return 500 or structured error on failure.
+2. **Unverified requests can squat wallet leaderboard rows**
+   - `app/api/leaderboard/route.ts:94` accepts any syntactically valid wallet.
+   - `app/api/leaderboard/route.ts:100` sets `verified = false` when proof is
+     missing or invalid, but still continues.
+   - `app/api/leaderboard/route.ts:113` derives the member key from that wallet.
+   - Impact: a client can submit a score/name for someone else's wallet row as
+     an unverified entry.
+   - Recommendation: only use `w:<wallet>` identity after a valid signature.
+     When proof is missing or invalid, either reject the wallet field or fall
+     back to `d:<deviceId>`.
 
-3. **THEO scan mark can leak across enemy pool reuse**
-   - `components/game/GameLayer.tsx` `spawnEnemy()` resets hp/speed/recoil but not `markedUntil`.
-   - A newly spawned enemy can inherit a scan mark from a previous enemy in the same pool slot.
-   - Recommendation: reset all transient enemy fields on spawn, including `markedUntil = 0`.
+3. **Supabase read failure can overwrite a personal best**
+   - `app/api/leaderboard/route.ts:117` fetches the current score.
+   - `app/api/leaderboard/route.ts:118` treats `!cur.ok` as an empty row set.
+   - `app/api/leaderboard/route.ts:119` can then upsert a lower score.
+   - Impact: a transient read failure can downgrade a player's best if the
+     following upsert succeeds.
+   - Recommendation: throw/return 503 when the best-score read fails, or move
+     best-only enforcement into a database function/constraint.
 
-4. **Level-up pause lets planet inertia continue**
-   - `GameLayer` freezes combat while mode is not `play`, but `Planet` still applies velocity and rotation.
-   - During level-up, the world can drift under the modal, then combat resumes from a shifted player-local position.
-   - Recommendation: zero or damp planet velocity while mode is `levelup`, `menu`, `dead`, or `won`.
-
-5. **Character body placement still needs a real transform config**
-   - Current CAPY/Jack fixes are hardcoded asset-scale guesses in `CharacterBody.tsx`.
-   - Recommendation: add per-character `scale`, `groundOffset`, `rotation`, and preview framing config, then screenshot-verify every character in run and select screens.
+4. **Explore tab still abandons active runs immediately**
+   - `components/ui/Overlay.tsx:66` calls `quit()` directly whenever mode is not
+     `explore`.
+   - Impact: Esc/P now pause safely, but clicking the Explore tab during
+     `play` or `paused` bypasses the new abandon-run flow.
+   - Recommendation: hide the Explore tab during a run, or make it open/preserve
+     the pause overlay instead of quitting.
 
 ## Should Fix
 
-6. **Character-specific upgrade labels do not reach all UI**
-   - `GameHUD` level-up cards use `upgradeView()`, but `SidePanel` owned-upgrade list still renders raw `UPGRADES`.
-   - SidePanel footer still says “shurikens aim where you run.”
-   - Recommendation: use `upgradeView(id)` in `SidePanel` and make footer weapon-neutral.
+5. **Character placement config is still incomplete**
+   - `lib/characters.ts:31` defines `model.lift`, but
+     `components/three/CharacterBody.tsx:286` only reads model sizes.
+   - CAPY, THEO, and Jack placement still depends on local hardcoded offsets and
+     per-file comments instead of a single transform contract.
+   - Recommendation: support per-character `size`, `lift`, `rotation`, and
+     preview framing from the registry, then screenshot-verify run + select
+     screens for every character.
 
-7. **Menu/run side panel can show stale run data**
-   - `SidePanel` renders `GamePanel` for every non-explore mode.
-   - `openMenu()` does not clear `capturedIds`.
-   - Recommendation: render run panel only for run/end states, or clear all run UI state when opening menu.
+6. **Directory sorting remains mouse-only**
+   - `components/ui/Directory.tsx:82` uses clickable `<th>` elements for sort.
+   - Impact: keyboard and assistive-tech users cannot operate or understand the
+     sort state.
+   - Recommendation: put real `<button>` controls inside sortable headers and
+     expose `aria-sort`.
 
-8. **Esc confirm state can leak across mode changes**
-   - `Overlay` arms Esc with a timeout but does not clear it on mode changes.
-   - Recommendation: clear `escArmed` and timeout whenever `mode` changes.
+7. **Placeholder screenshot palette can reintroduce retired violet**
+   - `lib/regions.ts:126` correctly retired violet from live accents.
+   - `scripts/gen-screenshots.js:20` still includes `#a78bfa`.
+   - Impact: regenerating placeholder project images can bring back the old
+     color language.
+   - Recommendation: sync the script's `ACCENTS` array with `lib/regions.ts`.
 
-9. **Mobile level-up overlay can clip**
-   - Level-up modal centers fixed-width cards without a scroll container.
-   - Recommendation: add `max-h-dvh overflow-y-auto`, safe-area padding, and full-width/smaller cards on small screens.
+8. **Old review files can mislead future agents**
+   - `CODEX-REVIEW.md` is now updated, but `GLM-REVIEW.md` and `GROK-REVIEW.md`
+     still contain historical punch lists plus dispositions.
+   - Recommendation: keep superseded banners/disposition tables clear so Fable
+     does not re-fix already resolved items.
 
-10. **Mobile GPU cost is high**
-    - `Experience.tsx` renders 5,500 stars and `EffectComposer multisampling={8}` on all devices.
-    - Recommendation: reduce star count/MSAA on mobile or low DPR; consider disabling composer on weak devices.
+## Residual Security Notes
 
-11. **Project checker likely fails on clean installs**
-    - `scripts/check-sites.js` imports `playwright-core`, which does not install browsers.
-    - README tells users to run the checker after `npm install`.
-    - Recommendation: document `npx playwright install chromium`, use system Chrome via `executablePath`, or add a dedicated tooling setup.
+9. **Leaderboard score remains client-trusted by design**
+   - `app/api/leaderboard/route.ts:95` accepts the client-submitted score and
+     clamps it to 500,000.
+   - Wallet signatures prove wallet ownership, not that the run happened.
+   - This was deliberately deferred by Fable. Treat the leaderboard as casual
+     unless/until server-issued run tokens, replay validation, or another
+     anti-cheat design exists.
 
-## Accessibility / UX
+10. **Rate limiting is best-effort only**
+    - `app/api/leaderboard/route.ts:24` documents the limiter as per-instance.
+    - `app/api/leaderboard/route.ts:29` keys from forwarded IP headers.
+    - This is fine for casual spam but not strong abuse prevention across
+      distributed/serverless instances. Provider-level limits remain the real
+      protection.
 
-12. **Directory sorting is mouse-only**
-    - `Directory.tsx` uses clickable `<th>` elements without keyboard semantics or `aria-sort`.
-    - Recommendation: use real buttons inside headers and expose sort state.
+11. **Dependency advisories need normal upgrade handling**
+    - `npm audit --omit=dev` currently reports moderate advisories in transitive
+      dependencies from `next` and `@solana/web3.js`.
+    - The automated force fix is unsafe because it suggests breaking downgrades.
+      Track normal upstream releases instead.
 
-13. **Some icon-only controls lack accessible names**
-    - Social links, joystick, and some glyph buttons rely on visible symbols.
-    - Recommendation: add `aria-label` and mark decorative glyphs `aria-hidden`.
+## Confirmed Fixed Since Older Codex Review
 
-14. **Touch joystick needs safe-area awareness**
-    - `TouchPad` is fixed to `bottom-4 right-4`.
-    - Recommendation: account for `env(safe-area-inset-bottom/right)` on mobile.
-
-## Design Consistency
-
-15. **Palette drift**
-    - `docs/DESIGN.md` says violet is retired, but `lib/regions.ts` still cycles `#a78bfa`.
-    - Recommendation: replace violet or update the design doc.
-
-16. **Shared internals still use shuriken language**
-    - `shurikenDamage`, `Shuriken`, and `world.shurikens` are now generic projectile pools in practice.
-    - Recommendation: rename later to `primaryDamage`, `Projectile`, and `world.projectiles` to reduce future mistakes.
-
-17. **Attack identity direction is good but needs full surface coverage**
-    - Current character-specific upgrade flavor and Blade Storm variants are the right direction.
-    - Make sure every HUD, side panel, evolution, projectile visual, hit spark, and sound follows:
-      - Ninja: blue, sharp, precise.
-      - Jack: gold/white/black, heavy explosive coins.
-      - THEO: cyan/white, synthetic lock-on chains.
-      - CAPY: green/brown, melee shield sweeps.
-      - Enemies: warm danger colors, hostile motion, never confused with heroes.
-
-## Security Notes
-
-18. **Add rate limiting to leaderboard endpoints**
-    - `/api/leaderboard` POST/DELETE can be spammed.
-    - Recommendation: add simple IP/device rate limiting or provider-level protection.
-
-19. **Treat `projects.json` as trusted input for scripts**
-    - `scripts/check-sites.js` drives a browser against project URLs.
-    - Recommendation: review URL additions before running the checker.
-
-20. **Service-role key handling looks structurally correct**
-    - API route uses service-role key server-side.
-    - Keep service-role env vars non-`NEXT_PUBLIC_*`.
-
+- Supabase write/delete responses now check `res.ok`.
+- THEO scan mark is reset on enemy pool reuse.
+- Planet freezes under pause, level-up, death, win, and menu modals.
+- Esc/P pause behavior replaced the old instant-quit path.
+- SidePanel owned upgrades now use `upgradeView()`, and the weapon footer is
+  neutral.
+- Opening the game menu clears stale captured-site state.
+- Mobile level-up overlay has scrolling/safe-area handling.
+- Touch joystick now uses iOS safe-area insets.
+- Mobile GPU load is reduced through lower star counts and no composer MSAA on
+  coarse/small devices.
+- Runtime region accents no longer cycle retired violet.

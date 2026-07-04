@@ -243,7 +243,9 @@ const world = {
       shurikens: Array.from({ length: MAX_SHURIKENS }, (): Shuriken => ({
         alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0, kind: "shuriken", pierce: 1, evo: false,
       })),
-      pending: Array.from({ length: 12 }, (): PendingSpawn => ({ active: false, type: "goblin", dir: new THREE.Vector3(), at: 0 })),
+      // sized to outrun the densest burst (1+floor(block/3)) across the ~3
+      // spawn ticks that can be in flight at once → spawns stay telegraphed
+      pending: Array.from({ length: 40 }, (): PendingSpawn => ({ active: false, type: "goblin", dir: new THREE.Vector3(), at: 0 })),
       dmgNums: Array.from({ length: 10 }, (): DmgNum => ({ alive: false, dir: new THREE.Vector3(), t0: 0, val: 0, crit: false })),
       captureFx: Array.from({ length: 3 }, (): CaptureFx => ({ active: false, dir: new THREE.Vector3(), t0: 0 })),
       gems: Array.from({ length: MAX_GEMS }, (): Gem => ({
@@ -778,10 +780,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           ret.scale.setScalar((target.radius + 0.05) * 1.6);
         }
       }
-      // CAPY Validator Shield — the 2.5s safe window is a visible hex barrier
+      // Validator Shield / fort shield — the immune window is a visible hex
+      // barrier for ANY character (green = protection in the color bible), not
+      // just CAPY: capturing a fort shields Jack/THEO/Ninja too
       const shield = shieldRef.current;
       if (shield) {
-        const active = world.started && wkind === "slash" && run.t < run.fx.shield;
+        const active = world.started && run.t < run.fx.shield;
         shield.visible = active;
         if (active) {
           shield.position.copy(world.pLocal).multiplyScalar(R + 0.05);
@@ -1144,11 +1148,11 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         }
       }
     }
-    // telegraphed spawns hatch
+    // telegraphed spawns hatch — keep the telegraph alive until a pool slot
+    // frees (mirrors the boss retry); never clear a ring with no payoff
     for (const p of world.pending) {
       if (p.active && run.t >= p.at) {
-        p.active = false;
-        spawnEnemy(p.type, p.dir);
+        if (spawnEnemy(p.type, p.dir)) p.active = false;
       }
     }
     // Bear Market boss every 5 blocks — if the pool is full (e.g. the final
@@ -1272,7 +1276,23 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         // CAPY: Bad Block Slash — a wide, always-visible cleave. Multishot is
         // "Wider Cleave" here: each level extends the arc and the reach.
         const ms = run.upgrades.multishot ?? 0;
-        if (f.lengthSq() > 0.5) world.slashDir.copy(f);
+        if (f.lengthSq() > 0.5) {
+          world.slashDir.copy(f);
+        } else {
+          // idle: cleave toward the nearest enemy instead of a stale heading
+          let best = Infinity;
+          for (const e of world.enemies) {
+            if (!e.alive) continue;
+            const a = world.pLocal.angleTo(e.dir);
+            if (a < best) {
+              const tg = tangentToward(world.pLocal, e.dir, _v2);
+              if (tg) {
+                best = a;
+                world.slashDir.copy(tg);
+              }
+            }
+          }
+        }
         world.slashFxAt = run.t;
         world.slashFull = false;
         for (const e of world.enemies) {
@@ -1813,7 +1833,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         />
       </mesh>
       {/* spawn warning rings — danger red, tightening until the hatch */}
-      {Array.from({ length: 12 }).map((_, i) => (
+      {Array.from({ length: 40 }).map((_, i) => (
         <mesh key={`wr${i}`} ref={(el) => { warnRefs.current[i] = el; }} visible={false}>
           <ringGeometry args={[0.78, 1, 28]} />
           <meshBasicMaterial

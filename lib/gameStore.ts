@@ -399,6 +399,8 @@ export const useGame = create<GameStore>((set, get) => ({
   syncHud: () => set({ hud: emptyHud() }),
   offerLevelUp: (choices) => set({ mode: "levelup", choices, hud: emptyHud() }),
   pick: (id) => {
+    // only apply an upgrade that was actually offered this level-up
+    if (get().mode !== "levelup" || !get().choices.includes(id)) return;
     const def = UPGRADES.find((u) => u.id === id);
     if (def?.requires) sfx.evolve();
     else sfx.ui();

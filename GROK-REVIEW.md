@@ -1,12 +1,52 @@
 # x1.world — Review (Grok, 2026-07-04)
 
-> Read-only audit. No code was changed. Findings are suggestions to evaluate, not
-> commands. Cross-check `GLM-REVIEW.md` and `CODEX-REVIEW.md` for overlapping
-> items — this file focuses on fresh synthesis and what still matters after recent
-> fixes (pause, i-frames, rug rename, linear scoring, doc updates).
+> Summary audit. Deep appendices: **`GROK-REVIEW-DEEP.md`**. Cross-check
+> `GLM-REVIEW.md` and `CODEX-REVIEW.md`.
 >
 > Priority: **P1** = correctness / player-hostile · **P2** = balance / juice ·
 > **P3** = consistency / polish · **P4** = docs / tooling
+
+---
+
+## Audit processing log (2026-07-04)
+
+Processed with discretion in two commits:
+
+| Commit | Scope |
+| --- | --- |
+| `0c72ff6` | Codex + GLM picks: pause, i-frames, planet freeze, linear scoring, rug rename, leaderboard rate limit, doc truth |
+| `ca8efb4` | Grok quick wins: fort shield `Math.max`, boss spawn retry, game-aware OG/metadata, iOS safe-area joystick |
+
+**Verified headless:** Esc/P pause overlay shows, resumes clean, run continues.
+
+### Taken (closed in code or docs)
+
+- Pause overlay (Esc/P) — resume / abandon; Esc no longer quits mid-run; esc-confirm leak gone
+- Global 0.4s i-frames after any bite
+- Planet inertia frozen under pause / level-up / death / win
+- `scoreOf` linear time term (T² removed)
+- `whale` mob → `rug` with matching color; dead `MODEL_PATH` entries removed
+- Leaderboard per-IP rate limit (POST 12/min, DELETE 5/min → 429) + `res.ok` handling
+- Doc truth: `CLAUDE.md`, `README.md`, `HANDOFF.md` superseded banner, `GLM-REVIEW` dispositions
+- `openMenu` clears `capturedIds`; `POWER_LABEL` fort 8s note; dead exports/tokens removed
+- Fort shield uses `Math.max` — cannot shorten an active CAPY Validator Shield window
+- Bear Market boss: `bossAtBlock` stamped only on successful spawn; retries next frame when pool full
+- OG/metadata sells Survivors, four characters, THE WHALE, inscribe-on-X1
+- TouchPad respects `env(safe-area-inset-bottom/right)`
+
+### Deliberately deferred (with rationale)
+
+| Item | Why deferred |
+| --- | --- |
+| Win-target decoupling from `regions.length` | Build-time constant per deploy, not live-mutating; product identity; revisit past ~70 projects |
+| Score run-tokens / anti-cheat | Needs real design, not a patch |
+| `ninja_game/` archival | Owner call; docs label it a non-built prototype |
+| Finale keyed to player power | Design session |
+| Difficulty-normalized rankings | Design session |
+| Ambient music bed | Design session |
+| Daily seed / weekly mutator | Design session |
+| Boss attack patterns / boss spawn telegraphs | Design session |
+| Mobile run ribbon layout | Design session |
 
 ---
 
@@ -47,11 +87,9 @@ imported. Treat the embedded 3D game as the product.
 ### Product narrative & mode hierarchy
 
 - **[P2] Game-first landing diverges from `CONCEPT.md`.** Default mode is `menu`
-  (survivors), not explore. The original vision was "spin the planet for 20 seconds
-  before reading a word." Today a new visitor lands in character select. That may
-  be the right conversion bet — but the explore journey (arrival drift, guided
-  tour, horizon pullback) is largely unbuilt. Decide explicitly which mode is the
-  hero and align OG copy, metadata, and first-run onboarding to match.
+  (survivors), not explore. Metadata now sells both (`ca8efb4`), but the explore
+  journey (arrival drift, guided tour, horizon pullback) is largely unbuilt. Decide
+  explicitly which mode is the hero and align first-run onboarding to match.
 - **[P3] No arrival cinematic or guided tour.** `CONCEPT.md` Phase 4 items
   (intro title beat, "take the tour" auto-walk, whole-planet finale) never shipped.
   Even a lightweight 3-beat overlay ("walk → discover → play") would close the gap
@@ -60,9 +98,10 @@ imported. Treat the embedded 3D game as the product.
   persistent footer note on the experience itself; it only appears in
   `Directory.tsx`. Add a subtle line under the wordmark or in the explore panel
   header.
-- **[P3] OG / metadata under-sells the game.** `app/layout.tsx` describes explore
-  only. Social previews won't mention survivors, characters, or leaderboard —
-  missed share hook for the default experience.
+- ~~**[P3] OG / metadata under-sells the game.**~~ **Fixed `ca8efb4`** —
+  `app/layout.tsx` title/description mention Survivors, fighters, THE WHALE,
+  inscribe-on-X1. Regenerate `/og.png` via `scripts/gen-og.js` if the image still
+  frames explore-only.
 
 ### Console layout & mobile
 
@@ -76,10 +115,9 @@ imported. Treat the embedded 3D game as the product.
   focus header (explore), pause chip (top right), mode tabs, and mute button all
   compete for the same band. On phones the stats bar drops to `top-12` but still
   overlaps onboarding toasts. A single "run ribbon" component would simplify.
-- **[P3] Touch joystick lacks safe-area insets.** `TouchPad` is `bottom-4 right-4`
-  with no `env(safe-area-inset-*)` — iOS home indicator can overlap the stick.
-  Capture toasts offset to `bottom-40` to avoid it, but the stick itself doesn't.
-- **[P3] "Game" tab label when already exploring.** Clicking 🥷 game while in
+- ~~**[P3] Touch joystick lacks safe-area insets.**~~ **Fixed `ca8efb4`** —
+  `TouchPad` uses `max(1rem, env(safe-area-inset-bottom/right))`.
+- **[P3] "Game" tab label when already exploring.** Clicking game while in
   explore calls `openMenu()` — correct, but the pulsing gold tab reads like "you
   are already in game." Consider "play" / "survive" copy when `mode === "explore"`.
 
@@ -130,7 +168,7 @@ imported. Treat the embedded 3D game as the product.
 - **[P3] Emoji vs dingbat inconsistency.** Upgrade cards use typographic icons;
   mode tabs, profile, mute, and leaderboard use emoji. The mono/console aesthetic
   would feel more expensive with one system (dingbats or SVG, not both).
-- **[P3] Profile avatar is always 🥷.** `ProfileCard` ignores selected character —
+- **[P3] Profile avatar is always ninja emoji.** `ProfileCard` ignores selected character —
   Jack/THEO/CAPY players don't see their identity in the player card.
 - **[P3] Display typography never graduated.** `DESIGN.md` suggested trialing a
   display face (Clash, Space Grotesk); everything is Geist. The wordmark and boss
@@ -171,40 +209,34 @@ imported. Treat the embedded 3D game as the product.
 - **[P1] Scores are client-trusted.** POST body carries `score`; wallet signature
   proves address ownership, not that a run occurred. Anyone can POST arbitrary
   scores with a name + deviceId. Label board as casual, add server-issued run
-  tokens, or store replay hashes if competitive integrity matters.
+  tokens, or store replay hashes if competitive integrity matters. **Deferred** —
+  needs real design.
 - **[P3] Rankings ignore difficulty.** Hard (1.5×) and Cursed (2×) multiply locally
-  but the board sorts raw `score`. A Cursed 40k beats Normal 50k in skill but not
-  on the board. Filter tabs or normalized score (`score / diffMult`) would fix
-  perceived fairness.
+  but the board sorts raw `score`. **Deferred** — design session.
 - **[P3] No score without name.** `die()` / `win()` only call `submitScore` when
   `name.trim()` — silent skip. Fine for privacy, but the leaderboard nudge appears
   only in the side panel; death screen doesn't prompt naming.
 
 ### Game state & edge cases
 
-- **[P3] CAPY shield and fort shield share `run.fx.shield`.** Validator Shield
-  (2.5s / 10s cycle) and `explorerFort` (+8s shield) both write the same timestamp.
-  Capturing a fort during CAPY's immune window could accidentally shorten or extend
-  the wrong effect. Split into `fx.capyShield` and `fx.fortShield`, or take max
-  with distinct VFX.
-- **[P2] Boss pool starvation still possible.** `TYPE_RANGES.boss = [52,56]` — four
-  slots. Mid-run bosses every 5 blocks plus finale Nemesis can collide; `spawnEnemy`
-  returns `undefined` silently. Grow pool, reserve finale slot, or queue boss spawns.
+- **[P3] CAPY shield and fort shield share `run.fx.shield`.** **Partial fix `ca8efb4`**
+  — both use `Math.max` so fort capture cannot shorten an active window. Still one
+  timestamp + HUD/VFX split (hex barrier CAPY-only; fort shows text on other chars).
+  Full split into `fx.capyShield` / `fx.fortShield` remains optional polish.
+- **[P2] Boss pool contention (4 slots).** **Partial fix `ca8efb4`** — scheduled
+  block bosses retry until spawn lands (`bossAtBlock` only stamped on success).
+  Finale Nemesis still instant-spawns into the same pool; grow pool or reserve a
+  finale slot if collisions persist in long runs.
 - **[P3] Enemy pool exhaustion is silent.** Goblin pool = 26; when full, spawns
   silently fail. At least HUD feedback ("horde at capacity") or soft cap scaling.
 
 ### Win condition & data coupling
 
-- **[P2] Win target = live `regions.length` (~55).** Deferred in GLM as "constant per
-  deploy," but still means: every new project lengthens wins; offline sites shrink
-  the target. Product identity says "capture the ecosystem" — consider a fixed
-  `WIN_SITES = min(40, regions.length)` or "featured 30" subset so balance doesn't
-  drift with `projects.json` edits.
+- **[P2] Win target = live `regions.length` (~55).** **Deferred** — build-time
+  constant per deploy (not live-mutating mid-run). Revisit if roster grows past ~70.
 - **[P3] Instant win edge case.** If final boss dies after last capture in the same
   frame, `win()` fires from boss death handler. If player captures last site while
-  final boss is alive, they must kill it — good. But if `bridgePortal` clears the
-  screen and last site is captured during chaos, ensure `finalBossAlive` state stays
-  coherent (currently OK, worth regression test).
+  final boss is alive, they must kill it — good. Worth regression test.
 
 ### Infrastructure
 
@@ -221,124 +253,101 @@ imported. Treat the embedded 3D game as the product.
 ### Scoring incentives
 
 - **[P2] Win bonus (+1000) can dominate short runs.** `win()` adds a flat 1000 on top
-  of `scoreOf()`. At ~55 captures × 50 = 2750 from sites alone, plus time/kills,
-  wins cluster high. Death runs with 40+ captures but no win feel disproportionately
-  weak. Consider scaling bonus by `captured/total` or difficulty.
+  of `scoreOf()`. Consider scaling bonus by `captured/total` or difficulty.
 - **[P2] Linear time term still rewards stalling slightly.** `T * 40` in `scoreOf()`
   (cap 600s) is much healthier than T², but pure survival still adds up to 240 pts
-  from time alone. VS typically makes time a tiebreaker, not a strategy. Could drop
-  time to a flat "survived 10 min" milestone bonus.
-- **[P2] Optimal site order is solved.** Permanent-stat sites (`validatorTower`,
-  `chartBeacon`, `dexGate`, `gameArcade`) are always correct early; `bridgePortal`
-  is a free screen-clear when dense; `socialBeacon` heal is reactive. Experienced
-  players will always priotize stat sites → boring routing. Mitigations: randomize
-  power magnitudes per run, diminishing returns on duplicate category captures, or
-  scale enemy pressure with `perm` stacks.
+  from time alone. Could drop time to a flat "survived 10 min" milestone bonus.
+- **[P2] Optimal site order is solved.** Permanent-stat sites first; `bridgePortal`
+  nuke when dense. **Design session** — randomize magnitudes, diminishing returns,
+  or scale enemy pressure with `perm` stacks.
 
 ### Difficulty & characters
 
-- **[P2] THEO's 4th upgrade choice is a major advantage.** `choices: 4` on a
-  fragile (0.8 HP) character is strong — more access to evolutions, more agency.
-  Monitor win rates; if THEO dominates, tie extra choice to a downside (e.g. −5% HP
-  per character level).
-- **[P2] Jack's AOE coins vs CAPY melee vs Ninja pierce.** Jack's `xcoin` explosions
-  trivialize dense packs; CAPY needs to wade in. Character balance may need enemy
-  HP scaling per character or Jack cooldown tax in Hard/Cursed.
-- **[P3] Cursed starts below Normal HP.** `statMult 0.7` × character HP — intentional,
-  but combined with no vitality pick can feel brutal in first 60s. Consider one
-  free heal on Cursed start or guaranteed heal site in first 3 spawns.
-- **[P3] Hard mode (20s blocks) spikes faster than Normal (30s).** 1.5× score mult
-  may not compensate for density jump — playtest target times for win vs death.
+- **[P2] THEO's 4th upgrade choice is a major advantage.** Monitor win rates.
+- **[P2] Jack's AOE coins vs CAPY melee vs Ninja pierce.** Character balance may need
+  per-character enemy scaling or Jack cooldown tax in Hard/Cursed.
+- **[P3] Cursed starts below Normal HP.** Intentional; consider one free heal on start.
+- **[P3] Hard mode (20s blocks) spikes faster than Normal (30s).** Playtest target times.
 
 ### Finale & bosses
 
-- **[P2] Finale triggers at "5 sites remaining," not player power.** Slow players
-  fight a 2.5× HP Nemesis while weak; speedrunners fight it while godlike. Key
-  finale to `run.block`, `run.level`, or `captured/total` ratio for consistent drama.
-- **[P2] Mid-run bosses lack attack patterns.** Spawn telegraph is good; whale GLB and
-  Nemesis don't have windup/charge tells like `ninja_game/` had. Final Nemesis gets
-  multipliers but same AI — anticlimactic if player is already overpowered.
-- **[P3] Boss loot unclear.** Boss kills drop gems but no distinct "boss chest" moment
-  — missed juice for the Bear Market every-5-blocks beat.
+- **[P2] Finale triggers at "5 sites remaining," not player power.** **Deferred** —
+  design session.
+- **[P2] Mid-run bosses lack attack patterns.** Regular mobs have spawn telegraphs;
+  bosses/finale spawn instantly. **Deferred** — boss telegraph + windup/charge.
+- **[P3] Boss loot unclear.** Boss kills drop gems but no distinct "boss chest" moment.
 
 ### Build diversity
 
-- **[P2] Wave-2 weapons from `GAME-DESIGN.md` not shipped** — Caltrops, Shadow Clone,
-  Grapple Dash, rare modifiers, in-run drops. Current pool is deep enough for MVP,
-  but doc still describes aspirational content. Either ticket wave-2 or trim the doc.
-- **[P3] `multishot` on CAPY is "Wider Cleave"** — good flavor remap, but evolution
-  `Bladestorm` on CAPY becomes "Validator Sweep" while mechanics still spawn shuriken
-  nova projectiles. Ensure VFX reads as cleave, not stars, for CAPY evos.
+- **[P2] Wave-2 weapons from `GAME-DESIGN.md` not shipped** — ticket or trim doc.
+- **[P3] CAPY Bladestorm VFX** — evolution still spawns shuriken nova; ensure cleave read.
 
 ### Meta / replay
 
-- **[P2] No daily seed or weekly modifier.** Leaderboard + inscription reward repeat
-  play, but runs feel samey once optimal site order is known. A rotating weekly
-  mutator (e.g. "Gas fees 2×") would freshen game theory without new weapons.
-- **[P3] Best score is local only + global board.** No per-character or per-difficulty
-  personal bests in `localStorage` — missed granularity for build enthusiasts.
+- **[P2] No daily seed or weekly modifier.** **Deferred** — design session.
+- **[P3] Best score is local only + global board.** No per-character/difficulty PBs.
 
 ---
 
 ## 5. Doc & tooling drift (P4)
 
-Still stale or split across three audits:
-
 | Doc | Issue |
 | --- | --- |
-| `BUILD-PLAN.md` | Stub file names (`Globe.tsx`, `Card.tsx`), gsap/lenis "installed," explore-only phases |
-| `GAME-DESIGN.md` | Wave-1 items still tagged "(wave 1)" though shipped; wave-2 items not in code |
+| `BUILD-PLAN.md` | Stub file names, gsap/lenis fiction, explore-only phases |
+| `GAME-DESIGN.md` | Wave-1 tagged "(wave 1)" though shipped; wave-2 not in code |
 | `CONCEPT.md` | Says 29 projects; `projects.json` has 55 |
-| `DESIGN.md` | Scroll/Lenis motion language unused; WebGL fallback unbuilt |
-| `ninja_game/` | Parallel tuning reference — archive or delete to stop confusion |
+| `DESIGN.md` | Scroll/Lenis unused; WebGL fallback unbuilt |
+| `ninja_game/` | Owner call — docs label non-built prototype |
 
-`README.md` and `CLAUDE.md` were updated 2026-07-04 and are now largely accurate.
+`README.md` and `CLAUDE.md` updated `0c72ff6` — largely accurate.
 
 ---
 
 ## 6. Recently fixed (verify, don't regress)
 
-These were open in `GLM-REVIEW.md` and appear resolved in the current tree:
-
-| Item | Status |
-| --- | --- |
-| Pause overlay (Esc/P) | ✅ `gameStore.pause`, `GameHUD` pause screen |
-| Global i-frames (0.4s) | ✅ `run.lastHitAt` gate in contact damage |
-| `whale` mob → `rug` | ✅ `ENEMY_TYPES.rug`, RugMob |
-| T² scoring | ✅ linear `T * 40` |
-| Planet freeze under modals | ✅ `Planet.tsx` zeros velocity when not explore/play |
-| Level-up time freeze | ✅ `GameLayer` returns early when `mode !== "play"` |
-| `markedUntil` pool leak | ✅ reset in `spawnEnemy` |
-| `openMenu` clears `capturedIds` | ✅ |
-| SidePanel `upgradeView` | ✅ owned upgrade list |
-| Leaderboard rate limiting | ✅ per-IP in `route.ts` |
-| Vestigial `--accent` CSS token | ✅ removed from `globals.css` |
+| Item | Commit | Status |
+| --- | --- | --- |
+| Pause overlay (Esc/P) | `0c72ff6` | done |
+| Global i-frames (0.4s) | `0c72ff6` | done |
+| `whale` mob → `rug` | `0c72ff6` | done |
+| T² scoring → linear time | `0c72ff6` | done |
+| Planet freeze under modals | `0c72ff6` | done |
+| Level-up time freeze | prior | done |
+| `markedUntil` pool leak | prior | done |
+| `openMenu` clears `capturedIds` | `0c72ff6` | done |
+| SidePanel `upgradeView` | prior | done |
+| Leaderboard rate limiting | `0c72ff6` | done |
+| Vestigial `--accent` CSS token | `0c72ff6` | done |
+| Fort shield `Math.max` (no shorten) | `ca8efb4` | partial |
+| Boss spawn retry when pool full | `ca8efb4` | partial |
+| Game-aware OG/metadata copy | `ca8efb4` | done |
+| TouchPad safe-area insets | `ca8efb4` | done |
 
 ---
 
-## Highest-leverage recommendations
+## Highest-leverage next (post-`ca8efb4`)
 
-If you only do ten things:
+Design-tier items worth their own sessions:
 
-1. **Decide explore vs game as the landing hero** — align metadata, OG, and first-run
-   flow to that choice.
-2. **Mobile run HUD** — keep capture targets visible without scrolling the side panel.
-3. **Tutorialize the site loop** — arrows → step on pad → power toast → final boss.
-4. **Boss pool / finale tuning** — dedicated finale slot; key difficulty to player power.
-5. **Site power balance** — break the "stat sites first, bridge nuke later" solved route.
-6. **Leaderboard integrity** — label casual, separate by difficulty, or verify runs.
-7. **Restore network links** on the globe for the signature ecosystem screenshot.
-8. **WebGL / reduced-motion fallback** — poster + directory still readable.
-9. **Reconcile `GAME-DESIGN.md`** with shipped wave-1 and ticket wave-2 separately.
-10. **Archive `ninja_game/`** or mine its boss telegraph + dash for the 3D game.
+1. **Mobile run ribbon** — capture count + current targets pinned over canvas on `max-md`
+2. **Finale keyed to player power** — not "5 sites left" alone
+3. **Boss telegraphs + attack patterns** — reuse `world.pending` for boss/finale spawns
+4. **Site power balance** — break stat-site-first solved route
+5. **Leaderboard integrity** — casual label, difficulty tabs, or run-token design
+6. **Tutorialize site loop** — arrows → pad → power → final Nemesis
+7. **Network links** on globe (orphan comment in `Planet.tsx`)
+8. **WebGL / reduced-motion fallback**
+9. **Explore vs game landing** — first-run flow now that metadata sells both
+10. **Deep combat polish** — `pick()` validation, CAPY idle slash aim, secondary-DPS scaling (see `GROK-REVIEW-DEEP.md`)
+
+Still owner-call: **`ninja_game/`** archive vs migrate dash/boss telegraph.
 
 ---
 
 ## Summary
 
-The bones are excellent: a distinctive "marketing site you can win," strong evolution
-design, and real ecosystem data driving both exploration and combat. The biggest
-gaps are **mobile ergonomics during runs**, **strategic depth of site captures**,
-**finale/boss pacing**, and **competitive score trust** — plus the unfinished
-explore cinematic from the original concept. Most issues are polish and game-theory
-tuning, not architectural rewrites.
+Codex + GLM P1 fairness gaps and doc drift are largely closed (`0c72ff6`). Grok
+quick wins landed (`ca8efb4`). What remains is **design work**, not emergency fixes:
+mobile run ergonomics, finale/boss drama, site-capture game theory, competitive
+score trust, and the unfinished explore cinematic. See **`GROK-REVIEW-DEEP.md`** for
+formulas, security model, perf hotspots, and the full finding register.

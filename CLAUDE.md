@@ -36,8 +36,13 @@ installed — ignore mentions in older docs.)
 Client Component (see `components/ExperienceLoader.tsx`). Check
 `node_modules/next/dist/docs/` before assuming old APIs.
 
-**Open audit:** read `GLM-REVIEW.md` (repo root) before making non-trivial
-changes. It's a live punch-list of doc drift, the `ninja_game/` vs embedded-game
-split, and game-mechanics/balance findings (pause, i-frames, win-condition
-coupling, scoring, etc.). Check items off as you resolve them; don't let it go
-stale like `HANDOFF.md` did.
+**Open audits (read the latest first):**
+- `FOLLOWUP-REVIEW.md` — **start here.** Verifies the `0c72ff6`/`ca8efb4` fix
+  commits and flags one new regression (telegraphed spawns silently drop
+  enemies on full pools — fix this before balancing). Supersedes the others on
+  current-tree status.
+- `GLM-REVIEW.md`, `GROK-REVIEW.md`, `CODEX-REVIEW.md` — the original three
+  passes; historical. GROK §4 is the canonical list of still-open *design*
+  decisions (score integrity, finale tuning, site-route solving, mobile HUD).
+Check items off as you resolve them; don't let these go stale like `HANDOFF.md`
+did.
