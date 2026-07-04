@@ -12,10 +12,10 @@ function Turntable({ charId }: { charId: CharacterId }) {
   useFrame((state, dt) => {
     if (!g.current) return;
     g.current.rotation.y += dt * 0.7;
-    g.current.position.y = -0.42 + Math.sin(state.clock.elapsedTime * 1.8) * 0.012;
+    g.current.position.y = -0.47 + Math.sin(state.clock.elapsedTime * 1.8) * 0.012;
   });
   return (
-    <group ref={g} position={[0, -0.42, 0]}>
+    <group ref={g} position={[0, -0.47, 0]}>
       <CharacterBody charId={charId} />
     </group>
   );
@@ -30,7 +30,7 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
   return (
     <Canvas
       dpr={[1, 1.5]}
-      camera={{ position: [0, 0.18, 1.55], fov: 38 }}
+      camera={{ position: [0, 0.22, 1.8], fov: 38 }}
       gl={{ antialias: true, alpha: true }}
       onCreated={({ camera }) => camera.lookAt(0, -0.02, 0)}
     >
@@ -42,7 +42,7 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
         <Turntable charId={charId} />
       </Suspense>
       {/* podium ring in the character's signature color */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.43, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.48, 0]}>
         <ringGeometry args={[0.3, 0.34, 48]} />
         <meshBasicMaterial
           color={pal.band}
@@ -53,7 +53,7 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
           side={THREE.DoubleSide}
         />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.435, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.485, 0]}>
         <circleGeometry args={[0.3, 48]} />
         <meshBasicMaterial
           color={pal.band}
