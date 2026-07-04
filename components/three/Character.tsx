@@ -34,7 +34,8 @@ export default function Character() {
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
     const speedNorm = Math.min(moveState.speed / 2.2, 1);
-    phase.current += dt * (2 + moveState.speed * 4.5);
+    // ~2.5 steps/s at full sprint — the old cadence (1.3/s) read as a glide
+    phase.current += dt * (2.5 + moveState.speed * 8);
     // THEO's AI float — an offset composed into the single bob write below.
     // NEVER accumulate into position.y: a += here once leaked (reduced-motion
     // skipped the reset) and characters drifted off the planet.
@@ -57,32 +58,41 @@ export default function Character() {
       }
       if (armL.current) armL.current.rotation.x = 0;
       if (armR.current) armR.current.rotation.x = 0;
-      if (legL.current) legL.current.rotation.x = 0;
-      if (legR.current) legR.current.rotation.x = 0;
+      if (legL.current) legL.current.rotation.set(0, 0, 0);
+      if (legR.current) legR.current.rotation.set(0, 0, 0);
     } else {
-      // idle bob + run bounce + lean into the run. The camera is nearly
-      // TOP-DOWN, so pure limb rotation foreshortens to nothing — the gait
-      // must also live in cues that read from above: a step hop and a
-      // step-frequency yaw shimmy.
+      // Debugged with live samples: the legs DID swing ±46°, but the chase
+      // cam sits BEHIND the runner — fore/aft swings live on the camera's
+      // depth axis and foreshorten to nothing. The gait must move in axes
+      // the camera sees: a REAL bounce (vertical), lateral leg flare
+      // (sideways), and yaw shimmy (rotation).
       if (bob.current) {
         bob.current.position.y =
-          hover + 0.02 * Math.sin(t * 2.2) + 0.09 * Math.abs(Math.sin(phase.current)) * speedNorm;
+          hover + 0.02 * Math.sin(t * 2.2) + 0.2 * Math.abs(Math.sin(phase.current)) * speedNorm;
         bob.current.rotation.x = 0.22 * speedNorm;
         bob.current.rotation.y =
-          Math.sin(phase.current) * (charId === "jack" ? 0.13 : 0.07) * speedNorm;
+          Math.sin(phase.current) * (charId === "jack" ? 0.16 : 0.1) * speedNorm;
         // Jack has no leg joints (pose-baked GLB) — a strong waddle roll
         // sways his body so he STOMPS instead of gliding
         bob.current.rotation.z =
-          charId === "jack" ? Math.sin(phase.current) * 0.13 * speedNorm : 0;
+          charId === "jack" ? Math.sin(phase.current) * 0.18 * speedNorm : 0;
       }
 
       // arms: gentle sway idle, big swing running
       const swing = Math.sin(phase.current) * (0.12 + 0.7 * speedNorm);
       if (armL.current) armL.current.rotation.x = swing;
       if (armR.current) armR.current.rotation.x = -swing;
-      // legs stride contralateral to the arms, exaggerated for the top view
-      if (legL.current) legL.current.rotation.x = -swing * 1.4;
-      if (legR.current) legR.current.rotation.x = swing * 1.4;
+      // legs stride contralateral to the arms — plus an alternating outward
+      // flare so each kick exits the body silhouette when seen from behind
+      const flare = 0.26 * speedNorm;
+      if (legL.current) {
+        legL.current.rotation.x = -swing * 1.4;
+        legL.current.rotation.z = flare * Math.max(0, Math.sin(phase.current));
+      }
+      if (legR.current) {
+        legR.current.rotation.x = swing * 1.4;
+        legR.current.rotation.z = -flare * Math.max(0, -Math.sin(phase.current));
+      }
 
       // scarf trails and flutters with speed
       if (scarf.current) {
