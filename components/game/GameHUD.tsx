@@ -368,6 +368,7 @@ function InscribeRow({ score }: { score: number }) {
 export default function GameHUD() {
   const mode = useGame((s) => s.mode);
   const hud = useGame((s) => s.hud);
+  const activeSites = useGame((s) => s.activeSites);
   const choices = useGame((s) => s.choices);
   const pick = useGame((s) => s.pick);
   const start = useGame((s) => s.start);
@@ -480,6 +481,40 @@ export default function GameHUD() {
 
       {mode === "play" && <CaptureToast />}
       {mode === "play" && <CaptureFlash />}
+
+      {/* MOBILE quest ribbon — capture progress + live targets pinned over the
+          canvas so phone players don't scroll to the side panel mid-fight */}
+      {mode === "play" && onboarded && (
+        <div className="pointer-events-none absolute inset-x-2 top-[70px] z-30 hidden rounded-lg border border-white/10 bg-[rgba(9,13,28,0.82)] px-2.5 py-1.5 backdrop-blur max-md:block">
+          <div className="flex items-center justify-between font-mono text-[8px] font-bold uppercase tracking-[0.14em]">
+            <span className="text-cyan">
+              ⚔ {hud.captured}/{TOTAL_SITES} captured
+            </span>
+            {hud.finalBoss && <span className="animate-pulse text-[#ff4d4d]">slay the boss</span>}
+          </div>
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan to-gold transition-all"
+              style={{ width: `${(hud.captured / TOTAL_SITES) * 100}%` }}
+            />
+          </div>
+          <div className="mt-1 flex gap-1.5 overflow-hidden">
+            {activeSites.map((id) => {
+              const r = regions.find((x) => x.id === id);
+              if (!r) return null;
+              return (
+                <span
+                  key={id}
+                  className="truncate rounded px-1 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.1em]"
+                  style={{ color: r.accent, background: `${r.accent}1a` }}
+                >
+                  ▸ {r.name}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* boss entrance card — brief danger nameplate */}
       <AnimatePresence>

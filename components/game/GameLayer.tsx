@@ -1183,7 +1183,20 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const fb = spawnEnemy("boss");
       if (fb) {
         fb.bossKind = "nemesis";
-        fb.maxHp = fb.hp = fb.maxHp * 2.5;
+        // Scale the finale to the player's POWER, not a flat 2.5×. HP tracks
+        // your damage output so time-to-kill stays a real, dramatic fight
+        // whether you're godlike or barely scraping by — the godlike no
+        // longer facerolls it, the weak don't grind a mismatched wall.
+        // Damage is only lightly bumped (not power-scaled) so it threatens
+        // without being a random-death tax.
+        const power =
+          run.level * 0.09 +
+          run.perm.dmg * 0.1 +
+          (run.upgrades.damage ?? 0) * 0.12 +
+          (run.upgrades.multishot ?? 0) * 0.2 +
+          (run.upgrades.firerate ?? 0) * 0.08;
+        const hpMult = 1.8 + Math.min(3.8, power); // ~3.2× weak → ~5.6× godlike
+        fb.maxHp = fb.hp = Math.round(fb.maxHp * hpMult);
         fb.dmg = Math.round(fb.dmg * 1.3);
         fb.speed *= 1.15;
         world.finalIdx = world.enemies.indexOf(fb);
