@@ -638,7 +638,7 @@ export default function GameHUD() {
                   ▶ resume
                 </button>
                 <button
-                  onClick={quit}
+                  onClick={() => useGame.getState().openMenu()}
                   className="rounded-xl border border-white/20 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.18em] text-ink-dim transition-colors hover:border-[#e0563f]/70 hover:text-[#ff8c6b]"
                 >
                   abandon run

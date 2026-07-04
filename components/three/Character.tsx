@@ -26,6 +26,8 @@ export default function Character() {
   const bob = useRef<THREE.Group>(null);
   const armL = useRef<THREE.Group>(null);
   const armR = useRef<THREE.Group>(null);
+  const legL = useRef<THREE.Group>(null);
+  const legR = useRef<THREE.Group>(null);
   const scarf = useRef<THREE.Group>(null);
   const phase = useRef(0);
 
@@ -50,19 +52,31 @@ export default function Character() {
       if (bob.current) {
         bob.current.position.y = charId === "theo" ? 0.03 : 0;
         bob.current.rotation.x = 0;
+        bob.current.rotation.z = 0;
       }
+      if (armL.current) armL.current.rotation.x = 0;
+      if (armR.current) armR.current.rotation.x = 0;
+      if (legL.current) legL.current.rotation.x = 0;
+      if (legR.current) legR.current.rotation.x = 0;
     } else {
       // idle bob + run bounce + lean into the run
       if (bob.current) {
         bob.current.position.y =
           hover + 0.02 * Math.sin(t * 2.2) + 0.05 * Math.abs(Math.sin(phase.current)) * speedNorm;
         bob.current.rotation.x = 0.22 * speedNorm;
+        // Jack has no leg joints (pose-baked GLB) — a step-frequency waddle
+        // sways his whole body so he strides instead of gliding
+        bob.current.rotation.z =
+          charId === "jack" ? Math.sin(phase.current) * 0.07 * speedNorm : 0;
       }
 
       // arms: gentle sway idle, big swing running
       const swing = Math.sin(phase.current) * (0.12 + 0.7 * speedNorm);
       if (armL.current) armL.current.rotation.x = swing;
       if (armR.current) armR.current.rotation.x = -swing;
+      // legs stride contralateral to the arms (ninja only — jack waddles)
+      if (legL.current) legL.current.rotation.x = -swing * 0.9;
+      if (legR.current) legR.current.rotation.x = swing * 0.9;
 
       // scarf trails and flutters with speed
       if (scarf.current) {
@@ -76,9 +90,10 @@ export default function Character() {
     // scale 0.42: heroes read small against the horde — the world should
     // dwarf the runner (owner call; hitboxes unchanged, visual only)
     <group position={[0, PLANET_RADIUS - 0.02, 0]} scale={0.42}>
-      {/* hero lighting — the character must pop against the dark world */}
-      <pointLight position={[0.5, 0.9, 0.9]} intensity={1.8} distance={2.8} color="#dbe6ff" />
-      <pointLight position={[-0.6, 0.7, -0.8]} intensity={1.3} distance={2.6} color={aura} />
+      {/* hero lighting — ONE tight white kicker. The old wide-radius pair
+          (white + aura-colored) painted big green/blue pools on the ground
+          that followed the runner — read as a glitch, not a glow. */}
+      <pointLight position={[0.4, 0.8, 0.55]} intensity={1.1} distance={1.4} color="#dbe6ff" />
       {/* contact glow + hover ring under the character, in their color */}
       <mesh position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.26, 28]} />
@@ -102,7 +117,14 @@ export default function Character() {
       </mesh>
       <group ref={yaw} rotation={[0, Math.PI, 0]}>
         <group ref={bob}>
-          <CharacterBody charId={charId} armLRef={armL} armRRef={armR} scarfRef={scarf} />
+          <CharacterBody
+            charId={charId}
+            armLRef={armL}
+            armRRef={armR}
+            legLRef={legL}
+            legRRef={legR}
+            scarfRef={scarf}
+          />
         </group>
       </group>
     </group>

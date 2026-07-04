@@ -362,7 +362,7 @@ export const useGame = create<GameStore>((set, get) => ({
   resume: () => {
     if (get().mode === "paused") set({ mode: "play" });
   },
-  quit: () => set({ mode: "explore", activeSites: [] }),
+  quit: () => set({ mode: "explore", activeSites: [], capturedIds: [] }),
   die: () => {
     const score = scoreOf();
     let best = 0;

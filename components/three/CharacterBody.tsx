@@ -106,23 +106,31 @@ function NinjaBody({
   pal,
   armLRef,
   armRRef,
+  legLRef,
+  legRRef,
   scarfRef,
 }: {
   pal: CharacterDef["colors"];
   armLRef?: React.Ref<THREE.Group>;
   armRRef?: React.Ref<THREE.Group>;
+  legLRef?: React.Ref<THREE.Group>;
+  legRRef?: React.Ref<THREE.Group>;
   scarfRef?: React.Ref<THREE.Group>;
 }) {
   return (
     <>
-      {/* legs + split-toe tabi */}
+      {/* legs + split-toe tabi — pivoted at the hip so they stride */}
       {[-1, 1].map((s) => (
-        <group key={`leg${s}`}>
-          <mesh position={[s * 0.052, 0.14, 0]} castShadow>
+        <group
+          key={`leg${s}`}
+          ref={s === -1 ? legLRef : legRRef}
+          position={[s * 0.052, 0.225, 0]}
+        >
+          <mesh position={[0, -0.085, 0]} castShadow>
             <capsuleGeometry args={[0.034, 0.13, 4, 8]} />
             <meshStandardMaterial color={pal.suit} roughness={0.6} />
           </mesh>
-          <mesh position={[s * 0.052, 0.03, 0.02]}>
+          <mesh position={[0, -0.195, 0.02]}>
             <boxGeometry args={[0.058, 0.05, 0.1]} />
             <meshStandardMaterial color={pal.hood} roughness={0.55} />
           </mesh>
@@ -272,11 +280,15 @@ export default function CharacterBody({
   charId,
   armLRef,
   armRRef,
+  legLRef,
+  legRRef,
   scarfRef,
 }: {
   charId: CharacterId;
   armLRef?: React.Ref<THREE.Group>;
   armRRef?: React.Ref<THREE.Group>;
+  legLRef?: React.Ref<THREE.Group>;
+  legRRef?: React.Ref<THREE.Group>;
   scarfRef?: React.Ref<THREE.Group>;
 }) {
   const pal = CHARACTERS[charId].colors;
@@ -401,7 +413,16 @@ export default function CharacterBody({
       </group>
     );
 
-  return <NinjaBody pal={pal} armLRef={armLRef} armRRef={armRRef} scarfRef={scarfRef} />;
+  return (
+    <NinjaBody
+      pal={pal}
+      armLRef={armLRef}
+      armRRef={armRRef}
+      legLRef={legLRef}
+      legRRef={legRRef}
+      scarfRef={scarfRef}
+    />
+  );
 }
 
 useGLTF.preload("/models/capybara.glb");

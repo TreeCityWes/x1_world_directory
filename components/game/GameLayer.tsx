@@ -447,7 +447,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const labelIds = useRef<(string | null)[]>([null, null, null]);
   const shurikenRefs = useRef<(THREE.Mesh | null)[]>([]);
   const gemRefs = useRef<(THREE.Mesh | null)[]>([]);
-  const katanaRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const katanaRefs = useRef<(THREE.Group | null)[]>([]);
   const wakeRefs = useRef<(THREE.Mesh | null)[]>([]);
   const partRefs = useRef<(THREE.Mesh | null)[]>([]);
   const haloRef = useRef<THREE.Mesh | null>(null);
@@ -740,14 +740,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         const wob = 1 + Math.sin(e.t * 9) * 0.04;
         const shake = windup ? 1 + Math.sin(run.t * 30) * 0.07 : 1;
         grp.scale.set(shake, wob * (windup ? 1.1 : 1), shake);
-        // THEO's scan mark — a breathing cyan lock ring over analyzed enemies
+        // THEO's scan mark — a lock-on chip bobbing above analyzed enemies
         const halo = markRefs.current[i];
         if (halo) {
           const marked = e.markedUntil > run.t;
           halo.visible = marked;
           if (marked) {
-            halo.rotation.set(-Math.PI / 2, 0, 0);
-            halo.scale.setScalar(1 + Math.sin(run.t * 7) * 0.12);
+            halo.position.y = 0.52 + Math.sin(run.t * 5 + i) * 0.04;
+            halo.rotation.y = run.t * 2.5;
             halo.updateMatrix(); // pool children are matrix-frozen — compose by hand
           }
         }
@@ -783,9 +783,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           _axis.crossVectors(s.pos, _v2).normalize();
           _m4.makeBasis(_v2, _f0.copy(s.pos), _axis);
           packet.quaternion.setFromRotationMatrix(_m4);
-          const core = packet.children[0];
-          if (core) core.rotation.y = s.spin * 0.8; // the diamond spins, the ray doesn't
-          packet.scale.setScalar((s.evo ? 1.5 : 1) * (1 + Math.sin(run.t * 16 + i) * 0.18));
+          // energy flicker on the bolt — subtler than the old diamond throb
+          packet.scale.setScalar((s.evo ? 1.5 : 1) * (1 + Math.sin(run.t * 16 + i) * 0.1));
         }
       }
       mesh.visible = s.alive && !isCoin && !isPulse;
@@ -937,18 +936,27 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         const cfx = world.captureFx[i];
         if (!g) continue;
         const age = run.t - cfx.t0;
-        if (cfx.active && age >= 1.1) cfx.active = false;
+        if (cfx.active && age >= 1.3) cfx.active = false;
         g.visible = cfx.active && world.started;
         if (g.visible) {
-          const k = age / 1.1;
+          const k = age / 1.3;
           g.position.copy(cfx.dir).multiplyScalar(R);
           g.quaternion.setFromUnitVectors(UP, cfx.dir);
           const beam = g.children[0] as THREE.Mesh;
           const ringFx = g.children[1] as THREE.Mesh;
-          beam.scale.set(1 - k * 0.6, 1 + k * 0.7, 1 - k * 0.6);
-          (beam.material as THREE.MeshBasicMaterial).opacity = 0.55 * (1 - k);
-          ringFx.scale.setScalar(Math.max(0.02, 0.5 * k));
-          (ringFx.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - k);
+          const ring2 = g.children[2] as THREE.Mesh;
+          // the pillar ERUPTS (fast ease-out rise) then burns off
+          const rise = 1 - Math.pow(1 - Math.min(1, k * 2.4), 3);
+          beam.scale.set(1 - k * 0.5, 0.25 + rise * 1.5, 1 - k * 0.5);
+          (beam.material as THREE.MeshBasicMaterial).opacity = 0.75 * (1 - k * k);
+          // gold shockwave first, cyan echo chasing it
+          const k1 = Math.min(1, k * 1.7);
+          ringFx.scale.setScalar(Math.max(0.02, 0.6 * (1 - Math.pow(1 - k1, 2))));
+          (ringFx.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - k1);
+          const k2 = Math.max(0, Math.min(1, (k - 0.28) / 0.72));
+          ring2.visible = k2 > 0;
+          ring2.scale.setScalar(Math.max(0.02, 0.75 * (1 - Math.pow(1 - k2, 2))));
+          (ring2.material as THREE.MeshBasicMaterial).opacity = 0.55 * (1 - k2);
         }
       }
       // XEN detonations — the blast is the show, not the coin
@@ -1184,6 +1192,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         for (const e of world.enemies) e.alive = false;
         for (const s of world.shurikens) s.alive = false;
         for (const gm of world.gems) gm.alive = false;
+        // stale run targets bled into explore: arrows/banners/halos key off
+        // siteIds + captured, so clear them BEFORE the final sync
+        world.siteIds = [];
+        world.captured.clear();
         syncMeshes();
       }
       return;
@@ -1692,7 +1704,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       mesh.position.copy(kpos).multiplyScalar(R + 0.1);
       mesh.quaternion.setFromUnitVectors(UP, kpos);
       mesh.rotateY(phi * 2);
-      const km = mesh.material as THREE.MeshStandardMaterial;
+      // the BLADE carries the burn (children[0]); guard/grip stay physical
+      const km = (mesh.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
       km.emissive.set(hasTempest ? "#ff4d3d" : "#f0c75e");
       km.emissiveIntensity = hasTempest ? 1.6 : 0.8;
       const kdps = hasTempest ? 150 : 70;
@@ -1761,11 +1774,13 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (_v.angleTo(world.pLocal) < CAPTURE_ANGLE) {
         applySitePower(id);
         sfx.capture();
-        // celebration: gold beam + pulse from the captured site
+        // celebration: erupting light pillar + twin shockwaves + sparks
         const cfx = world.captureFx.find((x) => !x.active) ?? world.captureFx[0];
         cfx.active = true;
         cfx.dir.copy(_v);
         cfx.t0 = run.t;
+        spawnBurst(_v, "#ffd97a", 8);
+        spawnBurst(_v, "#7dd3fc", 4);
         world.captured.add(id);
         useGame.setState((s) => ({ capturedIds: [...s.capturedIds, id] }));
         run.captured = world.captured.size;
@@ -1830,24 +1845,15 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
                 <RugMob />
               </group>
             )}
-            {/* THEO scan-lock glyph (diamond ring), toggled by markedUntil */}
+            {/* THEO scan-lock: a small chip hovering ABOVE the mob — any
+                shape drawn AROUND the mob read as a rendering glitch */}
             <mesh
               ref={(el) => { markRefs.current[i] = el; }}
               visible={false}
-              position={[0, 0.42, 0]}
+              position={[0, 0.52, 0]}
             >
-              {/* clean circular reticle — the 4-segment diamond read as a
-                  weird selection SQUARE over marked mobs */}
-              <ringGeometry args={[0.15, 0.172, 28]} />
-              <meshBasicMaterial
-                color="#67e8f9"
-                transparent
-                opacity={0.9}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-                side={THREE.DoubleSide}
-                toneMapped={false}
-              />
+              <octahedronGeometry args={[0.045]} />
+              <meshBasicMaterial color="#67e8f9" toneMapped={false} />
             </mesh>
           </group>
         );
@@ -1884,30 +1890,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           ))}
         </group>
       ))}
-      {/* THEO's prompt packets — a data diamond RIDING A RAY: the streak
-          behind the core is what makes it read as a pulse, not a pellet */}
+      {/* THEO's prompt pulse — a LASER BOLT: white-hot core inside a cyan
+          glow sheath, elongated along the travel direction. Ray gun, not
+          thrown cutlery. */}
       {Array.from({ length: MAX_SHURIKENS }).map((_, i) => (
         <group key={`pp${i}`} ref={(el) => { pulseRefs.current[i] = el; }} visible={false}>
-          <mesh>
-            <octahedronGeometry args={[0.045]} />
-            <meshStandardMaterial
-              color="#a5f3fc"
-              emissive="#22d3ee"
-              emissiveIntensity={2.4}
-              toneMapped={false}
-              metalness={0.2}
-              roughness={0.25}
-              transparent
-              opacity={0.95}
-            />
+          <mesh rotation={[0, 0, Math.PI / 2]}>
+            <capsuleGeometry args={[0.011, 0.15, 3, 8]} />
+            <meshBasicMaterial color="#eafeff" toneMapped={false} />
           </mesh>
-          {/* the ray: tapered streak trailing opposite the travel direction */}
-          <mesh position={[-0.09, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.005, 0.022, 0.15, 6, 1, true]} />
+          <mesh rotation={[0, 0, Math.PI / 2]}>
+            <capsuleGeometry args={[0.028, 0.16, 3, 10]} />
             <meshBasicMaterial
               color="#22d3ee"
               transparent
-              opacity={0.5}
+              opacity={0.4}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               toneMapped={false}
@@ -1977,15 +1974,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <spriteMaterial transparent depthWrite={false} toneMapped={false} />
         </sprite>
       ))}
-      {/* capture celebration — gold light beam + ground pulse */}
+      {/* capture celebration — a light pillar SHOOTS skyward, two shock
+          rings chase each other outward, sparks fly (spawned on capture) */}
       {Array.from({ length: 3 }).map((_, i) => (
         <group key={`cb${i}`} ref={(el) => { beamRefs.current[i] = el; }} visible={false}>
-          <mesh position={[0, 0.45, 0]}>
-            <cylinderGeometry args={[0.022, 0.055, 0.9, 12, 1, true]} />
+          <mesh position={[0, 0.65, 0]}>
+            <cylinderGeometry args={[0.02, 0.06, 1.3, 12, 1, true]} />
             <meshBasicMaterial
-              color="#f0c75e"
+              color="#ffd97a"
               transparent
-              opacity={0.5}
+              opacity={0.6}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               side={THREE.DoubleSide}
@@ -1998,6 +1996,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
               color="#ffd23d"
               transparent
               opacity={0.7}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+              toneMapped={false}
+            />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.035, 0]}>
+            <ringGeometry args={[0.9, 1, 36]} />
+            <meshBasicMaterial
+              color="#7dd3fc"
+              transparent
+              opacity={0.55}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               side={THREE.DoubleSide}
@@ -2055,11 +2065,33 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           />
         </mesh>
       ))}
+      {/* orbiting katanas — an actual sword (steel blade, gold tsuba,
+          wrapped grip), not a glowing yellow bar */}
       {Array.from({ length: MAX_KATANAS }).map((_, i) => (
-        <mesh key={`k${i}`} ref={(el) => { katanaRefs.current[i] = el; }} visible={false}>
-          <boxGeometry args={[0.02, 0.02, 0.22]} />
-          <meshStandardMaterial color="#c7d0e2" emissive="#f0c75e" emissiveIntensity={0.8} metalness={0.9} roughness={0.2} />
-        </mesh>
+        <group key={`k${i}`} ref={(el) => { katanaRefs.current[i] = el; }} visible={false}>
+          <mesh position={[0, 0, 0.055]}>
+            <boxGeometry args={[0.013, 0.005, 0.17]} />
+            <meshStandardMaterial
+              color="#dbe6f2"
+              emissive="#f0c75e"
+              emissiveIntensity={0.8}
+              metalness={0.95}
+              roughness={0.15}
+            />
+          </mesh>
+          <mesh position={[0, 0, -0.033]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.022, 0.022, 0.008, 12]} />
+            <meshStandardMaterial color="#f0c75e" metalness={0.85} roughness={0.3} />
+          </mesh>
+          <mesh position={[0, 0, -0.072]}>
+            <boxGeometry args={[0.013, 0.013, 0.068]} />
+            <meshStandardMaterial color="#141c2c" roughness={0.6} />
+          </mesh>
+          <mesh position={[0, 0, -0.11]}>
+            <sphereGeometry args={[0.011, 8, 8]} />
+            <meshStandardMaterial color="#f0c75e" metalness={0.85} roughness={0.3} />
+          </mesh>
+        </group>
       ))}
       {Array.from({ length: MAX_WAKE }).map((_, i) => (
         <mesh key={`w${i}`} ref={(el) => { wakeRefs.current[i] = el; }} visible={false}>
