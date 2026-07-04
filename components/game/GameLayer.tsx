@@ -3,6 +3,7 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
+import { mergeVertices } from "three-stdlib";
 import * as THREE from "three";
 import { regions } from "@/lib/regions";
 import { sfx } from "@/lib/sound";
@@ -207,6 +208,8 @@ const world = {
       spawnAt: 0,
       bossAtBlock: 0,
   bossCount: 0,
+  finalSpawned: false,
+  finalIdx: -1,
       siteIds: [] as string[],
       siteRespawnAt: 0,
   captured: new Set<string>(),
@@ -260,14 +263,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const center = box.getCenter(new THREE.Vector3());
       clone.scale.setScalar(k);
       clone.position.set(-center.x * k, -center.y * k, -center.z * k);
-      // menace pass: darken the hide, smolder crimson from within
+      // menace pass: darken the hide, smolder crimson, smooth the low-poly
+      // facets (weld duplicated verts, then average normals)
       clone.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (mesh.isMesh && mesh.material) {
+          if (mesh.geometry) {
+            mesh.geometry = mergeVertices(mesh.geometry);
+            mesh.geometry.computeVertexNormals();
+          }
           const m = (mesh.material as THREE.MeshStandardMaterial).clone();
           m.color?.multiplyScalar(0.72);
           m.emissive?.set("#8b1020");
           m.emissiveIntensity = 0.4;
+          m.flatShading = false;
+          m.needsUpdate = true;
           mesh.material = m;
         }
       });
@@ -315,6 +325,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     e.recoilUntil = 0;
     // boss ladder: THE WHALE first, then your dark mirror — alternating after
     if (type === "boss") e.bossKind = world.bossCount++ % 2 === 0 ? "whale" : "nemesis";
+    return e;
   };
 
   const dropGems = (at: THREE.Vector3, xp: number, split: number) => {
@@ -646,6 +657,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       for (const p of world.parts) p.alive = false;
       world.bossAtBlock = 0;
       world.bossCount = 0;
+      world.finalSpawned = false;
+      world.finalIdx = -1;
       world.captured.clear();
       world.siteIds = pickSites(ACTIVE_SITES, []);
       store.setActiveSites(world.siteIds);
@@ -691,7 +704,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     if (f.lengthSq() > 1e-8) f.normalize();
 
     // ---- spawner ----
-    const interval = Math.max(0.3, (1.6 * Math.pow(0.92, run.block)) / D.enemyMult);
+    const interval = Math.max(0.25, (1.25 * Math.pow(0.9, run.block)) / D.enemyMult);
     if (run.t >= world.spawnAt) {
       world.spawnAt = run.t + interval;
       const n = 1 + Math.floor(run.block / 3);
@@ -996,6 +1009,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       sfx.kill();
       spawnBurst(e.dir, ENEMY_TYPES[e.type].color, e.type === "boss" ? 14 : 6);
       dropGems(e.dir, e.xp, e.gemSplit);
+      if (world.finalIdx >= 0 && world.enemies[world.finalIdx] === e) {
+        world.finalIdx = -1;
+        run.finalBossAlive = false;
+        if (world.captured.size >= regions.length) {
+          useGame.getState().setActiveSites([]);
+          useGame.getState().win();
+        }
+      }
     }
 
     // ---- gems: magnet + pickup + level-ups ----
@@ -1039,7 +1060,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         world.captured.add(id);
         useGame.setState((s) => ({ capturedIds: [...s.capturedIds, id] }));
         run.captured = world.captured.size;
-        if (world.captured.size >= regions.length) {
+        // the FINAL BOSS crashes the party when 5 sites remain
+        if (!world.finalSpawned && regions.length - world.captured.size <= 5) {
+          const fb = spawnEnemy("boss");
+          if (fb) {
+            fb.bossKind = "nemesis";
+            fb.maxHp = fb.hp = fb.maxHp * 2.5;
+            fb.dmg = Math.round(fb.dmg * 1.3);
+            fb.speed *= 1.15;
+            world.finalIdx = world.enemies.indexOf(fb);
+            world.finalSpawned = true;
+            run.finalBossAlive = true;
+            sfx.boss();
+          }
+        }
+        if (world.captured.size >= regions.length && !run.finalBossAlive) {
           store.setActiveSites([]);
           store.win();
           return;

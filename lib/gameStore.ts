@@ -58,10 +58,10 @@ export const ENEMY_TYPES: Record<
     weight: (block: number) => number;
   }
 > = {
-  goblin: { hp: 22, speed: 0.26, radius: 0.055, dmg: 10, xp: 2, gemSplit: 1, color: "#e0563f", weight: () => 10 },
-  gremlin: { hp: 10, speed: 0.42, radius: 0.04, dmg: 6, xp: 1, gemSplit: 1, color: "#fb923c", weight: (b) => (b >= 1 ? 8 : 0) },
-  whale: { hp: 90, speed: 0.13, radius: 0.09, dmg: 18, xp: 8, gemSplit: 4, color: "#a78bfa", weight: (b) => (b >= 2 ? 4 : 0) },
-  boss: { hp: 1100, speed: 0.19, radius: 0.18, dmg: 48, xp: 64, gemSplit: 10, color: "#f0c75e", weight: () => 0 },
+  goblin: { hp: 22, speed: 0.26, radius: 0.055, dmg: 13, xp: 2, gemSplit: 1, color: "#e0563f", weight: () => 10 },
+  gremlin: { hp: 10, speed: 0.42, radius: 0.04, dmg: 9, xp: 1, gemSplit: 1, color: "#fb923c", weight: (b) => (b >= 1 ? 8 : 0) },
+  whale: { hp: 90, speed: 0.13, radius: 0.09, dmg: 24, xp: 8, gemSplit: 4, color: "#a78bfa", weight: (b) => (b >= 2 ? 4 : 0) },
+  boss: { hp: 1100, speed: 0.19, radius: 0.18, dmg: 75, xp: 64, gemSplit: 10, color: "#f0c75e", weight: () => 0 },
 };
 
 export type UpgradeDef = {
@@ -120,6 +120,7 @@ export const run = {
   speedMult: 1, // consumed by the planet movement controller
   lastHitAt: -10,
   killedBy: "", // flavor id of the last thing that bit us
+  finalBossAlive: false,
   damage: 0, // total damage dealt (feeds the score formula)
   difficulty: "normal" as DifficultyId,
 };
@@ -142,6 +143,7 @@ export function resetRun(diff?: DifficultyId) {
   run.speedMult = 1;
   run.lastHitAt = -10;
   run.killedBy = "";
+  run.finalBossAlive = false;
   run.damage = 0;
 }
 
@@ -159,7 +161,8 @@ export function fireCooldown() {
   return Math.max(0.18, 0.55 * Math.pow(0.88, run.upgrades.firerate ?? 0) * Math.pow(0.94, run.perm.rate));
 }
 export function magnetAngle() {
-  return 0.2 * (1 + 0.6 * (run.upgrades.magnet ?? 0)) * (1 + 0.08 * run.perm.magnet);
+  // capped: a fully-stacked magnet used to vacuum more than the visible planet
+  return Math.min(1.1, 0.75 * 0.2 * (1 + 0.6 * (run.upgrades.magnet ?? 0)) * (1 + 0.08 * run.perm.magnet));
 }
 export function currentSpeedMult() {
   const finalStand = run.hp < run.maxHp * 0.2 ? 1.3 : 1;
@@ -205,6 +208,7 @@ type Hud = {
   captured: number;
   upgrades: Record<string, number>;
   shield: boolean;
+  finalBoss: boolean;
   hit: boolean;
   diff: DifficultyId;
 };
@@ -241,6 +245,7 @@ const emptyHud = (): Hud => ({
   captured: run.captured,
   upgrades: { ...run.upgrades },
   shield: run.t < run.fx.shield,
+  finalBoss: run.finalBossAlive,
   hit: run.t - run.lastHitAt < 0.35,
   diff: run.difficulty,
 });

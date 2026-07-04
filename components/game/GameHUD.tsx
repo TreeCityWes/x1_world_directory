@@ -220,6 +220,11 @@ export default function GameHUD() {
         <span className="text-cyan">
           {hud.captured}/{TOTAL_SITES} sites
         </span>
+        {hud.finalBoss && (
+          <span className="animate-pulse text-[#ff4d4d]">
+            <span className="mx-2 text-ink-dim">·</span>⚔ slay the final boss
+          </span>
+        )}
       </div>
 
       {/* first-run onboarding — one line, dismiss once, never again */}
