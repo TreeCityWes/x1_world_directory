@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { moveState } from "@/lib/gameState";
 import { useGame } from "@/lib/gameStore";
+import { CHARACTERS } from "@/lib/characters";
 import { prefersReducedMotion } from "@/lib/motion";
 import CharacterBody from "./CharacterBody";
 import { PLANET_RADIUS } from "./Planet";
@@ -19,6 +20,8 @@ const _target = new THREE.Quaternion();
  */
 export default function Character() {
   const charId = useGame((s) => s.character);
+  // the aura wears the character's identity color — cyan is not a default
+  const aura = CHARACTERS[charId].colors.band;
   const yaw = useRef<THREE.Group>(null);
   const bob = useRef<THREE.Group>(null);
   const armL = useRef<THREE.Group>(null);
@@ -71,12 +74,12 @@ export default function Character() {
     <group position={[0, PLANET_RADIUS - 0.02, 0]} scale={0.5}>
       {/* hero lighting — the character must pop against the dark world */}
       <pointLight position={[0.5, 0.9, 0.9]} intensity={1.8} distance={2.8} color="#dbe6ff" />
-      <pointLight position={[-0.6, 0.7, -0.8]} intensity={1.3} distance={2.6} color="#2f6bff" />
-      {/* contact glow + hover ring under the character */}
+      <pointLight position={[-0.6, 0.7, -0.8]} intensity={1.3} distance={2.6} color={aura} />
+      {/* contact glow + hover ring under the character, in their color */}
       <mesh position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.26, 28]} />
         <meshBasicMaterial
-          color="#7dd3fc"
+          color={aura}
           transparent
           opacity={0.22}
           blending={THREE.AdditiveBlending}
@@ -86,7 +89,7 @@ export default function Character() {
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.17, 0.011, 8, 32]} />
         <meshBasicMaterial
-          color="#7dd3fc"
+          color={aura}
           transparent
           opacity={0.7}
           blending={THREE.AdditiveBlending}

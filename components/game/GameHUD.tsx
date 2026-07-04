@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
-import { DIFFICULTIES, UPGRADES, run, useGame, type DifficultyId } from "@/lib/gameStore";
+import { DIFFICULTIES, UPGRADES, run, upgradeView, useGame, type DifficultyId } from "@/lib/gameStore";
 import { CHARACTERS, CHARACTER_ORDER } from "@/lib/characters";
 import CharacterPreview from "@/components/game/CharacterPreview";
 import { useProfile } from "@/lib/profile";
@@ -446,6 +446,7 @@ export default function GameHUD() {
               <div className="mt-4 flex flex-wrap items-stretch justify-center gap-3 px-4">
                 {choices.map((id, i) => {
                   const u = UPGRADES.find((x) => x.id === id)!;
+                  const view = upgradeView(id);
                   const nextLv = (hud.upgrades[id] ?? 0) + 1;
                   const isEvo = !!u.requires;
                   return (
@@ -471,9 +472,9 @@ export default function GameHUD() {
                       <p
                         className={`mt-1.5 text-base font-semibold tracking-tight ${isEvo ? "text-gold" : ""}`}
                       >
-                        {u.name}
+                        {view.name}
                       </p>
-                      <p className="mt-1 text-xs leading-relaxed text-ink-dim">{u.desc(nextLv)}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-ink-dim">{view.desc(nextLv)}</p>
                     </motion.button>
                   );
                 })}

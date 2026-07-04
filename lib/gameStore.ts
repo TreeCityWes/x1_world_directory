@@ -99,6 +99,43 @@ export const UPGRADES: UpgradeDef[] = [
   { id: "meltdown", name: "Core Meltdown", desc: () => "huge halo · enemies inside slowed to a crawl", maxLevel: 1, weight: 0, requires: ["halo", "armor"] },
 ];
 
+// Same mechanic, different fantasy: per-character names/copy for shared
+// upgrade IDs, so CAPY is never offered "throw more shurikens".
+const UPGRADE_FLAVOR: Partial<
+  Record<string, Partial<Record<CharacterId, { name?: string; desc?: (l: number) => string }>>>
+> = {
+  damage: {
+    jack: { name: "Loaded XEN Coins", desc: (l) => `+${6 * l} coin damage` },
+    theo: { name: "Prompt Tuning", desc: (l) => `+${6 * l} pulse damage` },
+    capy: { name: "Sharpened Slash", desc: (l) => `+${6 * l} slash damage` },
+  },
+  firerate: {
+    jack: { name: "Rapid Mint", desc: (l) => `${12 * l}% faster coin throws` },
+    theo: { name: "Token Streaming", desc: (l) => `${12 * l}% faster pulses` },
+    capy: { name: "Frenzied Cleave", desc: (l) => `${12 * l}% faster swings` },
+  },
+  multishot: {
+    jack: { name: "Coin Fan", desc: (l) => `throw ${1 + l} coins` },
+    theo: { name: "Parallel Prompts", desc: (l) => `fire ${1 + l} pulses` },
+    capy: { name: "Wider Cleave", desc: (l) => `+${30 * l}% slash arc & reach` },
+  },
+  bladestorm: {
+    jack: { name: "XEN Detonation", desc: () => "every 3s: a ring of 12 exploding coins" },
+    theo: { name: "Prompt Cascade", desc: () => "every 3s: a radial burst of chaining pulses" },
+    capy: { name: "Validator Sweep", desc: () => "every 3s: a full-circle cleave" },
+  },
+};
+
+/** Display name/desc for an upgrade as THIS character experiences it. */
+export function upgradeView(id: string, character: CharacterId = run.character) {
+  const def = UPGRADES.find((u) => u.id === id);
+  const f = UPGRADE_FLAVOR[id]?.[character];
+  return {
+    name: f?.name ?? def?.name ?? id,
+    desc: f?.desc ?? def?.desc ?? (() => ""),
+  };
+}
+
 export const BLOCK_SECONDS = 30; // difficulty ramps every "block" — X1 has 1s blocks, ours are chunkier
 
 // ---- per-run mutable state (game loop writes, never re-renders React) ----

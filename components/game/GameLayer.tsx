@@ -78,7 +78,8 @@ type Enemy = {
 type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string; pierce: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
 type Wake = { alive: boolean; dir: THREE.Vector3; life: number };
-type Flame = { alive: boolean; dir: THREE.Vector3; life: number; maxLife: number };
+type Flame = { alive: boolean; dir: THREE.Vector3; life: number; maxLife: number; smoke: boolean };
+type Boom = { alive: boolean; dir: THREE.Vector3; t0: number };
 type Part = {
   alive: boolean;
   dir: THREE.Vector3;
@@ -246,12 +247,14 @@ const world = {
   // character signature FX timestamps (run.t clock)
   slashFxAt: -10,
   slashDir: new THREE.Vector3(1, 0, 0),
+  slashFull: false, // Validator Sweep: the blade travels the whole circle
   scanFxAt: -10,
   arcFlash: 0,
   arcPoints: [] as THREE.Vector3[],
   arcDirty: false,
   flameAt: 0,
-  flames: Array.from({ length: MAX_FLAMES }, (): Flame => ({ alive: false, dir: new THREE.Vector3(), life: 0, maxLife: 1 })),
+  flames: Array.from({ length: MAX_FLAMES }, (): Flame => ({ alive: false, dir: new THREE.Vector3(), life: 0, maxLife: 1, smoke: false })),
+  booms: Array.from({ length: 6 }, (): Boom => ({ alive: false, dir: new THREE.Vector3(), t0: 0 })),
   wake: Array.from({ length: MAX_WAKE }, (): Wake => ({ alive: false, dir: new THREE.Vector3(), life: 0 })),
   parts: Array.from(
     { length: MAX_PARTS },
@@ -266,13 +269,28 @@ const FLAME_B = new THREE.Color("#ff8c3d");
 const FLAME_C = new THREE.Color("#ff3d3d");
 const _col = new THREE.Color();
 
-// the arc-lightning polyline (module singleton, same pattern as ATMOSPHERE)
-const ARC_LINE = new THREE.Line(
-  new THREE.BufferGeometry(),
-  new THREE.LineBasicMaterial({ color: "#7dd3fc", transparent: true, opacity: 0.9 }),
-);
-ARC_LINE.visible = false;
-ARC_LINE.frustumCulled = false;
+// arc lightning: a jagged bright core tube inside a soft glow tube — a real
+// BOLT, not a hairline (GL line width is ignored on most Windows GPUs)
+const ARC_MAT_CORE = new THREE.MeshBasicMaterial({
+  color: "#f2fbff",
+  transparent: true,
+  opacity: 1,
+  toneMapped: false,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const ARC_MAT_GLOW = new THREE.MeshBasicMaterial({
+  color: "#4f9dff",
+  transparent: true,
+  opacity: 0.4,
+  toneMapped: false,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const ARC_CORE = new THREE.Mesh(new THREE.BufferGeometry(), ARC_MAT_CORE);
+const ARC_GLOW = new THREE.Mesh(new THREE.BufferGeometry(), ARC_MAT_GLOW);
+ARC_CORE.visible = ARC_GLOW.visible = false;
+ARC_CORE.frustumCulled = ARC_GLOW.frustumCulled = false;
 
 export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Group | null> }) {
   const mode = useGame((s) => s.mode);
@@ -328,9 +346,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const magnetRef = useRef<THREE.Mesh | null>(null);
   const flameRefs = useRef<(THREE.Mesh | null)[]>([]);
   const slashRef = useRef<THREE.Mesh | null>(null);
+  const swordRef = useRef<THREE.Group | null>(null);
   const scanRef = useRef<THREE.Mesh | null>(null);
   const reticleRef = useRef<THREE.Mesh | null>(null);
   const coinRefs = useRef<(THREE.Group | null)[]>([]);
+  const pulseRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const boomRefs = useRef<(THREE.Group | null)[]>([]);
+  const shieldRef = useRef<THREE.Mesh | null>(null);
+  const markRefs = useRef<(THREE.Mesh | null)[]>([]);
 
   const spawnEnemy = (type: EnemyTypeId) => {
     const [lo, hi] = TYPE_RANGES[type];
@@ -364,7 +387,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   // Jack Levin: the X coin detonates — area damage around the blast point
   const explodeXCoin = (at: THREE.Vector3, dmg: number) => {
     sfx.kill();
-    spawnBurst(at, "#f5f5f5", 8);
+    spawnBurst(at, "#f0c75e", 6);
+    // the detonation is the show: expanding gold shock ring + white core
+    const b = world.booms.find((x) => !x.alive) ?? world.booms[0];
+    b.alive = true;
+    b.dir.copy(at);
+    b.t0 = run.t;
     for (const e of world.enemies) {
       if (!e.alive) continue;
       if (at.angleTo(e.dir) < 0.26) dealDamage(e, dmg);
@@ -504,9 +532,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       }
       m.rotateX(Math.PI / 2);
       m.scale.setScalar(1 + Math.sin(run.t * 5 + i * 2.1) * 0.18);
+      // head AND shaft wear the destination pillar's accent, breathing gently
       const mat = m.material as THREE.MeshStandardMaterial;
       mat.color.set(reg.accent);
       mat.emissive.set(reg.accent);
+      mat.emissiveIntensity = 1.6 + Math.sin(run.t * 5 + i * 2.1) * 0.6;
+      const shaft = m.children[0] as THREE.Mesh | undefined;
+      if (shaft) {
+        const sm = shaft.material as THREE.MeshStandardMaterial;
+        sm.color.set(reg.accent);
+        sm.emissive.set(reg.accent);
+        sm.emissiveIntensity = 1.1 + Math.sin(run.t * 5 + i * 2.1) * 0.4;
+      }
     }
     for (let i = 0; i < MAX_ENEMIES; i++) {
       const grp = enemyRefs.current[i];
@@ -546,6 +583,13 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         }
         const wob = 1 + Math.sin(e.t * 9) * 0.04;
         grp.scale.set(1, wob, 1);
+        // THEO's scan mark — a spinning cyan lock glyph over analyzed enemies
+        const halo = markRefs.current[i];
+        if (halo) {
+          const marked = e.markedUntil > run.t;
+          halo.visible = marked;
+          if (marked) halo.rotation.set(-Math.PI / 2, 0, run.t * 4);
+        }
       }
     }
     for (let i = 0; i < MAX_SHURIKENS; i++) {
@@ -564,42 +608,61 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           coin.rotateZ(s.spin * 0.6); // arcade spin around the vertical
         }
       }
-      mesh.visible = s.alive && !isCoin;
+      // THEO's pulses are cyan data-diamonds from their own pool
+      const isPulse = s.alive && s.kind === "pulse";
+      const packet = pulseRefs.current[i];
+      if (packet) {
+        packet.visible = isPulse;
+        if (isPulse) {
+          packet.position.copy(s.pos).multiplyScalar(R + 0.07);
+          packet.quaternion.setFromUnitVectors(UP, s.pos);
+          packet.rotateY(s.spin * 0.8);
+          packet.scale.setScalar(1 + Math.sin(run.t * 16 + i) * 0.18);
+        }
+      }
+      mesh.visible = s.alive && !isCoin && !isPulse;
       if (mesh.visible) {
         mesh.position.copy(s.pos).multiplyScalar(R + 0.07);
         mesh.quaternion.setFromUnitVectors(UP, s.pos);
         mesh.rotateY(s.spin);
-        const pm = mesh.material as THREE.MeshStandardMaterial;
-        if (s.kind === "pulse") {
-          mesh.scale.setScalar(1.4);
-          pm.color.set("#67e8f9");
-          pm.emissive.set("#67e8f9");
-          pm.emissiveIntensity = 2;
-        } else {
-          mesh.scale.setScalar(1);
-          pm.color.set("#c7d0e2");
-          pm.emissive.set("#39c7f5");
-          pm.emissiveIntensity = 0.6;
-        }
       }
     }
     // ---- character signature FX: slash sweep, scan ring, lock-on reticle ----
     {
       const wkind = charDef().weapon.kind;
       const slash = slashRef.current;
-      if (slash) {
+      const sword = swordRef.current;
+      {
         const age = run.t - world.slashFxAt;
         const show = world.started && wkind === "slash" && age >= 0 && age < 0.24;
-        slash.visible = show;
-        if (show) {
-          const k = age / 0.24;
-          slash.position.copy(world.pLocal).multiplyScalar(R + 0.035);
-          // basis: arc centered on the slash direction, flat on the surface
-          _axis.crossVectors(world.pLocal, world.slashDir).normalize();
-          _m4.makeBasis(_v.copy(world.slashDir), _axis, _f0.copy(world.pLocal));
-          slash.quaternion.setFromRotationMatrix(_m4);
-          slash.scale.setScalar(R * Math.sin(0.34) * (0.55 + 0.45 * k));
-          (slash.material as THREE.MeshBasicMaterial).opacity = 0.55 * (1 - k);
+        const k = age / 0.24;
+        const reach = 0.34 * (1 + 0.3 * (run.upgrades.multishot ?? 0));
+        if (slash) {
+          slash.visible = show;
+          if (show) {
+            slash.position.copy(world.pLocal).multiplyScalar(R + 0.035);
+            // basis: arc centered on the slash direction, flat on the surface
+            _axis.crossVectors(world.pLocal, world.slashDir).normalize();
+            _m4.makeBasis(_v.copy(world.slashDir), _axis, _f0.copy(world.pLocal));
+            slash.quaternion.setFromRotationMatrix(_m4);
+            slash.scale.setScalar(R * Math.sin(reach) * (0.55 + 0.45 * k));
+            (slash.material as THREE.MeshBasicMaterial).opacity = 0.55 * (1 - k);
+          }
+        }
+        // the blade itself sweeps across the arc (full circle on Validator Sweep)
+        if (sword) {
+          sword.visible = show;
+          if (show) {
+            sword.position.copy(world.pLocal).multiplyScalar(R + 0.07);
+            _axis.crossVectors(world.pLocal, world.slashDir).normalize();
+            _m4.makeBasis(_v.copy(world.slashDir), _axis, _f0.copy(world.pLocal));
+            sword.quaternion.setFromRotationMatrix(_m4);
+            const sweep = world.slashFull
+              ? -Math.PI + Math.PI * 2 * k
+              : -1.15 + 2.3 * k;
+            sword.rotateZ(sweep);
+            sword.scale.setScalar((R * Math.sin(reach)) / 0.63);
+          }
         }
       }
       const scan = scanRef.current;
@@ -642,6 +705,42 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           ret.rotateY(run.t * 2.5);
           ret.rotateX(Math.PI / 2);
           ret.scale.setScalar((target.radius + 0.05) * 1.6);
+        }
+      }
+      // CAPY Validator Shield — the 2.5s safe window is a visible hex barrier
+      const shield = shieldRef.current;
+      if (shield) {
+        const active = world.started && wkind === "slash" && run.t < run.fx.shield;
+        shield.visible = active;
+        if (active) {
+          shield.position.copy(world.pLocal).multiplyScalar(R + 0.05);
+          shield.quaternion.setFromUnitVectors(UP, world.pLocal);
+          shield.rotateX(Math.PI / 2);
+          shield.rotateZ(run.t * 1.4);
+          shield.scale.setScalar(R * Math.sin(0.17) * (1 + Math.sin(run.t * 6) * 0.05));
+          (shield.material as THREE.MeshBasicMaterial).opacity = 0.4 + Math.sin(run.t * 6) * 0.12;
+        }
+      }
+      // XEN detonations — the blast is the show, not the coin
+      for (let i = 0; i < world.booms.length; i++) {
+        const g = boomRefs.current[i];
+        const b = world.booms[i];
+        if (!g) continue;
+        const age = run.t - b.t0;
+        if (b.alive && age >= 0.4) b.alive = false;
+        const show = b.alive && world.started;
+        g.visible = show;
+        if (show) {
+          const k = age / 0.4;
+          g.position.copy(b.dir).multiplyScalar(R + 0.04);
+          g.quaternion.setFromUnitVectors(UP, b.dir);
+          g.rotateX(Math.PI / 2);
+          const ring = g.children[0] as THREE.Mesh;
+          const core = g.children[1] as THREE.Mesh;
+          ring.scale.setScalar(Math.max(0.02, R * Math.sin(0.26) * k));
+          (ring.material as THREE.MeshBasicMaterial).opacity = 0.85 * (1 - k);
+          core.scale.setScalar(Math.max(0.001, 0.09 * (1 - k)));
+          (core.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - k * k);
         }
       }
     }
@@ -729,14 +828,25 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       mesh.visible = f.alive;
       if (f.alive) {
         const age = 1 - f.life / f.maxLife; // 0 → 1
-        mesh.position.copy(f.dir).multiplyScalar(R + 0.02 + age * 0.09);
-        mesh.quaternion.setFromUnitVectors(UP, f.dir);
-        mesh.scale.setScalar(0.028 * (1 - age * 0.7));
         const m = mesh.material as THREE.MeshBasicMaterial;
-        if (age < 0.5) _col.lerpColors(FLAME_A, FLAME_B, age * 2);
-        else _col.lerpColors(FLAME_B, FLAME_C, (age - 0.5) * 2);
-        m.color.copy(_col);
-        m.opacity = 0.85 * (1 - age * age);
+        if (f.smoke) {
+          // minimalist smoke: faint dark puff drifting up above the flames
+          mesh.position.copy(f.dir).multiplyScalar(R + 0.06 + age * 0.16);
+          mesh.quaternion.setFromUnitVectors(UP, f.dir);
+          mesh.scale.setScalar(0.018 + age * 0.05);
+          m.blending = THREE.NormalBlending;
+          m.color.set("#39404f");
+          m.opacity = 0.15 * (1 - age);
+        } else {
+          mesh.position.copy(f.dir).multiplyScalar(R + 0.02 + age * 0.09);
+          mesh.quaternion.setFromUnitVectors(UP, f.dir);
+          mesh.scale.setScalar(0.028 * (1 - age * 0.7));
+          m.blending = THREE.AdditiveBlending;
+          if (age < 0.5) _col.lerpColors(FLAME_A, FLAME_B, age * 2);
+          else _col.lerpColors(FLAME_B, FLAME_C, (age - 0.5) * 2);
+          m.color.copy(_col);
+          m.opacity = 0.85 * (1 - age * age);
+        }
       }
     }
     // Coin Magnet: shimmering cyan ring at the exact pickup radius
@@ -754,11 +864,39 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           0.14 + ((run.upgrades.magnet ?? 0) > 0 ? 0.1 : 0) + Math.sin(run.t * 2.5) * 0.05;
       }
     }
-    // arc lightning flash
-    ARC_LINE.visible = world.started && run.t < world.arcFlash;
+    // arc lightning flash — midpoint-displaced jag swept as core + glow tubes
     if (world.arcDirty) {
-      ARC_LINE.geometry.setFromPoints(world.arcPoints);
       world.arcDirty = false;
+      const pts: THREE.Vector3[] = [];
+      for (let i = 0; i < world.arcPoints.length - 1; i++) {
+        const a = world.arcPoints[i];
+        const b = world.arcPoints[i + 1];
+        pts.push(a);
+        const len = a.distanceTo(b);
+        for (let s = 1; s < 3; s++) {
+          const p = a.clone().lerp(b, s / 3);
+          p.x += (Math.random() - 0.5) * len * 0.28;
+          p.y += (Math.random() - 0.5) * len * 0.28;
+          p.z += (Math.random() - 0.5) * len * 0.28;
+          p.setLength(Math.max(p.length(), R + 0.06)); // stay off the surface
+          pts.push(p);
+        }
+      }
+      pts.push(world.arcPoints[world.arcPoints.length - 1]);
+      if (pts.length >= 2) {
+        const curve = new THREE.CatmullRomCurve3(pts);
+        ARC_CORE.geometry.dispose();
+        ARC_GLOW.geometry.dispose();
+        ARC_CORE.geometry = new THREE.TubeGeometry(curve, pts.length * 4, 0.014, 5, false);
+        ARC_GLOW.geometry = new THREE.TubeGeometry(curve, pts.length * 4, 0.038, 5, false);
+      }
+    }
+    const arcOn = world.started && run.t < world.arcFlash;
+    ARC_CORE.visible = ARC_GLOW.visible = arcOn;
+    if (arcOn) {
+      const fade = Math.min(1, (world.arcFlash - run.t) / 0.12);
+      ARC_MAT_CORE.opacity = fade;
+      ARC_MAT_GLOW.opacity = 0.45 * fade;
     }
   }
 
@@ -790,7 +928,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.scanAt = 0;
       world.capyShieldAt = 0;
       world.slashFxAt = -10;
+      world.slashFull = false;
       world.scanFxAt = -10;
+      for (const b of world.booms) b.alive = false;
       world.finalSpawned = false;
       world.finalIdx = -1;
       world.captured.clear();
@@ -958,15 +1098,17 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       }
       sfx.throw();
       if (weaponKind === "slash") {
-        // CAPY: Bad Block Slash — a wide, always-visible cleave. Only enemies
-        // squarely behind the back are safe; hits knock back.
+        // CAPY: Bad Block Slash — a wide, always-visible cleave. Multishot is
+        // "Wider Cleave" here: each level extends the arc and the reach.
+        const ms = run.upgrades.multishot ?? 0;
         if (f.lengthSq() > 0.5) world.slashDir.copy(f);
         world.slashFxAt = run.t;
+        world.slashFull = false;
         for (const e of world.enemies) {
           if (!e.alive) continue;
-          if (world.pLocal.angleTo(e.dir) > 0.32) continue;
+          if (world.pLocal.angleTo(e.dir) > 0.32 * (1 + 0.3 * ms)) continue;
           const t2 = tangentToward(world.pLocal, e.dir, _v2);
-          if (t2 && t2.dot(world.slashDir) < -0.2) continue;
+          if (t2 && t2.dot(world.slashDir) < -0.2 - 0.25 * ms) continue;
           dealDamage(e, shurikenDamage() * 2.2);
           e.recoilUntil = Math.max(e.recoilUntil, run.t + 0.25);
           spawnBurst(e.dir, "#4ade80", 4);
@@ -1081,7 +1223,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         from = best.dir;
       }
       if (hit.length > 0) {
-        world.arcFlash = run.t + 0.15;
+        world.arcFlash = run.t + 0.2;
         world.arcDirty = true;
         world.arcPoints = [
           world.pLocal.clone().multiplyScalar(R + 0.12),
@@ -1097,20 +1239,39 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     // ---- Blade Storm evolution: periodic 360° shuriken nova ----
     if (run.upgrades.bladestorm && run.t >= world.novaAt) {
       world.novaAt = run.t + 3;
-      _v2.set(1, 0, 0);
-      _v2.addScaledVector(world.pLocal, -world.pLocal.dot(_v2)).normalize();
-      for (let i = 0; i < 12; i++) {
-        const s = world.shurikens.find((x) => !x.alive);
-        if (!s) break;
-        const t = _v.copy(_v2).applyQuaternion(
-          _q.setFromAxisAngle(world.pLocal, (i * Math.PI * 2) / 12),
-        );
-        s.alive = true;
-        s.pos.copy(world.pLocal);
-        s.axis.crossVectors(world.pLocal, t).normalize();
-        s.ttl = SHURIKEN_TTL;
-        s.dmg = shurikenDamage();
-        s.spin = 0;
+      // the evolution speaks each character's language: shuriken nova /
+      // exploding coin ring / chaining pulse burst / full-circle cleave
+      const novaKind = charDef().weapon.kind;
+      if (novaKind === "slash") {
+        // CAPY — Validator Sweep
+        world.slashFxAt = run.t;
+        world.slashFull = true;
+        for (const e of world.enemies) {
+          if (!e.alive) continue;
+          if (world.pLocal.angleTo(e.dir) > 0.42) continue;
+          dealDamage(e, shurikenDamage() * 2.2);
+          e.recoilUntil = Math.max(e.recoilUntil, run.t + 0.35);
+          spawnBurst(e.dir, "#4ade80", 4);
+        }
+      } else {
+        _v2.set(1, 0, 0);
+        _v2.addScaledVector(world.pLocal, -world.pLocal.dot(_v2)).normalize();
+        for (let i = 0; i < 12; i++) {
+          const s = world.shurikens.find((x) => !x.alive);
+          if (!s) break;
+          const t = _v.copy(_v2).applyQuaternion(
+            _q.setFromAxisAngle(world.pLocal, (i * Math.PI * 2) / 12),
+          );
+          s.alive = true;
+          s.pos.copy(world.pLocal);
+          s.axis.crossVectors(world.pLocal, t).normalize();
+          // pool slots are reused — ALWAYS restamp kind/pierce/ttl
+          s.kind = novaKind;
+          s.pierce = charDef().weapon.pierce ?? 1;
+          s.ttl = novaKind === "xcoin" ? 0.85 : SHURIKEN_TTL;
+          s.dmg = shurikenDamage();
+          s.spin = 0;
+        }
       }
     }
 
@@ -1146,9 +1307,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         const f = world.flames.find((x) => !x.alive);
         if (!f) break;
         f.alive = true;
+        f.smoke = false;
         f.dir.copy(randomDirNear(world.pLocal, halo, halo));
         f.maxLife = 0.35 + Math.random() * 0.25;
         f.life = f.maxLife;
+      }
+      // sparse smoke: one faint puff for every ~4 flame ticks, drifting higher
+      if (Math.random() < 0.25) {
+        const f = world.flames.find((x) => !x.alive);
+        if (f) {
+          f.alive = true;
+          f.smoke = true;
+          f.dir.copy(randomDirNear(world.pLocal, halo, halo));
+          f.maxLife = 0.9 + Math.random() * 0.4;
+          f.life = f.maxLife;
+        }
       }
     }
     for (const f of world.flames) {
@@ -1348,6 +1521,23 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
                 />
               </mesh>
             )}
+            {/* THEO scan-lock glyph (diamond ring), toggled by markedUntil */}
+            <mesh
+              ref={(el) => { markRefs.current[i] = el; }}
+              visible={false}
+              position={[0, 0.42, 0]}
+            >
+              <ringGeometry args={[0.16, 0.2, 4]} />
+              <meshBasicMaterial
+                color="#67e8f9"
+                transparent
+                opacity={0.9}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+                side={THREE.DoubleSide}
+                toneMapped={false}
+              />
+            </mesh>
           </group>
         );
       })}
@@ -1378,6 +1568,81 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           ))}
         </group>
       ))}
+      {/* THEO's prompt packets — cyan data diamonds, not resized shurikens */}
+      {Array.from({ length: MAX_SHURIKENS }).map((_, i) => (
+        <mesh key={`pp${i}`} ref={(el) => { pulseRefs.current[i] = el; }} visible={false}>
+          <octahedronGeometry args={[0.045]} />
+          <meshStandardMaterial
+            color="#a5f3fc"
+            emissive="#22d3ee"
+            emissiveIntensity={2.4}
+            toneMapped={false}
+            metalness={0.2}
+            roughness={0.25}
+            transparent
+            opacity={0.95}
+          />
+        </mesh>
+      ))}
+      {/* XEN detonations — expanding gold shock ring + white-hot core */}
+      {Array.from({ length: 6 }).map((_, i) => (
+        <group key={`bm${i}`} ref={(el) => { boomRefs.current[i] = el; }} visible={false}>
+          <mesh>
+            <ringGeometry args={[0.86, 1, 40]} />
+            <meshBasicMaterial
+              color="#f0c75e"
+              transparent
+              opacity={0.8}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+              toneMapped={false}
+            />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[1, 12, 12]} />
+            <meshBasicMaterial
+              color="#fffbe8"
+              transparent
+              opacity={0.9}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
+      ))}
+      {/* CAPY Validator Shield — green hex barrier during the immune window */}
+      <mesh ref={shieldRef} visible={false}>
+        <ringGeometry args={[0.82, 1, 6]} />
+        <meshBasicMaterial
+          color="#4ade80"
+          transparent
+          opacity={0.4}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* CAPY's blade — sweeps the cleave arc with every swing */}
+      <group ref={swordRef} visible={false}>
+        <mesh position={[0.36, 0, 0]}>
+          <boxGeometry args={[0.5, 0.014, 0.05]} />
+          <meshStandardMaterial
+            color="#dbe6f2"
+            emissive="#4ade80"
+            emissiveIntensity={1.2}
+            metalness={0.9}
+            roughness={0.15}
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh position={[0.09, 0, 0]}>
+          <boxGeometry args={[0.05, 0.024, 0.07]} />
+          <meshStandardMaterial color="#f0c75e" metalness={0.8} roughness={0.3} />
+        </mesh>
+      </group>
       {/* compass arrows to the active capture targets — head + shaft so they
           read as ARROWS, not tiny traffic cones */}
       {Array.from({ length: 3 }).map((_, i) => (
@@ -1515,7 +1780,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         />
       </mesh>
       {/* Arc Node lightning */}
-      <primitive object={ARC_LINE} />
+      <primitive object={ARC_CORE} />
+      <primitive object={ARC_GLOW} />
     </group>
   );
 }
