@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { touchStick } from "@/lib/touchInput";
+import { useGame } from "@/lib/gameStore";
 
 const RADIUS = 44; // knob travel in px
 
@@ -13,6 +14,19 @@ const RADIUS = 44; // knob travel in px
 export default function TouchPad() {
   const knob = useRef<HTMLDivElement | null>(null);
   const base = useRef<HTMLDivElement | null>(null);
+  const mode = useGame((s) => s.mode);
+  const steering = mode === "play" || mode === "explore";
+  // a modal can open MID-HOLD (level-up) — the stick must not stay stuck
+  useEffect(() => {
+    if (!steering) {
+      touchStick.x = 0;
+      touchStick.y = 0;
+      touchStick.active = false;
+    }
+  }, [steering]);
+  // only while there's something to steer — over the (now full-screen)
+  // modals the pad would float on top and steal their touches
+  if (!steering) return null;
 
   const move = (clientX: number, clientY: number) => {
     const el = base.current;

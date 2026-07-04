@@ -131,8 +131,9 @@ export default function Planet() {
   const sphere = useRef<THREE.Mesh>(null);
   const keys = useKeyboard();
   const vel = useRef({ x: 0, y: 0, z: 0 }); // angular velocity around world axes
-  const touchAz = useRef(0); // camera azimuth FROZEN at stick-press (see below)
+  const touchAz = useRef(0); // camera azimuth the stick frame is anchored to
   const touchHeld = useRef(false);
+  const stickDir = useRef(0); // thumb direction the current anchor was set at
   const dragging = useRef(false); // true while drag-spinning — gates the idle drift
   const lastNear = useRef<string | null>(null);
   const lastClosest = useRef<string | null>(null);
@@ -200,13 +201,26 @@ export default function Planet() {
     // "forward" is always away from the camera, whatever its orbit angle
     if (inputAllowed) {
       const az = moveState.camAz;
-      // The stick's reference frame FREEZES at press. Mapping it against the
-      // live camera azimuth creates a feedback loop (stick turns ninja →
-      // camera follows → same thumb now means a new direction → camera
-      // chases forever = the mobile swooping bug). Frozen frame = push left,
-      // camera swings once, settles.
-      if (touchStick.active && !touchHeld.current) touchAz.current = az;
-      touchHeld.current = touchStick.active;
+      // The stick's frame is FROZEN while the thumb HOLDS a direction —
+      // mapping a held deflection against the live camera azimuth is a
+      // feedback loop (stick turns ninja → camera follows → same thumb now
+      // means a new direction → camera chases forever = the swooping bug).
+      // But a frame frozen for the WHOLE hold goes stale: once the chase cam
+      // swings ~180°, screen-right maps to screen-left. So: re-anchor to the
+      // LIVE camera whenever the thumb MOVES to a new direction (>~26°) —
+      // a new push is new intent in what the player sees right now. Right
+      // stays right, and a steady hold still never swoops.
+      if (touchStick.active && (touchStick.x !== 0 || touchStick.y !== 0)) {
+        const dirNow = Math.atan2(touchStick.x, touchStick.y);
+        const turned = Math.abs(Math.atan2(Math.sin(dirNow - stickDir.current), Math.cos(dirNow - stickDir.current)));
+        if (!touchHeld.current || turned > 0.45) {
+          touchAz.current = az;
+          stickDir.current = dirNow;
+        }
+        touchHeld.current = true;
+      } else if (!touchStick.active) {
+        touchHeld.current = false;
+      }
       const kFwd = (k.forward ? 1 : 0) - (k.back ? 1 : 0);
       const kSide = (k.right ? 1 : 0) - (k.left ? 1 : 0);
       // desired surface direction in world space — keyboard uses the live

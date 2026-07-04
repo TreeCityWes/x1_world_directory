@@ -569,7 +569,7 @@ export default function GameHUD() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/70 backdrop-blur-sm"
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/70 backdrop-blur-sm max-md:fixed"
           >
             <div className="text-center">
               <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-gold">
@@ -610,7 +610,7 @@ export default function GameHUD() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/60 backdrop-blur-sm"
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/60 backdrop-blur-sm max-md:fixed"
           >
             <div className="max-h-full overflow-y-auto py-4 text-center">
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
@@ -665,7 +665,7 @@ export default function GameHUD() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/60 backdrop-blur-sm"
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/60 backdrop-blur-sm max-md:fixed"
           >
             <div className="max-h-full w-full py-6 text-center [padding-bottom:env(safe-area-inset-bottom)]">
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
@@ -724,17 +724,17 @@ export default function GameHUD() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/70 backdrop-blur-sm"
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/70 backdrop-blur-sm max-md:fixed"
           >
             <motion.div
               initial={{ scale: 0.9, y: 16 }}
               animate={{ scale: 1, y: 0 }}
-              className="rounded-2xl border border-gold/50 bg-[rgba(9,13,28,0.95)] p-8 text-center shadow-[0_0_60px_rgba(240,199,94,0.25)]"
+              className="rounded-2xl border border-gold/50 bg-[rgba(9,13,28,0.95)] p-8 text-center shadow-[0_0_60px_rgba(240,199,94,0.25)] max-md:mx-3 max-md:my-4 max-md:p-5"
             >
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
                 🥷 ecosystem complete — all {TOTAL_SITES} projects captured
               </p>
-              <p className="mt-3 text-5xl font-semibold tracking-tight text-gold">{finalScore}</p>
+              <p className="mt-3 text-5xl font-semibold tracking-tight text-gold max-md:text-4xl">{finalScore}</p>
               <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
                 score (incl. 1000 conquest bonus) · best {best}
               </p>
@@ -784,17 +784,17 @@ export default function GameHUD() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/70 backdrop-blur-sm"
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/70 backdrop-blur-sm max-md:fixed"
           >
             <motion.div
               initial={{ scale: 0.9, y: 16 }}
               animate={{ scale: 1, y: 0 }}
-              className="rounded-2xl border border-white/10 bg-[rgba(9,13,28,0.95)] p-8 text-center"
+              className="rounded-2xl border border-white/10 bg-[rgba(9,13,28,0.95)] p-8 text-center max-md:mx-3 max-md:my-4 max-md:p-5"
             >
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-[#e0563f]">
                 {DEATH_FLAVOR[deathCause] ?? "the bear market got you"}
               </p>
-              <p className="mt-3 text-5xl font-semibold tracking-tight">{finalScore}</p>
+              <p className="mt-3 text-5xl font-semibold tracking-tight max-md:text-4xl">{finalScore}</p>
               <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
                 score · best {best}
               </p>
