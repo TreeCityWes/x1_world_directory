@@ -66,7 +66,7 @@ function Motes({ color }: { color: string }) {
 const FRAME: Record<CharacterId, { h: number; s: number }> = {
   ninja: { h: 0.78, s: 1 },
   jack: { h: 0.8, s: 1 },
-  theo: { h: 0.92, s: 0.95 }, // includes the hat
+  theo: { h: 0.96, s: 0.95 }, // includes the (wide-brimmed) hat
   capy: { h: 0.35, s: 1.5 }, // stout quadruped — podium zoom, not to scale
   mystery: { h: 0.78, s: 1 },
 };

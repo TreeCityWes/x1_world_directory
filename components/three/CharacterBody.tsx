@@ -303,10 +303,11 @@ export default function CharacterBody({
   // royal-blue band with gold piping. Measured: the robot's boxy head is
   // ~0.44 wide but the hat's crown tube is only ~0.26, so the head can never
   // sit INSIDE the crown — the brim must rest ON the flat head top instead.
-  // Brim target 0.87× body height keeps it overhanging the head.
+  // Brim = 1.0× body height: the in-game chase cam looks from ~75°, and a
+  // narrower brim let the head's near side peek out under it (parallax).
   const theoHat = useMemo(
     () =>
-      normClone(hatGltf.scene, theoSize * 0.87, {
+      normClone(hatGltf.scene, theoSize * 1.0, {
         recolor: {
           F44336: { color: "#1e4fd8", emissive: "#1e4fd8", emissiveIntensity: 0.7 },
           FFCC88: { color: GOLD, emissive: "#c9921e", emissiveIntensity: 0.3 },

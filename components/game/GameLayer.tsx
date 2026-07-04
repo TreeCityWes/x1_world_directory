@@ -459,7 +459,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const scanRef = useRef<THREE.Mesh | null>(null);
   const reticleRef = useRef<THREE.Mesh | null>(null);
   const coinRefs = useRef<(THREE.Group | null)[]>([]);
-  const pulseRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const pulseRefs = useRef<(THREE.Group | null)[]>([]);
   const boomRefs = useRef<(THREE.Group | null)[]>([]);
   const shieldRef = useRef<THREE.Mesh | null>(null);
   const markRefs = useRef<(THREE.Mesh | null)[]>([]);
@@ -740,13 +740,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         const wob = 1 + Math.sin(e.t * 9) * 0.04;
         const shake = windup ? 1 + Math.sin(run.t * 30) * 0.07 : 1;
         grp.scale.set(shake, wob * (windup ? 1.1 : 1), shake);
-        // THEO's scan mark — a spinning cyan lock glyph over analyzed enemies
+        // THEO's scan mark — a breathing cyan lock ring over analyzed enemies
         const halo = markRefs.current[i];
         if (halo) {
           const marked = e.markedUntil > run.t;
           halo.visible = marked;
           if (marked) {
-            halo.rotation.set(-Math.PI / 2, 0, run.t * 4);
+            halo.rotation.set(-Math.PI / 2, 0, 0);
+            halo.scale.setScalar(1 + Math.sin(run.t * 7) * 0.12);
             halo.updateMatrix(); // pool children are matrix-frozen — compose by hand
           }
         }
@@ -776,8 +777,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         packet.visible = isPulse;
         if (isPulse) {
           packet.position.copy(s.pos).multiplyScalar(R + 0.07);
-          packet.quaternion.setFromUnitVectors(UP, s.pos);
-          packet.rotateY(s.spin * 0.8);
+          // orient +X along the travel direction so the ray streak trails
+          // behind (velocity = axis × pos for the great-circle motion)
+          _v2.crossVectors(s.axis, s.pos).normalize();
+          _axis.crossVectors(s.pos, _v2).normalize();
+          _m4.makeBasis(_v2, _f0.copy(s.pos), _axis);
+          packet.quaternion.setFromRotationMatrix(_m4);
+          const core = packet.children[0];
+          if (core) core.rotation.y = s.spin * 0.8; // the diamond spins, the ray doesn't
           packet.scale.setScalar((s.evo ? 1.5 : 1) * (1 + Math.sin(run.t * 16 + i) * 0.18));
         }
       }
@@ -1449,7 +1456,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     for (const s of world.shurikens) {
       if (!s.alive) continue;
       s.ttl -= dt;
-      s.spin += dt * 20;
+      // ~1.4 rev/s: fast enough to feel thrown, slow enough that the
+      // 4-point star SILHOUETTE reads (20 rad/s was a strobing blur)
+      s.spin += dt * 9;
       if (s.ttl <= 0) {
         if (s.kind === "xcoin") explodeXCoin(s.pos, s.dmg);
         s.alive = false;
@@ -1827,7 +1836,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
               visible={false}
               position={[0, 0.42, 0]}
             >
-              <ringGeometry args={[0.16, 0.2, 4]} />
+              {/* clean circular reticle — the 4-segment diamond read as a
+                  weird selection SQUARE over marked mobs */}
+              <ringGeometry args={[0.15, 0.172, 28]} />
               <meshBasicMaterial
                 color="#67e8f9"
                 transparent
@@ -1873,21 +1884,36 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           ))}
         </group>
       ))}
-      {/* THEO's prompt packets — cyan data diamonds, not resized shurikens */}
+      {/* THEO's prompt packets — a data diamond RIDING A RAY: the streak
+          behind the core is what makes it read as a pulse, not a pellet */}
       {Array.from({ length: MAX_SHURIKENS }).map((_, i) => (
-        <mesh key={`pp${i}`} ref={(el) => { pulseRefs.current[i] = el; }} visible={false}>
-          <octahedronGeometry args={[0.045]} />
-          <meshStandardMaterial
-            color="#a5f3fc"
-            emissive="#22d3ee"
-            emissiveIntensity={2.4}
-            toneMapped={false}
-            metalness={0.2}
-            roughness={0.25}
-            transparent
-            opacity={0.95}
-          />
-        </mesh>
+        <group key={`pp${i}`} ref={(el) => { pulseRefs.current[i] = el; }} visible={false}>
+          <mesh>
+            <octahedronGeometry args={[0.045]} />
+            <meshStandardMaterial
+              color="#a5f3fc"
+              emissive="#22d3ee"
+              emissiveIntensity={2.4}
+              toneMapped={false}
+              metalness={0.2}
+              roughness={0.25}
+              transparent
+              opacity={0.95}
+            />
+          </mesh>
+          {/* the ray: tapered streak trailing opposite the travel direction */}
+          <mesh position={[-0.09, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.005, 0.022, 0.15, 6, 1, true]} />
+            <meshBasicMaterial
+              color="#22d3ee"
+              transparent
+              opacity={0.5}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
       ))}
       {/* XEN detonations — expanding gold shock ring + white-hot core */}
       {Array.from({ length: 6 }).map((_, i) => (
@@ -1980,16 +2006,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           </mesh>
         </group>
       ))}
-      {/* CAPY's blade — sweeps the cleave arc with every swing */}
+      {/* CAPY's blade — a proper steel katana flash with a gold guard */}
       <group ref={swordRef} visible={false}>
         <mesh position={[0.36, 0, 0]}>
           <boxGeometry args={[0.5, 0.014, 0.05]} />
           <meshStandardMaterial
-            color="#dbe6f2"
-            emissive="#4ade80"
-            emissiveIntensity={1.2}
-            metalness={0.9}
-            roughness={0.15}
+            color="#e8eef6"
+            emissive="#b9c8dc"
+            emissiveIntensity={1.1}
+            metalness={0.95}
+            roughness={0.12}
             toneMapped={false}
           />
         </mesh>
@@ -2088,11 +2114,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           />
         </mesh>
       ))}
-      {/* CAPY — Bad Block Slash sweep */}
+      {/* CAPY — Bad Block Slash sweep: a STEEL flash, not a green wash —
+          the sword-ness is the identity (green stays on his shield/aura) */}
       <mesh ref={slashRef} visible={false}>
         <ringGeometry args={[0.28, 1, 28, 1, -1.15, 2.3]} />
         <meshBasicMaterial
-          color="#4ade80"
+          color="#cfdcec"
           transparent
           opacity={0.5}
           blending={THREE.AdditiveBlending}
