@@ -129,20 +129,30 @@ try {
   else if (t2 >= t1) fail(`countdown not ticking (stuck at ${t1}s for 45s)`);
   else pass(`countdown ticks (${t1}s -> ${t2}s)`);
 
-  // real rendering: accumulate draw calls over ~400ms (info.autoReset zeroes
-  // the counter every frame, so a point read lands on 0-1 mid-frame)
-  const calls = await page.evaluate(async () => {
+  // real rendering: wait for AT LEAST one full frame, then judge total calls
+  // against a black-canvas baseline. Two traps here: info.autoReset zeroes
+  // the counter every frame (a point read lands on 0-1), and CI's software
+  // GL manages ~1 frame per 400ms — so any fixed calls-per-window threshold
+  // is really a frame-rate assertion. One healthy frame is ~85+ calls; an
+  // empty scene is composer overhead only (~3-5).
+  const draw = await page.evaluate(async () => {
     const info = window.__x1dbg?.gl?.info;
-    if (!info) return 0;
+    if (!info) return { calls: 0, frames: 0 };
+    const f0 = info.render.frame;
     info.autoReset = false;
     info.reset();
-    await new Promise((r) => setTimeout(r, 400));
-    const c = info.render.calls;
+    const deadline = Date.now() + 5000;
+    while (info.render.frame - f0 < 1 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    const out = { calls: info.render.calls, frames: info.render.frame - f0 };
     info.autoReset = true;
-    return c;
+    return out;
   });
-  if (calls < 100) fail(`suspiciously few draw calls (${calls} over 400ms) — black canvas?`);
-  else pass(`scene draws (${calls} calls over 400ms)`);
+  if (draw.frames < 1) fail("renderer produced no frames in 5s");
+  else if (draw.calls < 30)
+    fail(`suspiciously few draw calls (${draw.calls} over ${draw.frames} frames) — black canvas?`);
+  else pass(`scene draws (${draw.calls} calls over ${draw.frames} frame${draw.frames > 1 ? "s" : ""})`);
 
   // movement: hold W, the planet must rotate under the hero
   const quatBefore = await page.evaluate(() => {
