@@ -44,18 +44,21 @@ function GamePanel() {
         <ProfileCard />
 
         {/* the quest: capture every ecosystem project */}
-        <div className="relative mt-3 overflow-hidden rounded-lg border border-gold/30 bg-space-2/40 px-4 py-3">
+        <div className="relative mt-3 overflow-hidden rounded-xl border-2 border-gold/40 bg-gradient-to-br from-[#1c1608] to-[#0b1122] px-4 py-3.5">
           <div className="shimmer-line pointer-events-none absolute inset-x-0 top-0 h-px" />
-          <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.18em]">
-            <span className="text-gold">capture the ecosystem</span>
-            <span className="text-ink">
-              {hud.captured} / {total}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[15px] font-bold tracking-tight text-gold">
+              ⚔️ Capture the Ecosystem
+            </span>
+            <span className="font-mono text-xl font-bold tabular-nums text-gold">
+              {hud.captured}
+              <span className="text-xs font-semibold text-ink-dim"> /{total}</span>
             </span>
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-space/80">
+          <div className="mt-2.5 h-3 overflow-hidden rounded-full border border-gold/25 bg-space/80">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-gold-deep to-gold transition-[width] duration-300"
-              style={{ width: `${(hud.captured / total) * 100}%` }}
+              className="h-full rounded-full bg-gradient-to-r from-gold-deep via-gold to-[#ffe08a] shadow-[0_0_12px_rgba(240,199,94,0.7)] transition-[width] duration-500"
+              style={{ width: `${Math.max(2, (hud.captured / total) * 100)}%` }}
             />
           </div>
         </div>

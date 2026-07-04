@@ -42,8 +42,10 @@ const ATMOSPHERE = new THREE.ShaderMaterial({
   fragmentShader: /* glsl */ `
     varying vec3 vNormal;
     void main() {
-      float intensity = pow(0.66 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
-      gl_FragColor = vec4(0.18, 0.32, 0.68, 1.0) * intensity;
+      // same classic halo, but clamped: pow(negative, 3.0) is UNDEFINED in
+      // GLSL and produced NaN fragments that flashed randomly in the sky
+      float f = clamp(0.66 - dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0, 1.0);
+      gl_FragColor = vec4(0.18, 0.32, 0.68, 1.0) * (f * f * f);
     }
   `,
   blending: THREE.AdditiveBlending,

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { shortAddr, useProfile } from "@/lib/profile";
 import { removeMe } from "@/lib/leaderboard";
 
-/** Compact ninja identity: editable name + one-tap wallet connect. */
+/** The player card — arcade "enter your name" energy, not a KYC form. */
 export default function ProfileCard() {
   const { name, wallet, connecting, walletError, setName, connect, disconnect } = useProfile();
   const [removeState, setRemoveState] = useState<"idle" | "armed" | "busy" | "done">("idle");
@@ -25,25 +25,27 @@ export default function ProfileCard() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-cyan/25 bg-gradient-to-br from-space-2/60 to-space/40 px-4 py-3">
-      {/* animated sheen */}
+    <div className="relative overflow-hidden rounded-xl border-2 border-gold/40 bg-gradient-to-br from-[#151d36] to-[#0b1122] px-4 py-3.5 shadow-[0_0_28px_rgba(240,199,94,0.1)]">
       <div className="shimmer-line pointer-events-none absolute inset-x-0 top-0 h-px" />
-      <div className="flex items-center gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-gold/40 bg-space text-lg shadow-[0_0_14px_rgba(240,199,94,0.25)]">
+      <p className="font-mono text-[9px] font-bold uppercase tracking-[0.32em] text-gold">
+        ★ player one
+      </p>
+      <div className="mt-2.5 flex items-center gap-3">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-gold bg-space text-2xl shadow-[0_0_20px_rgba(240,199,94,0.4)]">
           🥷
         </span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="name your ninja…"
+          placeholder="enter ninja name_"
           maxLength={20}
-          className="min-w-0 flex-1 border-b border-white/10 bg-transparent pb-0.5 text-sm font-medium text-ink outline-none transition-colors placeholder:text-ink-dim/50 focus:border-gold/60"
+          className="min-w-0 flex-1 border-b-2 border-gold/25 bg-transparent pb-1 text-lg font-bold tracking-tight text-ink outline-none transition-colors placeholder:font-semibold placeholder:text-ink-dim/40 focus:border-gold"
         />
         {wallet ? (
           <button
             onClick={disconnect}
             title="disconnect"
-            className="shrink-0 rounded-md border border-[#4ade80]/40 bg-[#4ade80]/10 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#4ade80] transition-colors hover:border-[#e0563f]/60 hover:text-[#ff8c6b]"
+            className="shrink-0 rounded-lg border-2 border-[#4ade80]/50 bg-[#4ade80]/10 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[#4ade80] transition-all hover:-translate-y-px hover:border-[#e0563f]/70 hover:text-[#ff8c6b]"
           >
             ◉ {shortAddr(wallet)}
           </button>
@@ -51,9 +53,9 @@ export default function ProfileCard() {
           <button
             onClick={() => void connect()}
             disabled={connecting}
-            className="shrink-0 rounded-md bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-space transition-all hover:-translate-y-px hover:shadow-[0_0_16px_rgba(240,199,94,0.5)] disabled:opacity-60"
+            className="shrink-0 rounded-lg bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-3.5 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-space shadow-[0_2px_0_#8a6414] transition-all hover:-translate-y-px hover:shadow-[0_3px_0_#8a6414,0_0_20px_rgba(240,199,94,0.5)] active:translate-y-0.5 active:shadow-none disabled:opacity-60"
           >
-            {connecting ? "connecting…" : "connect wallet"}
+            {connecting ? "connecting…" : "⚡ connect"}
           </button>
         )}
       </div>
