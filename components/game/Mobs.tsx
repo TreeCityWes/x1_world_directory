@@ -109,11 +109,20 @@ export function BugMob() {
   );
 }
 
+/** True only when the object and all its ancestors are visible — pooled mobs
+ *  sit in a `visible={false}` group when dead, and useFrame still ticks. */
+function isShown(o: THREE.Object3D | null): boolean {
+  for (let n = o; n; n = n.parent) if (!n.visible) return false;
+  return true;
+}
+
 /** GAS WISP — a fee spike come alive: a little flame-ghost, not a cone. */
 export function GasWisp() {
   // dissipating gas cloud: puffs rise off the wisp, swell, and fade
+  const root = useRef<THREE.Group>(null);
   const smoke = useRef<(THREE.Mesh | null)[]>([]);
   useFrame((state) => {
+    if (!isShown(root.current)) return; // skip the math while dead/off-screen
     const t = state.clock.elapsedTime;
     for (let i = 0; i < 4; i++) {
       const m = smoke.current[i];
@@ -129,7 +138,7 @@ export function GasWisp() {
     }
   });
   return (
-    <group position={[0, 0.34, 0]}>
+    <group ref={root} position={[0, 0.34, 0]}>
       {/* rising smoke puffs */}
       {Array.from({ length: 4 }).map((_, i) => (
         <mesh key={`s${i}`} ref={(el) => { smoke.current[i] = el; }}>

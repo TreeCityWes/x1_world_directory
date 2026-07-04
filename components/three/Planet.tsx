@@ -13,8 +13,12 @@ import { touchStick } from "@/lib/touchInput";
 import { useKeyboard } from "@/lib/useKeyboard";
 import Landmark from "@/components/three/Landmarks";
 import GameLayer from "@/components/game/GameLayer";
+import { LOW_GPU } from "@/lib/quality";
 
 export const PLANET_RADIUS = 2.4;
+// coarse GPUs get a lighter tessellation on the three sphere shells
+const SPHERE_SEG = LOW_GPU ? 40 : 64;
+const ATM_SEG = LOW_GPU ? 32 : 48;
 
 const X_AXIS = new THREE.Vector3(1, 0, 0);
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
@@ -323,7 +327,7 @@ export default function Planet() {
       <group ref={group}>
         {/* the ocean — dark navy, not black */}
         <mesh ref={sphere} receiveShadow>
-          <sphereGeometry args={[PLANET_RADIUS, 64, 64]} />
+          <sphereGeometry args={[PLANET_RADIUS, SPHERE_SEG, SPHERE_SEG]} />
           <meshPhysicalMaterial
             color="#16234a"
             roughness={0.5}
@@ -334,7 +338,7 @@ export default function Planet() {
         </mesh>
         {/* subtle hex-grid shell */}
         <mesh scale={1.0015}>
-          <sphereGeometry args={[PLANET_RADIUS, 64, 64]} />
+          <sphereGeometry args={[PLANET_RADIUS, SPHERE_SEG, SPHERE_SEG]} />
           <meshBasicMaterial
             map={hexMap}
             transparent
@@ -367,7 +371,7 @@ export default function Planet() {
 
       {/* atmosphere glow (doesn't rotate — it's light, not land) */}
       <mesh scale={1.08}>
-        <sphereGeometry args={[PLANET_RADIUS, 48, 48]} />
+        <sphereGeometry args={[PLANET_RADIUS, ATM_SEG, ATM_SEG]} />
         <primitive object={ATMOSPHERE} attach="material" />
       </mesh>
     </>

@@ -153,11 +153,17 @@ function getDmgTexture(text: string, crit: boolean) {
   return tex;
 }
 
-// floating site-name banners over active targets — free advertising
+// floating site-name banners over active targets — free advertising.
+// Bounded by the region count in practice; hard cap + evict for safety.
 const siteLabelCache = new Map<string, THREE.CanvasTexture>();
 function getSiteLabel(name: string) {
   const hit = siteLabelCache.get(name);
   if (hit) return hit;
+  if (siteLabelCache.size > 80) {
+    const [k, t] = siteLabelCache.entries().next().value!;
+    t.dispose();
+    siteLabelCache.delete(k);
+  }
   const c = document.createElement("canvas");
   c.width = 512;
   c.height = 128;

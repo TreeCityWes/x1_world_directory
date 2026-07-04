@@ -10,17 +10,13 @@ import Character from "@/components/three/Character";
 import Rig from "@/components/three/Rig";
 import Overlay from "@/components/ui/Overlay";
 import SidePanel from "@/components/ui/SidePanel";
+import { LOW_GPU } from "@/lib/quality";
 
 /**
  * Console layout: LEFT screen is the world (its own canvas pane, globe fully
  * framed), RIGHT screen is the info console. No scrolling — you explore by
  * walking (WASD) and dragging the planet.
  */
-// coarse-pointer ≈ phone/tablet GPU: fewer stars, no MSAA on the composer
-const LOW_GPU =
-  typeof window !== "undefined" &&
-  (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
-
 export default function Experience() {
   return (
     <MotionConfig reducedMotion="user">
