@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { moveState } from "@/lib/gameState";
 import { useGame } from "@/lib/gameStore";
@@ -14,6 +15,31 @@ import { PLANET_RADIUS } from "./Planet";
 const MASK = "#171c28";
 const GOLD = "#f0c75e";
 const STEEL = "#c7d0e2";
+
+/** Clone a GLB scene normalized: longest dimension -> target, feet on y=0. */
+function normClone(scene: THREE.Object3D, target: number, tint?: { color: string; metal?: number }) {
+  const clone = scene.clone(true);
+  const box = new THREE.Box3().setFromObject(clone);
+  const size = box.getSize(new THREE.Vector3());
+  const k = target / (Math.max(size.x, size.y, size.z) || 1);
+  const center = box.getCenter(new THREE.Vector3());
+  clone.scale.setScalar(k);
+  clone.position.set(-center.x * k, -box.min.y * k, -center.z * k);
+  if (tint) {
+    clone.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh && mesh.material) {
+        const m = (mesh.material as THREE.MeshStandardMaterial).clone();
+        m.map = null; // the baked skin texture would fight the tint
+        m.color?.set(tint.color);
+        m.metalness = tint.metal ?? 0.5;
+        m.roughness = 0.45;
+        mesh.material = m;
+      }
+    });
+  }
+  return clone;
+}
 
 const Y = new THREE.Vector3(0, 1, 0);
 const _target = new THREE.Quaternion();
@@ -52,6 +78,15 @@ function Katana({ tilt }: { tilt: number }) {
 export default function Character() {
   const charId = useGame((s) => s.character);
   const pal = CHARACTERS[charId].colors;
+  const capyGltf = useGLTF("/models/capybara.glb");
+  const broGltf = useGLTF("/models/cryptobro.glb");
+  const hatGltf = useGLTF("/models/tophat.glb");
+  const capyBody = useMemo(() => normClone(capyGltf.scene, 0.95), [capyGltf]);
+  const theoBody = useMemo(
+    () => normClone(broGltf.scene, 0.85, { color: "#9aa3b2", metal: 0.65 }),
+    [broGltf],
+  );
+  const theoHat = useMemo(() => normClone(hatGltf.scene, 0.3), [hatGltf]);
   const yaw = useRef<THREE.Group>(null);
   const bob = useRef<THREE.Group>(null);
   const armL = useRef<THREE.Group>(null);
@@ -128,23 +163,26 @@ export default function Character() {
       </mesh>
       <group ref={yaw} rotation={[0, Math.PI, 0]}>
         <group ref={bob}>
-          {/* hooded head — charcoal like the logo */}
-          {charId === "theo" && (
-            <group position={[0, 0.8, 0]}>
-              <mesh>
-                <cylinderGeometry args={[0.115, 0.115, 0.16, 16]} />
-                <meshStandardMaterial color="#0a0a10" roughness={0.35} />
+          {charId === "capy" ? (
+            <primitive object={capyBody} />
+          ) : charId === "theo" ? (
+            <group>
+              <primitive object={theoBody} />
+              <primitive object={theoHat} position={[0, 0.82, 0]} />
+              {/* burning red eyes, per the owner's spec */}
+              <mesh position={[0.05, 0.68, 0.13]}>
+                <sphereGeometry args={[0.028, 8, 8]} />
+                <meshStandardMaterial color="#ff3d3d" emissive="#ff3d3d" emissiveIntensity={3} toneMapped={false} />
               </mesh>
-              <mesh position={[0, -0.075, 0]}>
-                <cylinderGeometry args={[0.19, 0.19, 0.018, 16]} />
-                <meshStandardMaterial color="#0a0a10" roughness={0.35} />
-              </mesh>
-              <mesh position={[0, -0.045, 0]}>
-                <cylinderGeometry args={[0.12, 0.12, 0.035, 16]} />
-                <meshStandardMaterial color="#7dd3fc" emissive="#7dd3fc" emissiveIntensity={0.9} />
+              <mesh position={[-0.05, 0.68, 0.13]}>
+                <sphereGeometry args={[0.028, 8, 8]} />
+                <meshStandardMaterial color="#ff3d3d" emissive="#ff3d3d" emissiveIntensity={3} toneMapped={false} />
               </mesh>
             </group>
-          )}
+          ) : (
+          <>
+          {/* hooded head — charcoal like the logo */}
+          
           <mesh position={[0, 0.66, 0]} castShadow>
             <sphereGeometry args={[0.14, 24, 24]} />
             <meshStandardMaterial color={pal.hood} roughness={0.6} />
@@ -226,6 +264,8 @@ export default function Character() {
             </mesh>
           </group>
 
+          </>
+          )}
         </group>
       </group>
     </group>
