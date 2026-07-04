@@ -9,7 +9,7 @@ export default function Home() {
         <ExperienceLoader />
         <a
           href="#directory"
-          className="absolute bottom-3 left-1/2 z-50 -translate-x-1/2 animate-bounce font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim transition-colors hover:text-gold"
+          className="absolute bottom-3 left-1/2 z-50 -translate-x-1/2 animate-bounce font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim transition-colors hover:text-gold max-md:hidden"
         >
           ▼ ecosystem directory
         </a>

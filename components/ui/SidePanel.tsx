@@ -60,9 +60,11 @@ function GamePanel() {
           </div>
         </div>
 
-        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-          current targets
-        </p>
+        {sites.length > 0 && (
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+            current targets
+          </p>
+        )}
         <div className="mt-2 space-y-2">
           <AnimatePresence>
             {sites.map((r) => (
@@ -179,7 +181,7 @@ function GamePanel() {
                       (e.target as HTMLImageElement).src = r.screenshot;
                     }}
                     className={`h-full w-full object-cover object-top transition-all duration-500 ${
-                      lit ? "opacity-100" : "opacity-20 grayscale"
+                      lit ? "opacity-100" : "opacity-45 grayscale"
                     }`}
                   />
                 </motion.div>
