@@ -289,3 +289,39 @@ Status: **open** | **partial** | **fixed** | **deferred**
 6. COMBAT-05 — unified `playerDps()` for secondary sources
 7. Mobile run ribbon (design session)
 8. Finale player-power scaling (design session)
+
+---
+
+## Loop resolution log — Opus 4.8 (through `a557d96`)
+
+Worked the register in priority batches. Status deltas:
+
+**Combat**
+- COMBAT-08 ✅ fixed (`c57e3ec`) — telegraph hatch retries on full pool; pending 12→40.
+- COMBAT-04 ✅ fixed — `pick(id)` no-ops unless `id ∈ choices` and mode is `levelup`.
+- COMBAT-02 ✅ fixed — hex shield VFX renders for ANY character with `fx.shield` (fort shield), not CAPY-only.
+- COMBAT-03 ✅ fixed — idle CAPY cleaves toward the nearest enemy, not a stale heading.
+- COMBAT-06 ✅ fixed — `shurikenDamage()` ×`statMult`, so Cursed weakens outgoing damage (mode is properly harder).
+- COMBAT-07 ✅ fixed — `rollChoices()` surfaces every ready evolution, not just the first.
+- COMBAT-09 ✅ verified already correct (`sfx.boss` guarded by `if (boss)`).
+- COMBAT-10 ✅ fixed — dead `run.fx.speed/dmg/rate/xp` removed (only `shield` remains).
+- COMBAT-01 ↩ by design — bosses/finale keep the full-screen **nameplate** telegraph (a stronger tell than the mob ground-ring); not routed through `world.pending`.
+- COMBAT-05 ↩ deferred by owner balance guardrail — buffing secondary weapons to scale with damage upgrades makes the game *easier*; kept flat intentionally.
+
+**Security** (`35c7988`)
+- SEC-02 ✅ fixed — unsigned wallet POSTs stored as guest (device) entries; unverified wallet address never persisted → no squatting.
+- SEC-03 ✅ fixed — nonce fails closed in production (no public `dev-secret`).
+- SEC-04 ✅ fixed — nonce GET rate-limited 30/min per IP.
+- SEC-05 ✅ fixed — HMAC uses a *derived* key, not the raw service-role key.
+- SEC-01 ↩ deferred (client-trusted scores — needs run-token design).
+- SEC-06 ↩ open (wallet accountChanged sync). SEC-07 ↩ accepted as designed.
+
+**Performance** (`a557d96`)
+- PERF-03 ✅ fixed — GasWisp skips its loop while dead/off-screen (ancestor visibility).
+- PERF-05 ✅ fixed — site-label texture cache capped at 80 + evict.
+- PERF-01 ⚠ partial — planet sphere shells 64/48→40/32 on `LOW_GPU` (`lib/quality.ts`); landmark instancing still deferred.
+- PERF-02 ↩ deferred (lazy per-char GLB — Suspense risk given the prior invisible-character incident). PERF-04 ↩ deferred (low value).
+
+**Owner touch** (`67cbc96`) — capture bonus flash: granted power flashes center-screen in bold display type on POI capture.
+
+Still open for a design session: UX-01 (mobile wallet on end screens), UX-02/03/04, finale player-power scaling, mobile run ribbon, music bed, daily seed, `ninja_game/` archival, SEC-01 run tokens.

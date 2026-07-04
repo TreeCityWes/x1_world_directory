@@ -13,6 +13,11 @@
 
 ## ⚠️ Do this first — new regression introduced by the telegraph feature
 
+> ✅ **RESOLVED (Opus 4.8 loop, `c57e3ec`).** Hatch now keeps the ring alive
+> until a slot frees (`if (spawnEnemy(p.type, p.dir)) p.active = false`) and the
+> pending pool grew 12 → 40 so dense bursts stay telegraphed instead of falling
+> through to the instant-spawn fallback. COMBAT-08 closed.
+
 ### [P2] Telegraphed spawns silently drop enemies when the pool is full
 
 `GameLayer.tsx:1117` (hatch loop):
