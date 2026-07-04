@@ -7,6 +7,7 @@ import * as THREE from "three";
 import { regions } from "@/lib/regions";
 import { sfx } from "@/lib/sound";
 import Nemesis from "@/components/game/Nemesis";
+import { BugMob, GasWisp, RugMob } from "@/components/game/Mobs";
 import { moveState } from "@/lib/gameState";
 import {
   DIFFICULTIES,
@@ -114,8 +115,6 @@ const TARGET_SIZE: Record<EnemyTypeId, number> = {
   whale: 0.26, // violet elder skull (the whale model is now boss #1)
   boss: 0.78, // THE WHALE — unmistakably the biggest thing on the field
 };
-useGLTF.preload(MODEL_PATH.goblin);
-useGLTF.preload(MODEL_PATH.gremlin);
 useGLTF.preload(MODEL_PATH.whale);
 
 // The pool is partitioned into fixed per-type slot ranges.
@@ -218,43 +217,24 @@ ARC_LINE.frustumCulled = false;
 export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Group | null> }) {
   const mode = useGame((s) => s.mode);
 
-  // one static clone per pool slot; boss clones tinted gold
-  const goblinGltf = useGLTF(MODEL_PATH.goblin);
-  const wraithGltf = useGLTF(MODEL_PATH.gremlin);
+  // THE WHALE (boss #1) is the only GLB left — regular mobs are procedural
+  // crypto creatures now (Mobs.tsx). Clones only for the boss slots.
   const whaleGltf = useGLTF(MODEL_PATH.whale);
   const enemyClones = useMemo(() => {
-    const sceneFor: Record<EnemyTypeId, THREE.Object3D> = {
-      goblin: goblinGltf.scene,
-      gremlin: wraithGltf.scene,
-      whale: goblinGltf.scene, // tinted violet below
-      boss: whaleGltf.scene, // boss #1 is THE WHALE
-    };
     return Array.from({ length: MAX_ENEMIES }, (_, i) => {
-      const type = typeForSlot(i);
-      const clone = sceneFor[type].clone(true);
+      if (typeForSlot(i) !== "boss") return null;
+      const clone = whaleGltf.scene.clone(true);
       // measure & normalize: longest dimension -> TARGET_SIZE, centered
       const box = new THREE.Box3().setFromObject(clone);
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z) || 1;
-      const k = TARGET_SIZE[type] / maxDim;
+      const k = TARGET_SIZE.boss / maxDim;
       const center = box.getCenter(new THREE.Vector3());
       clone.scale.setScalar(k);
       clone.position.set(-center.x * k, -center.y * k, -center.z * k);
-      if (type === "whale") {
-        clone.traverse((o) => {
-          const mesh = o as THREE.Mesh;
-          if (mesh.isMesh && mesh.material) {
-            const m = (mesh.material as THREE.MeshStandardMaterial).clone();
-            m.color?.multiplyScalar(0.8);
-            m.emissive?.set("#a78bfa");
-            m.emissiveIntensity = 0.3;
-            mesh.material = m;
-          }
-        });
-      }
       return clone;
     });
-  }, [goblinGltf, wraithGltf, whaleGltf]);
+  }, [whaleGltf]);
 
   const enemyRefs = useRef<(THREE.Group | null)[]>([]);
   const arrowRefs = useRef<(THREE.Mesh | null)[]>([]);
@@ -1039,18 +1019,28 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     <group>
       {Array.from({ length: MAX_ENEMIES }).map((_, i) => {
         const kind = typeForSlot(i);
-        const wraith = kind === "gremlin";
+        const wraith = false; // the hooded robe retired with the wraith — wisps burn bare
         const robeR = 0.075;
         const robeH = 0.18;
         return (
           <group key={`e${i}`} ref={(el) => { enemyRefs.current[i] = el; }} visible={false}>
             {kind === "boss" ? (
               <>
-                <primitive object={enemyClones[i]} />
+                <primitive object={enemyClones[i]!} />
                 <Nemesis scale={1.05} />
               </>
+            ) : kind === "goblin" ? (
+              <group scale={0.2}>
+                <BugMob />
+              </group>
+            ) : kind === "gremlin" ? (
+              <group scale={0.22}>
+                <GasWisp />
+              </group>
             ) : (
-              <primitive object={enemyClones[i]} />
+              <group scale={0.32}>
+                <RugMob />
+              </group>
             )}
             {wraith && (
               <mesh position={[0, -robeH * 0.55, 0]}>
