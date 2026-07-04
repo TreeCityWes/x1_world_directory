@@ -319,16 +319,6 @@
     "telegram": "",
     "checkedAt": "2026-07-03T13:37:34.204Z"
   },
-  "oracle-v2-github-com-jacklevin74-oracle-v2": {
-    "ok": true,
-    "note": "HTTP 200",
-    "domain": "github.com/jacklevin74/oracle-v2",
-    "project": "Oracle V2",
-    "description": "Oracle V2: Secure price feed for X1 with Vault Transit signing, on-chain bounds, median computation, and circuit breaker - jacklevin74/oracle-v2",
-    "twitter": "",
-    "telegram": "",
-    "checkedAt": "2026-07-03T13:37:38.860Z"
-  },
   "x1-onchain-randomness-x1-randomness-vercel-app": {
     "ok": true,
     "note": "HTTP 200",
@@ -338,16 +328,6 @@
     "twitter": "",
     "telegram": "",
     "checkedAt": "2026-07-03T13:45:55.058Z"
-  },
-  "dgn-staking-v2-app-degen-fyi-staking-v2": {
-    "ok": true,
-    "note": "HTTP 200",
-    "domain": "app.degen.fyi/staking-v2",
-    "project": "DGN Staking V2",
-    "description": "Degens + Chaos + 2 Blockchains",
-    "twitter": "",
-    "telegram": "",
-    "checkedAt": "2026-07-03T13:37:46.722Z"
   },
   "x1-forge-x1forge-xyz": {
     "ok": true,
@@ -548,5 +528,25 @@
     "twitter": "",
     "telegram": "",
     "checkedAt": "2026-07-03T13:39:23.588Z"
+  },
+  "x1-oracle-github-com-jacklevin74-oracle-v2": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "github.com/jacklevin74/oracle-v2",
+    "project": "X1 Oracle",
+    "description": "Oracle V2: Secure price feed for X1 with Vault Transit signing, on-chain bounds, median computation, and circuit breaker - jacklevin74/oracle-v2",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T13:37:38.860Z"
+  },
+  "degen-staking-app-degen-fyi-staking-v2": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "app.degen.fyi/staking-v2",
+    "project": "Degen Staking",
+    "description": "Degens + Chaos + 2 Blockchains",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T13:37:46.722Z"
   }
 }

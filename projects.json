@@ -195,7 +195,7 @@
   },
   {
     "category": "Data / Oracle",
-    "project": "Oracle V2",
+    "project": "X1 Oracle",
     "domain": "github.com/jacklevin74/oracle-v2",
     "builder": "Jack Levin"
   },
@@ -207,7 +207,7 @@
   },
   {
     "category": "Staking",
-    "project": "DGN Staking V2",
+    "project": "Degen Staking",
     "domain": "app.degen.fyi/staking-v2",
     "builder": "Jason"
   },
