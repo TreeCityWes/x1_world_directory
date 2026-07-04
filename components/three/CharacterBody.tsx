@@ -289,11 +289,15 @@ export default function CharacterBody({
     () => normClone(broGltf.scene, 0.62, { tint: { color: "#9aa3b2", metal: 0.65 } }),
     [broGltf],
   );
-  // the hat IS the persona — oversized, with the band recolored THEO-cyan
+  // the hat IS the persona — oversized, trimmed like the X1 Ninja:
+  // royal-blue band with gold piping
   const theoHat = useMemo(
     () =>
       normClone(hatGltf.scene, 0.48, {
-        recolor: { F44336: { color: "#22d3ee", emissive: "#22d3ee", emissiveIntensity: 0.8 } },
+        recolor: {
+          F44336: { color: "#1e4fd8", emissive: "#1e4fd8", emissiveIntensity: 0.7 },
+          FFCC88: { color: GOLD, emissive: "#c9921e", emissiveIntensity: 0.3 },
+        },
       }),
     [hatGltf],
   );
@@ -346,12 +350,12 @@ export default function CharacterBody({
       <group>
         <primitive object={theoBody} />
         <primitive object={theoHat} position={[0, 0.605, 0]} />
-        {/* burning red eyes, proud of the faceplate */}
+        {/* glowing blue eyes, proud of the faceplate (red is for enemies) */}
         <mesh position={[0.052, 0.47, 0.16]}>
           <sphereGeometry args={[0.024, 8, 8]} />
           <meshStandardMaterial
-            color="#ff3d3d"
-            emissive="#ff3d3d"
+            color="#4f7dff"
+            emissive="#4f7dff"
             emissiveIntensity={3}
             toneMapped={false}
           />
@@ -359,8 +363,8 @@ export default function CharacterBody({
         <mesh position={[-0.052, 0.47, 0.16]}>
           <sphereGeometry args={[0.024, 8, 8]} />
           <meshStandardMaterial
-            color="#ff3d3d"
-            emissive="#ff3d3d"
+            color="#4f7dff"
+            emissive="#4f7dff"
             emissiveIntensity={3}
             toneMapped={false}
           />
