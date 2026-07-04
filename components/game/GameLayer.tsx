@@ -113,7 +113,7 @@ const TARGET_SIZE: Record<EnemyTypeId, number> = {
   goblin: 0.15,
   gremlin: 0.2,
   whale: 0.26, // violet elder skull (the whale model is now boss #1)
-  boss: 0.78, // THE WHALE — unmistakably the biggest thing on the field
+  boss: 1.05, // THE WHALE — unmistakably the biggest thing on the field
 };
 useGLTF.preload(MODEL_PATH.whale);
 
@@ -232,6 +232,17 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const center = box.getCenter(new THREE.Vector3());
       clone.scale.setScalar(k);
       clone.position.set(-center.x * k, -center.y * k, -center.z * k);
+      // menace pass: darken the hide, smolder crimson from within
+      clone.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (mesh.isMesh && mesh.material) {
+          const m = (mesh.material as THREE.MeshStandardMaterial).clone();
+          m.color?.multiplyScalar(0.72);
+          m.emissive?.set("#8b1020");
+          m.emissiveIntensity = 0.4;
+          mesh.material = m;
+        }
+      });
       return clone;
     });
   }, [whaleGltf]);

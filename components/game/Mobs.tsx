@@ -2,10 +2,12 @@
 
 import * as THREE from "three";
 
-// "BUG" stamped in glowing terminal green — one shared texture for the swarm
-let bugTex: THREE.CanvasTexture | null = null;
-function getBugTexture() {
-  if (bugTex) return bugTex;
+// mob name tags in glowing arcade type — one shared texture per word
+const labelCache = new Map<string, THREE.CanvasTexture>();
+function getLabelTexture(text: string, glow: string, fill: string) {
+  const key = `${text}|${glow}`;
+  const hit = labelCache.get(key);
+  if (hit) return hit;
   const c = document.createElement("canvas");
   c.width = 256;
   c.height = 128;
@@ -13,12 +15,13 @@ function getBugTexture() {
   ctx.font = "900 82px 'Courier New', monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.shadowColor = "#39ff88";
+  ctx.shadowColor = glow;
   ctx.shadowBlur = 16;
-  ctx.fillStyle = "#c8ffdd";
-  ctx.fillText("BUG", 128, 68);
-  bugTex = new THREE.CanvasTexture(c);
-  return bugTex;
+  ctx.fillStyle = fill;
+  ctx.fillText(text, 128, 68);
+  const tex = new THREE.CanvasTexture(c);
+  labelCache.set(key, tex);
+  return tex;
 }
 
 /**
@@ -41,7 +44,7 @@ export function BugMob() {
       <mesh position={[0, 0.2, -0.3]} rotation={[-Math.PI / 2 + 0.18, 0, 0]}>
         <planeGeometry args={[0.52, 0.26]} />
         <meshBasicMaterial
-          map={getBugTexture()}
+          map={getLabelTexture("BUG", "#39ff88", "#c8ffdd")}
           transparent
           depthWrite={false}
           toneMapped={false}
@@ -144,6 +147,16 @@ export function GasWisp() {
       <mesh position={[-0.1, 0.08, 0.26]} rotation={[0, 0, 0.5]} scale={[0.06, 0.035, 0.03]}>
         <sphereGeometry args={[1, 8, 8]} />
         <meshStandardMaterial color="#1a0c05" roughness={0.4} />
+      </mesh>
+      {/* it literally says GAS on it */}
+      <mesh position={[0, -0.12, 0.28]} rotation={[-0.15, 0, 0]}>
+        <planeGeometry args={[0.4, 0.2]} />
+        <meshBasicMaterial
+          map={getLabelTexture("GAS", "#ff7a1f", "#ffe9c4")}
+          transparent
+          depthWrite={false}
+          toneMapped={false}
+        />
       </mesh>
     </group>
   );
