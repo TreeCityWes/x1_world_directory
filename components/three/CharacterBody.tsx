@@ -349,7 +349,11 @@ export default function CharacterBody({
     return (
       <group>
         <primitive object={theoBody} />
-        <primitive object={theoHat} position={[0, 0.605, 0]} />
+        {/* group wrapper: the position prop must not clobber normClone's
+            centering offset on the hat itself; buckle spun to the front */}
+        <group position={[0, 0.605, 0]} rotation={[0, Math.PI, 0]}>
+          <primitive object={theoHat} />
+        </group>
         {/* glowing blue eyes, proud of the faceplate (red is for enemies) */}
         <mesh position={[0.052, 0.47, 0.16]}>
           <sphereGeometry args={[0.024, 8, 8]} />
