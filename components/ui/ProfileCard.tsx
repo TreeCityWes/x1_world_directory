@@ -1,10 +1,28 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { shortAddr, useProfile } from "@/lib/profile";
+import { removeMe } from "@/lib/leaderboard";
 
 /** Compact ninja identity: editable name + one-tap wallet connect. */
 export default function ProfileCard() {
   const { name, wallet, connecting, walletError, setName, connect, disconnect } = useProfile();
+  const [removeState, setRemoveState] = useState<"idle" | "armed" | "busy" | "done">("idle");
+  const disarm = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onRemove = async () => {
+    if (removeState === "idle") {
+      setRemoveState("armed");
+      if (disarm.current) clearTimeout(disarm.current);
+      disarm.current = setTimeout(() => setRemoveState("idle"), 4000);
+      return;
+    }
+    if (removeState !== "armed") return;
+    setRemoveState("busy");
+    const ok = await removeMe(wallet);
+    setRemoveState(ok ? "done" : "idle");
+    if (ok) setTimeout(() => setRemoveState("idle"), 5000);
+  };
 
   return (
     <div className="relative overflow-hidden rounded-lg border border-cyan/25 bg-gradient-to-br from-space-2/60 to-space/40 px-4 py-3">
@@ -44,6 +62,25 @@ export default function ProfileCard() {
           {walletError}
         </p>
       )}
+      <button
+        onClick={() => void onRemove()}
+        disabled={removeState === "busy"}
+        className={`mt-2 font-mono text-[8px] uppercase tracking-[0.12em] transition-colors ${
+          removeState === "armed"
+            ? "text-[#ff8c6b]"
+            : removeState === "done"
+              ? "text-[#4ade80]"
+              : "text-ink-dim/50 hover:text-ink-dim"
+        }`}
+      >
+        {removeState === "armed"
+          ? "tap again to remove — your next named run re-adds you"
+          : removeState === "busy"
+            ? "removing…"
+            : removeState === "done"
+              ? "✓ removed from the board"
+              : "remove my scores from the leaderboard"}
+      </button>
     </div>
   );
 }

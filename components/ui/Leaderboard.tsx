@@ -25,7 +25,6 @@ export default function Leaderboard() {
   const mode = useGame((s) => s.mode);
   const name = useProfile((s) => s.name);
   const wallet = useProfile((s) => s.wallet);
-  const me = `${name}|${wallet ? wallet.slice(0, 8) : "guest"}`;
 
   useEffect(() => {
     let stale = false;
@@ -68,7 +67,7 @@ export default function Leaderboard() {
           <p className="text-xs text-ink-dim">no runs yet — be the first ninja on the board</p>
         )}
         {board.map((e, i) => {
-          const mine = `${e.name}|${e.wallet ? e.wallet.slice(0, 8) : "guest"}` === me;
+          const mine = wallet ? e.wallet === wallet : !e.wallet && !!name && e.name === name;
           return (
             <motion.div
               key={`${e.rank}-${e.name}`}
@@ -108,6 +107,9 @@ export default function Leaderboard() {
           );
         })}
       </div>
+      <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.12em] text-ink-dim/40">
+        we store only what you see here — remove yourself anytime from your profile
+      </p>
     </div>
   );
 }

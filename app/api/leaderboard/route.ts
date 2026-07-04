@@ -34,8 +34,13 @@ function sb(path: string, init?: RequestInit) {
   });
 }
 
-const memberOf = (e: { name: string; wallet: string }) =>
-  `${e.name}|${e.wallet ? e.wallet.slice(0, 8) : "guest"}`;
+// Stable identity: the wallet when connected, else the browser's device ID.
+// The display name is a LABEL, never the key — renames relabel, not duplicate.
+function deriveMember(wallet: string, deviceId: unknown): string | null {
+  if (wallet) return `w:${wallet}`;
+  const d = String(deviceId ?? "");
+  return /^[\w-]{8,64}$/.test(d) ? `d:${d}` : null;
+}
 
 export async function GET() {
   try {
@@ -84,7 +89,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const member = memberOf({ name, wallet });
+    const member = deriveMember(wallet, (body as { deviceId?: string }).deviceId);
+    if (!member) return NextResponse.json({ ok: false }, { status: 400 });
     if (SB_URL && SB_KEY) {
       // keep personal best only: read current, upsert if beaten
       const cur = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}&select=score`);
@@ -97,10 +103,61 @@ export async function POST(req: Request) {
             { member, name, wallet, score, diff, verified, updated_at: new Date().toISOString() },
           ]),
         });
+      } else {
+        // score didn't beat the best — still honor a rename (label update only)
+        await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ name }),
+        });
       }
     } else {
       const prev = mem.get(member);
       if (!prev || prev.score < score) mem.set(member, { name, wallet, score, diff, at: Date.now() });
+      else mem.set(member, { ...prev, name });
+    }
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
+}
+
+/**
+ * Self-serve removal. Guests prove ownership by knowing their device ID
+ * (it never leaves their browser otherwise); wallet users sign a nonce.
+ * Deletion is not a ban — the next named run re-adds them.
+ */
+export async function DELETE(req: Request) {
+  try {
+    const b = (await req.json()) as {
+      wallet?: string;
+      deviceId?: string;
+      ts?: string;
+      nonce?: string;
+      sig?: string;
+    };
+    const wallet = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(b.wallet ?? "")) ? String(b.wallet) : "";
+    let member: string | null = null;
+    if (wallet) {
+      if (!(b.ts && b.nonce && b.sig && nonceValid(b.ts, b.nonce))) {
+        return NextResponse.json({ ok: false }, { status: 401 });
+      }
+      const msg = new TextEncoder().encode(`x1.world · remove my entries · ${b.nonce}`);
+      let proven = false;
+      try {
+        proven = ed25519.verify(base64.decode(b.sig), msg, base58.decode(wallet));
+      } catch {
+        proven = false;
+      }
+      if (!proven) return NextResponse.json({ ok: false }, { status: 401 });
+      member = `w:${wallet}`;
+    } else {
+      member = deriveMember("", b.deviceId);
+    }
+    if (!member) return NextResponse.json({ ok: false }, { status: 400 });
+    if (SB_URL && SB_KEY) {
+      await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, { method: "DELETE" });
+    } else {
+      mem.delete(member);
     }
     return NextResponse.json({ ok: true });
   } catch {

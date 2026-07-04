@@ -1,6 +1,6 @@
 "use client";
 
-import { signWithWallet } from "@/lib/profile";
+import { getDeviceId, signWithWallet } from "@/lib/profile";
 
 export type BoardEntry = {
   rank: number;
@@ -46,11 +46,39 @@ export function submitScore(payload: { name: string; wallet: string; score: numb
       await fetch("/api/leaderboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, ...proof }),
+        body: JSON.stringify({ ...payload, deviceId: getDeviceId(), ...proof }),
         keepalive: true,
       });
     } catch {
       // offline — a lost submission must never affect the game
     }
   })();
+}
+
+/**
+ * Self-serve removal: wallet users sign a nonce (only the key holder can
+ * wipe that address); guests present their device ID. Not a ban — the next
+ * named run re-adds them.
+ */
+export async function removeMe(wallet: string): Promise<boolean> {
+  try {
+    let proof: { ts: string; nonce: string; sig: string } | null = null;
+    if (wallet) {
+      const { ts, nonce } = (await (await fetch("/api/leaderboard/nonce")).json()) as {
+        ts: string;
+        nonce: string;
+      };
+      const sig = await signWithWallet(`x1.world · remove my entries · ${nonce}`);
+      if (!sig) return false; // declined the signature — nothing removed
+      proof = { ts, nonce, sig };
+    }
+    const res = await fetch("/api/leaderboard", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet, deviceId: getDeviceId(), ...proof }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

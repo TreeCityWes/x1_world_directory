@@ -62,6 +62,7 @@ function getProvider(): InjectedProvider | null {
 type ProfileState = {
   name: string;
   wallet: string; // base58 address, "" = not connected
+  deviceId: string; // stable anonymous identity for guests (per-browser)
   connecting: boolean;
   walletError: string;
   setName: (n: string) => void;
@@ -74,6 +75,7 @@ export const useProfile = create<ProfileState>()(
     (set) => ({
       name: "",
       wallet: "",
+      deviceId: "",
       connecting: false,
       walletError: "",
       setName: (n) => set({ name: n.slice(0, 20) }),
@@ -100,8 +102,20 @@ export const useProfile = create<ProfileState>()(
         set({ wallet: "" });
       },
     }),
-    { name: "x1world_profile", partialize: (s) => ({ name: s.name, wallet: s.wallet }) },
+    {
+      name: "x1world_profile",
+      partialize: (s) => ({ name: s.name, wallet: s.wallet, deviceId: s.deviceId }),
+    },
   ),
 );
+
+/** Lazy device ID — minted on first use, persisted with the profile. */
+export function getDeviceId(): string {
+  const s = useProfile.getState();
+  if (s.deviceId) return s.deviceId;
+  const id = crypto.randomUUID();
+  useProfile.setState({ deviceId: id });
+  return id;
+}
 
 export const shortAddr = (a: string) => (a.length > 10 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a);
