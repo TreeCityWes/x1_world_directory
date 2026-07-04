@@ -96,19 +96,21 @@ export async function POST(req: Request) {
       const cur = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}&select=score`);
       const rows = cur.ok ? ((await cur.json()) as { score: number }[]) : [];
       if (rows.length === 0 || rows[0].score < score) {
-        await sb("leaderboard?on_conflict=member", {
+        const res = await sb("leaderboard?on_conflict=member", {
           method: "POST",
           headers: { Prefer: "resolution=merge-duplicates" },
           body: JSON.stringify([
             { member, name, wallet, score, diff, verified, updated_at: new Date().toISOString() },
           ]),
         });
+        if (!res.ok) throw new Error(`sb upsert ${res.status}`);
       } else {
         // score didn't beat the best — still honor a rename (label update only)
-        await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, {
+        const res = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, {
           method: "PATCH",
           body: JSON.stringify({ name }),
         });
+        if (!res.ok) throw new Error(`sb rename ${res.status}`);
       }
     } else {
       const prev = mem.get(member);
@@ -155,7 +157,10 @@ export async function DELETE(req: Request) {
     }
     if (!member) return NextResponse.json({ ok: false }, { status: 400 });
     if (SB_URL && SB_KEY) {
-      await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, { method: "DELETE" });
+      const res = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(`sb delete ${res.status}`);
     } else {
       mem.delete(member);
     }

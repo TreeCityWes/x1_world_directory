@@ -283,12 +283,17 @@ export default function CharacterBody({
   const broGltf = useGLTF("/models/cryptobro.glb");
   const hatGltf = useGLTF("/models/tophat.glb");
   const jackGltf = useGLTF("/models/jack.glb");
+  // per-character placement comes from the registry (CHARACTERS[x].model),
+  // not per-asset guesses scattered through this file
+  const capySize = CHARACTERS.capy.model?.size ?? 0.65;
+  const theoSize = CHARACTERS.theo.model?.size ?? 0.62;
+  const jackSize = CHARACTERS.jack.model?.size ?? 0.78;
   // capybara.glb ships pre-smoothed (scripts/smooth-model.mjs); CAPY gets his
   // own compact scale so the long quadruped doesn't dwarf the bipeds
-  const capyBody = useMemo(() => normClone(capyGltf.scene, 0.65), [capyGltf]);
+  const capyBody = useMemo(() => normClone(capyGltf.scene, capySize), [capyGltf, capySize]);
   const theoBody = useMemo(
-    () => normClone(broGltf.scene, 0.62, { tint: { color: "#9aa3b2", metal: 0.65 } }),
-    [broGltf],
+    () => normClone(broGltf.scene, theoSize, { tint: { color: "#9aa3b2", metal: 0.65 } }),
+    [broGltf, theoSize],
   );
   // the hat IS the persona — oversized, trimmed like the X1 Ninja:
   // royal-blue band with gold piping
@@ -305,7 +310,7 @@ export default function CharacterBody({
   const jack = useMemo(() => {
     // full body, legs included — the legless float read as broken, and the
     // model's arm proportions only work with the legs grounding them
-    const body = normClone(jackGltf.scene, 0.78, {
+    const body = normClone(jackGltf.scene, jackSize, {
       recolor: {
         // a normal guy: short brown hair, plain white tee
         Hair: { color: "#4a2f15" },
@@ -320,7 +325,7 @@ export default function CharacterBody({
     const ray = new THREE.Raycaster(new THREE.Vector3(0, 0.54, 1), new THREE.Vector3(0, 0, -1));
     const hit = ray.intersectObject(body, true)[0];
     return { body, chestZ: hit ? hit.point.z : 0.07 };
-  }, [jackGltf]);
+  }, [jackGltf, jackSize]);
   const xenTex = useMemo(() => {
     const c = document.createElement("canvas");
     c.width = 256;

@@ -21,6 +21,28 @@ const DEATH_FLAVOR: Record<string, string> = {
 };
 const ONBOARD_KEY = "x1world_onboarded";
 
+// dingbat glyphs (not emoji) so upgrade cards read at a glance
+const UPGRADE_ICON: Record<string, string> = {
+  damage: "✦",
+  firerate: "≫",
+  multishot: "⁂",
+  speed: "➤",
+  magnet: "◎",
+  vitality: "✚",
+  katana: "⚔",
+  arcnode: "↯",
+  halo: "◉",
+  armor: "⛨",
+  lifesteal: "❖",
+  regen: "↻",
+  crit: "◈",
+  bladestorm: "❂",
+  tempest: "✺",
+  whirlwind: "❋",
+  chainreaction: "⌁",
+  meltdown: "♨",
+};
+
 /** One labeled stat bar in the character dossier. */
 function StatBar({ label, v, accent }: { label: string; v: number; accent: string }) {
   const pct = Math.round(Math.min(1, v / 1.6) * 100);
@@ -273,6 +295,18 @@ export default function GameHUD() {
   const best = useGame((s) => s.best);
   const finalScore = useGame((s) => s.finalScore);
   const deathCause = useGame((s) => s.deathCause);
+  const bossCard = useGame((s) => s.bossCard);
+  const bossCardAt = useGame((s) => s.bossCardAt);
+  const [bossCardVisible, setBossCardVisible] = useState(false);
+  useEffect(() => {
+    if (!bossCardAt) return;
+    const show = setTimeout(() => setBossCardVisible(true), 0);
+    const hide = setTimeout(() => setBossCardVisible(false), 3000);
+    return () => {
+      clearTimeout(show);
+      clearTimeout(hide);
+    };
+  }, [bossCardAt]);
   const [onboarded, setOnboarded] = useState(
     () => typeof window !== "undefined" && localStorage.getItem(ONBOARD_KEY) === "1",
   );
@@ -365,6 +399,42 @@ export default function GameHUD() {
 
       {mode === "play" && <CaptureToast />}
 
+      {/* boss entrance card — brief danger nameplate */}
+      <AnimatePresence>
+        {mode === "play" && bossCard && bossCardVisible && (
+          <motion.div
+            key={bossCardAt}
+            initial={{ opacity: 0, scale: 1.18 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="pointer-events-none absolute inset-x-0 top-24 z-40 grid place-items-center max-md:top-32"
+          >
+            <div
+              className="rounded-xl border-2 border-[#ff4d4d]/70 bg-[rgba(28,8,10,0.88)] px-8 py-3.5 text-center backdrop-blur"
+              style={{ boxShadow: "0 0 60px rgba(255,77,77,0.4)" }}
+            >
+              <p className="font-mono text-[9px] uppercase tracking-[0.34em] text-[#ff8a8a]">
+                ⚠ boss detected
+              </p>
+              <p className="mt-1 text-2xl font-black tracking-[0.06em] text-[#ff4d4d] max-md:text-lg">
+                {bossCard}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* low health — restrained heartbeat vignette */}
+      {mode === "play" && hud.maxHp > 0 && hud.hp / hud.maxHp < 0.25 && (
+        <motion.div
+          className="pointer-events-none absolute inset-0 z-30"
+          animate={{ opacity: [0.35, 0.8, 0.35] }}
+          transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+          style={{ boxShadow: "inset 0 0 140px 30px rgba(224,60,50,0.45)" }}
+        />
+      )}
+
       {/* quit chip */}
       {mode === "play" && (
         <button
@@ -437,9 +507,9 @@ export default function GameHUD() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/60 backdrop-blur-sm"
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/60 backdrop-blur-sm"
           >
-            <div className="text-center">
+            <div className="max-h-full w-full py-6 text-center [padding-bottom:env(safe-area-inset-bottom)]">
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
                 level {hud.level} — choose an upgrade
               </p>
@@ -458,17 +528,22 @@ export default function GameHUD() {
                       onClick={() => pick(id)}
                       className={
                         isEvo
-                          ? "w-44 animate-pulse rounded-xl border-2 border-gold bg-gradient-to-b from-[rgba(40,30,8,0.95)] to-[rgba(9,13,28,0.95)] p-4 text-left shadow-[0_0_40px_rgba(240,199,94,0.45)] backdrop-blur-md transition-all hover:-translate-y-1 hover:animate-none"
-                          : "w-44 rounded-xl border border-cyan/30 bg-[rgba(9,13,28,0.92)] p-4 text-left backdrop-blur-md transition-all hover:-translate-y-1 hover:border-gold/70 hover:shadow-[0_0_30px_rgba(240,199,94,0.25)]"
+                          ? "w-44 max-md:w-[84%] animate-pulse rounded-xl border-2 border-gold bg-gradient-to-b from-[rgba(40,30,8,0.95)] to-[rgba(9,13,28,0.95)] p-4 text-left shadow-[0_0_40px_rgba(240,199,94,0.45)] backdrop-blur-md transition-all hover:-translate-y-1 hover:animate-none"
+                          : "w-44 max-md:w-[84%] rounded-xl border border-cyan/30 bg-[rgba(9,13,28,0.92)] p-4 text-left backdrop-blur-md transition-all hover:-translate-y-1 hover:border-gold/70 hover:shadow-[0_0_30px_rgba(240,199,94,0.25)]"
                       }
                     >
-                      <p
-                        className={`font-mono text-[9px] uppercase tracking-[0.2em] ${
-                          isEvo ? "text-gold" : "text-cyan"
-                        }`}
-                      >
-                        {isEvo ? "⚡ evolution" : `lv ${nextLv} / ${u.maxLevel}`}
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <p
+                          className={`font-mono text-[9px] uppercase tracking-[0.2em] ${
+                            isEvo ? "text-gold" : "text-cyan"
+                          }`}
+                        >
+                          {isEvo ? "⚡ evolution" : `lv ${nextLv} / ${u.maxLevel}`}
+                        </p>
+                        <span className={`text-xl leading-none ${isEvo ? "text-gold" : "text-cyan"}`}>
+                          {UPGRADE_ICON[id] ?? "✦"}
+                        </span>
+                      </div>
                       <p
                         className={`mt-1.5 text-base font-semibold tracking-tight ${isEvo ? "text-gold" : ""}`}
                       >

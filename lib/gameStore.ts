@@ -267,6 +267,9 @@ type GameStore = {
   character: CharacterId;
   setCharacter: (c: CharacterId) => void;
   finalScore: number;
+  /** boss entrance nameplate — set by the game loop, shown ~3s by the HUD */
+  bossCard: string;
+  bossCardAt: number;
   start: (diff?: DifficultyId) => void;
   openMenu: () => void;
   quit: () => void;
@@ -315,6 +318,8 @@ export const useGame = create<GameStore>((set, get) => ({
   capturedIds: [],
   best: 0,
   finalScore: 0,
+  bossCard: "",
+  bossCardAt: 0,
   deathCause: "",
   start: (diff) => {
     resetRun(diff ?? run.difficulty, get().character);

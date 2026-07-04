@@ -24,3 +24,9 @@ built (handoff to Fable). Files marked `STUB`/`TODO` are the seams to build into
 **Gotcha:** this is a newer Next.js — `ssr: false` dynamic imports must live in a
 Client Component (see `components/ExperienceLoader.tsx`). Check
 `node_modules/next/dist/docs/` before assuming old APIs.
+
+**Open audit:** read `GLM-REVIEW.md` (repo root) before making non-trivial
+changes. It's a live punch-list of doc drift, the `ninja_game/` vs embedded-game
+split, and game-mechanics/balance findings (pause, i-frames, win-condition
+coupling, scoring, etc.). Check items off as you resolve them; don't let it go
+stale like `HANDOFF.md` did.

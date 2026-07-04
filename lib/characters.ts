@@ -28,6 +28,8 @@ export type CharacterDef = {
   choices?: number;
   /** one-line signature ability, shown on the select screen */
   passive: string;
+  /** GLB placement: normalized size (longest dimension) + optional lift */
+  model?: { size: number; lift?: number };
   unlocked: boolean;
   colors: {
     hood: string;
@@ -82,6 +84,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     luck: 1,
     xp: 1,
     passive: "Every coin detonates in an area — hits the whole pack",
+    model: { size: 0.78 },
     unlocked: true,
     colors: {
       hood: "#0b0b0d",
@@ -108,6 +111,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     xp: 1.15,
     choices: 4,
     passive: "AI-assisted level-ups: pick from 4 upgrades, not 3",
+    model: { size: 0.62 },
     unlocked: true,
     colors: {
       hood: "#0e2733",
@@ -133,6 +137,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     luck: 1,
     xp: 1,
     passive: "Validator Shield: immune 2.5s of every 10s",
+    model: { size: 0.65 },
     unlocked: true,
     colors: {
       hood: "#7a5f3d",

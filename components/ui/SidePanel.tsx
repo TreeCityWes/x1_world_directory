@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { useWorld } from "@/lib/store";
-import { UPGRADES, scoreOf, useGame } from "@/lib/gameStore";
+import { UPGRADES, scoreOf, upgradeView, useGame } from "@/lib/gameStore";
 import ProfileCard from "@/components/ui/ProfileCard";
 import Leaderboard from "@/components/ui/Leaderboard";
 
@@ -136,7 +136,7 @@ function GamePanel() {
                 key={id}
                 className="flex items-baseline justify-between rounded-md border border-white/8 bg-space-2/30 px-3 py-1.5 text-sm"
               >
-                <span>{u.name}</span>
+                <span>{upgradeView(id).name}</span>
                 <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-cyan">
                   lv {lv}
                 </span>
@@ -192,8 +192,8 @@ function GamePanel() {
             })}
           </div>
           <p className="mt-4 font-mono text-[9px] uppercase leading-relaxed tracking-[0.15em] text-ink-dim/70">
-            capture all {total} projects to win · glowing sites grant powers · shurikens aim where
-            you run
+            capture all {total} projects to win · glowing sites grant powers · your weapon aims
+            where you run
           </p>
         </div>
       </div>

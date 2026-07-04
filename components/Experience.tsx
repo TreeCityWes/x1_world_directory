@@ -16,6 +16,11 @@ import SidePanel from "@/components/ui/SidePanel";
  * framed), RIGHT screen is the info console. No scrolling — you explore by
  * walking (WASD) and dragging the planet.
  */
+// coarse-pointer ≈ phone/tablet GPU: fewer stars, no MSAA on the composer
+const LOW_GPU =
+  typeof window !== "undefined" &&
+  (window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768);
+
 export default function Experience() {
   return (
     <MotionConfig reducedMotion="user">
@@ -45,15 +50,31 @@ export default function Experience() {
           {/* useTexture & co. suspend — everything lives under Suspense */}
           <Suspense fallback={null}>
             {/* two star layers at different radii → parallax depth */}
-            <Stars radius={55} depth={30} count={2500} factor={4} saturation={0} fade speed={0.2} />
-            <Stars radius={110} depth={60} count={3000} factor={6} saturation={0} fade speed={0.1} />
+            <Stars
+              radius={55}
+              depth={30}
+              count={LOW_GPU ? 1100 : 2500}
+              factor={4}
+              saturation={0}
+              fade
+              speed={0.2}
+            />
+            <Stars
+              radius={110}
+              depth={60}
+              count={LOW_GPU ? 1300 : 3000}
+              factor={6}
+              saturation={0}
+              fade
+              speed={0.1}
+            />
             <Planet />
             <Character />
             <Rig />
           </Suspense>
 
           {/* post: bloom on the emissive beacons/eyes/blades + soft vignette */}
-          <EffectComposer multisampling={8}>
+          <EffectComposer multisampling={LOW_GPU ? 0 : 8}>
             <Bloom
               intensity={0.5}
               luminanceThreshold={0.9}

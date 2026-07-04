@@ -75,7 +75,10 @@ type Enemy = {
   bossKind: "whale" | "nemesis";
   markedUntil: number; // THEO scan mark: +50% damage taken, +50% xp
 };
-type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string; pierce: number };
+type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string; pierce: number; evo: boolean };
+type PendingSpawn = { active: boolean; type: EnemyTypeId; dir: THREE.Vector3; at: number };
+type DmgNum = { alive: boolean; dir: THREE.Vector3; t0: number; val: number; crit: boolean };
+type CaptureFx = { active: boolean; dir: THREE.Vector3; t0: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
 type Wake = { alive: boolean; dir: THREE.Vector3; life: number };
 type Flame = { alive: boolean; dir: THREE.Vector3; life: number; maxLife: number; smoke: boolean };
@@ -118,6 +121,34 @@ function getXCoinTexture() {
   ctx.stroke();
   xCoinTex = new THREE.CanvasTexture(c);
   return xCoinTex;
+}
+
+// floating damage numbers — only crits and boss hits, so chaos stays readable
+const dmgTexCache = new Map<string, THREE.CanvasTexture>();
+function getDmgTexture(text: string, crit: boolean) {
+  const key = `${text}|${crit}`;
+  const hit = dmgTexCache.get(key);
+  if (hit) return hit;
+  if (dmgTexCache.size > 80) {
+    const [k, t] = dmgTexCache.entries().next().value!;
+    t.dispose();
+    dmgTexCache.delete(k);
+  }
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 64;
+  const ctx = c.getContext("2d")!;
+  ctx.font = `900 ${crit ? 44 : 34}px 'Courier New', monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 7;
+  ctx.strokeStyle = "#0b0e18";
+  ctx.strokeText(text, 64, 32);
+  ctx.fillStyle = crit ? "#ffd23d" : "#f5f7ff";
+  ctx.fillText(text, 64, 32);
+  const tex = new THREE.CanvasTexture(c);
+  dmgTexCache.set(key, tex);
+  return tex;
 }
 
 // floating site-name banners over active targets — free advertising
@@ -220,8 +251,11 @@ const world = {
         speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0, bossKind: "whale", markedUntil: 0,
       })),
       shurikens: Array.from({ length: MAX_SHURIKENS }, (): Shuriken => ({
-        alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0, kind: "shuriken", pierce: 1,
+        alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0, kind: "shuriken", pierce: 1, evo: false,
       })),
+      pending: Array.from({ length: 12 }, (): PendingSpawn => ({ active: false, type: "goblin", dir: new THREE.Vector3(), at: 0 })),
+      dmgNums: Array.from({ length: 10 }, (): DmgNum => ({ alive: false, dir: new THREE.Vector3(), t0: 0, val: 0, crit: false })),
+      captureFx: Array.from({ length: 3 }, (): CaptureFx => ({ active: false, dir: new THREE.Vector3(), t0: 0 })),
       gems: Array.from({ length: MAX_GEMS }, (): Gem => ({
         alive: false, dir: new THREE.Vector3(), xp: 0, t: 0,
       })),
@@ -354,8 +388,11 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const boomRefs = useRef<(THREE.Group | null)[]>([]);
   const shieldRef = useRef<THREE.Mesh | null>(null);
   const markRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const warnRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const dmgRefs = useRef<(THREE.Sprite | null)[]>([]);
+  const beamRefs = useRef<(THREE.Group | null)[]>([]);
 
-  const spawnEnemy = (type: EnemyTypeId) => {
+  const spawnEnemy = (type: EnemyTypeId, dir?: THREE.Vector3) => {
     const [lo, hi] = TYPE_RANGES[type];
     let e: Enemy | undefined;
     for (let i = lo; i < hi; i++) {
@@ -369,7 +406,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     const scale = 1 + run.block * 0.1;
     e.alive = true;
     e.type = type;
-    e.dir.copy(randomDirNear(world.pLocal, 0.9, 1.8));
+    e.dir.copy(dir ?? randomDirNear(world.pLocal, 0.9, 1.8));
     e.maxHp = e.hp = T.hp * scale;
     e.speed = T.speed * Math.min(1.6, 1 + run.block * 0.02);
     e.radius = T.radius;
@@ -379,6 +416,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     e.t = Math.random() * 10;
     e.biteAt = 0;
     e.recoilUntil = 0;
+    e.markedUntil = 0; // pool slot reuse must not inherit THEO's scan mark
     // boss ladder: THE WHALE first, then your dark mirror — alternating after
     if (type === "boss") e.bossKind = world.bossCount++ % 2 === 0 ? "whale" : "nemesis";
     return e;
@@ -422,6 +460,17 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     run.damage += applied;
     const steal = lifestealPct();
     if (steal > 0 && applied > 0) run.hp = Math.min(run.maxHp, run.hp + applied * steal);
+    // damage numbers only where they matter: crits and boss hits
+    if ((crit || e.type === "boss") && applied > 0) {
+      const d = world.dmgNums.find((x) => !x.alive);
+      if (d) {
+        d.alive = true;
+        d.dir.copy(e.dir);
+        d.t0 = run.t;
+        d.val = Math.round(dmg);
+        d.crit = crit;
+      }
+    }
     return dmg;
   };
 
@@ -606,6 +655,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           coin.quaternion.setFromUnitVectors(UP, s.pos);
           coin.rotateX(Math.PI / 2); // stand the disc upright
           coin.rotateZ(s.spin * 0.6); // arcade spin around the vertical
+          coin.scale.setScalar(s.evo ? 1.45 : 1);
         }
       }
       // THEO's pulses are cyan data-diamonds from their own pool
@@ -617,7 +667,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           packet.position.copy(s.pos).multiplyScalar(R + 0.07);
           packet.quaternion.setFromUnitVectors(UP, s.pos);
           packet.rotateY(s.spin * 0.8);
-          packet.scale.setScalar(1 + Math.sin(run.t * 16 + i) * 0.18);
+          packet.scale.setScalar((s.evo ? 1.5 : 1) * (1 + Math.sin(run.t * 16 + i) * 0.18));
         }
       }
       mesh.visible = s.alive && !isCoin && !isPulse;
@@ -625,6 +675,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         mesh.position.copy(s.pos).multiplyScalar(R + 0.07);
         mesh.quaternion.setFromUnitVectors(UP, s.pos);
         mesh.rotateY(s.spin);
+        mesh.scale.setScalar(s.evo ? 1.7 : 1);
       }
     }
     // ---- character signature FX: slash sweep, scan ring, lock-on reticle ----
@@ -719,6 +770,65 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           shield.rotateZ(run.t * 1.4);
           shield.scale.setScalar(R * Math.sin(0.17) * (1 + Math.sin(run.t * 6) * 0.05));
           (shield.material as THREE.MeshBasicMaterial).opacity = 0.4 + Math.sin(run.t * 6) * 0.12;
+        }
+      }
+      // spawn warnings — red rings tighten where an enemy is about to hatch
+      for (let i = 0; i < world.pending.length; i++) {
+        const w = warnRefs.current[i];
+        const p = world.pending[i];
+        if (!w) continue;
+        w.visible = p.active && world.started;
+        if (w.visible) {
+          const k = 1 - Math.max(0, p.at - run.t) / 0.7; // 0 → 1 as it hatches
+          w.position.copy(p.dir).multiplyScalar(R + 0.02);
+          w.quaternion.setFromUnitVectors(UP, p.dir);
+          w.rotateX(Math.PI / 2);
+          w.scale.setScalar(0.2 - 0.09 * k);
+          (w.material as THREE.MeshBasicMaterial).opacity =
+            0.3 + 0.4 * k + Math.sin(run.t * 22) * 0.12;
+        }
+      }
+      // floating damage numbers (crits + bosses only)
+      for (let i = 0; i < world.dmgNums.length; i++) {
+        const spr = dmgRefs.current[i];
+        const d = world.dmgNums[i];
+        if (!spr) continue;
+        const age = run.t - d.t0;
+        if (d.alive && age >= 0.7) d.alive = false;
+        spr.visible = d.alive && world.started;
+        if (spr.visible) {
+          const k = age / 0.7;
+          spr.position.copy(d.dir).multiplyScalar(R + 0.3 + k * 0.22);
+          const mat = spr.material as THREE.SpriteMaterial;
+          const key = `${d.val}|${d.crit}`;
+          if (spr.userData.k !== key) {
+            spr.userData.k = key;
+            mat.map = getDmgTexture(String(d.val), d.crit);
+            mat.needsUpdate = true;
+          }
+          mat.opacity = 1 - k * k;
+          const s = d.crit ? 0.42 : 0.32;
+          spr.scale.set(s, s / 2, 1);
+        }
+      }
+      // capture celebration — gold beam + pulse from the claimed site
+      for (let i = 0; i < world.captureFx.length; i++) {
+        const g = beamRefs.current[i];
+        const cfx = world.captureFx[i];
+        if (!g) continue;
+        const age = run.t - cfx.t0;
+        if (cfx.active && age >= 1.1) cfx.active = false;
+        g.visible = cfx.active && world.started;
+        if (g.visible) {
+          const k = age / 1.1;
+          g.position.copy(cfx.dir).multiplyScalar(R);
+          g.quaternion.setFromUnitVectors(UP, cfx.dir);
+          const beam = g.children[0] as THREE.Mesh;
+          const ringFx = g.children[1] as THREE.Mesh;
+          beam.scale.set(1 - k * 0.6, 1 + k * 0.7, 1 - k * 0.6);
+          (beam.material as THREE.MeshBasicMaterial).opacity = 0.55 * (1 - k);
+          ringFx.scale.setScalar(Math.max(0.02, 0.5 * k));
+          (ringFx.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - k);
         }
       }
       // XEN detonations — the blast is the show, not the coin
@@ -885,10 +995,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       pts.push(world.arcPoints[world.arcPoints.length - 1]);
       if (pts.length >= 2) {
         const curve = new THREE.CatmullRomCurve3(pts);
+        // Chain Reaction is the evolved tier — visibly thicker bolt
+        const w = run.upgrades.chainreaction ? 1.7 : 1;
         ARC_CORE.geometry.dispose();
         ARC_GLOW.geometry.dispose();
-        ARC_CORE.geometry = new THREE.TubeGeometry(curve, pts.length * 4, 0.014, 5, false);
-        ARC_GLOW.geometry = new THREE.TubeGeometry(curve, pts.length * 4, 0.038, 5, false);
+        ARC_CORE.geometry = new THREE.TubeGeometry(curve, pts.length * 4, 0.014 * w, 5, false);
+        ARC_GLOW.geometry = new THREE.TubeGeometry(curve, pts.length * 4, 0.038 * w, 5, false);
       }
     }
     const arcOn = world.started && run.t < world.arcFlash;
@@ -931,6 +1043,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.slashFull = false;
       world.scanFxAt = -10;
       for (const b of world.booms) b.alive = false;
+      for (const p of world.pending) p.active = false;
+      for (const d of world.dmgNums) d.alive = false;
+      for (const cf of world.captureFx) cf.active = false;
       world.finalSpawned = false;
       world.finalIdx = -1;
       world.captured.clear();
@@ -997,14 +1112,36 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             break;
           }
         }
-        spawnEnemy(type);
+        // telegraph the spawn: a red warning ring pulses for 0.7s first
+        const p = world.pending.find((x) => !x.active);
+        if (p) {
+          p.active = true;
+          p.type = type;
+          p.dir.copy(randomDirNear(world.pLocal, 0.9, 1.8));
+          p.at = run.t + 0.7;
+        } else {
+          spawnEnemy(type);
+        }
+      }
+    }
+    // telegraphed spawns hatch
+    for (const p of world.pending) {
+      if (p.active && run.t >= p.at) {
+        p.active = false;
+        spawnEnemy(p.type, p.dir);
       }
     }
     // Bear Market boss every 5 blocks
     if (run.block > 0 && run.block % 5 === 0 && world.bossAtBlock !== run.block) {
       world.bossAtBlock = run.block;
-      spawnEnemy("boss");
+      const boss = spawnEnemy("boss");
       sfx.boss();
+      if (boss) {
+        useGame.setState({
+          bossCard: boss.bossKind === "whale" ? "THE WHALE SURFACES" : "YOUR SHADOW ARRIVES",
+          bossCardAt: Date.now(),
+        });
+      }
     }
 
     // regeneration (Uptime) ticks continuously
@@ -1128,6 +1265,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         s.spin = 0;
         s.kind = weaponKind;
         s.pierce = charDef().weapon.pierce ?? 1;
+        s.evo = false;
       }
     }
     for (const s of world.shurikens) {
@@ -1150,7 +1288,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             break;
           }
           dealDamage(e, s.dmg);
+          // per-weapon hit language: blue cuts / cyan pixels (coins boom gold)
+          if (s.kind === "shuriken") spawnBurst(e.dir, "#7db2ff", 2);
           if (s.kind === "pulse") {
+            spawnBurst(e.dir, "#67e8f9", 2);
             e.recoilUntil = run.t + 0.7; // debugged: glitches backwards
             // AI chaining — the pulse forks to the nearest other enemy
             let chained: Enemy | null = null;
@@ -1271,6 +1412,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           s.ttl = novaKind === "xcoin" ? 0.85 : SHURIKEN_TTL;
           s.dmg = shurikenDamage();
           s.spin = 0;
+          s.evo = true; // evolved tier: bigger, brighter, unmistakable
         }
       }
     }
@@ -1432,6 +1574,11 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (_v.angleTo(world.pLocal) < CAPTURE_ANGLE) {
         applySitePower(id);
         sfx.capture();
+        // celebration: gold beam + pulse from the captured site
+        const cfx = world.captureFx.find((x) => !x.active) ?? world.captureFx[0];
+        cfx.active = true;
+        cfx.dir.copy(_v);
+        cfx.t0 = run.t;
         world.captured.add(id);
         useGame.setState((s) => ({ capturedIds: [...s.capturedIds, id] }));
         run.captured = world.captured.size;
@@ -1446,6 +1593,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             world.finalIdx = world.enemies.indexOf(fb);
             world.finalSpawned = true;
             run.finalBossAlive = true;
+            useGame.setState({ bossCard: "THE FINAL NEMESIS AWAKENS", bossCardAt: Date.now() });
             sfx.boss();
           }
         }
@@ -1625,6 +1773,56 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           toneMapped={false}
         />
       </mesh>
+      {/* spawn warning rings — danger red, tightening until the hatch */}
+      {Array.from({ length: 12 }).map((_, i) => (
+        <mesh key={`wr${i}`} ref={(el) => { warnRefs.current[i] = el; }} visible={false}>
+          <ringGeometry args={[0.78, 1, 28]} />
+          <meshBasicMaterial
+            color="#ff4d4d"
+            transparent
+            opacity={0.5}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+      {/* floating damage numbers (crits + bosses) */}
+      {Array.from({ length: 10 }).map((_, i) => (
+        <sprite key={`dn${i}`} ref={(el) => { dmgRefs.current[i] = el; }} visible={false}>
+          <spriteMaterial transparent depthWrite={false} toneMapped={false} />
+        </sprite>
+      ))}
+      {/* capture celebration — gold light beam + ground pulse */}
+      {Array.from({ length: 3 }).map((_, i) => (
+        <group key={`cb${i}`} ref={(el) => { beamRefs.current[i] = el; }} visible={false}>
+          <mesh position={[0, 0.45, 0]}>
+            <cylinderGeometry args={[0.022, 0.055, 0.9, 12, 1, true]} />
+            <meshBasicMaterial
+              color="#f0c75e"
+              transparent
+              opacity={0.5}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+              toneMapped={false}
+            />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+            <ringGeometry args={[0.82, 1, 36]} />
+            <meshBasicMaterial
+              color="#ffd23d"
+              transparent
+              opacity={0.7}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
+      ))}
       {/* CAPY's blade — sweeps the cleave arc with every swing */}
       <group ref={swordRef} visible={false}>
         <mesh position={[0.36, 0, 0]}>

@@ -121,8 +121,9 @@ export function slugify(text: string) {
     .replace(/^-|-$/g, "");
 }
 
-// gold / blue / cyan / violet / green / amber — cycled per category
-const ACCENTS = ["#f0c75e", "#3b82f6", "#7dd3fc", "#a78bfa", "#4ade80", "#fb923c"];
+// gold / blue / cyan / teal / green / amber — cycled per category
+// (violet was retired from the palette per docs/DESIGN.md)
+const ACCENTS = ["#f0c75e", "#3b82f6", "#7dd3fc", "#2dd4bf", "#4ade80", "#fb923c"];
 
 const categoryAccent = new Map<string, string>();
 function accentFor(category: string) {
