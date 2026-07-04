@@ -74,6 +74,8 @@ type Enemy = {
   recoilUntil: number; // after a bite it backs off briefly
   bossKind: "whale" | "nemesis";
   markedUntil: number; // THEO scan mark: +50% damage taken, +50% xp
+  lungeAt: number; // bosses: next telegraphed charge
+  windupUntil: number; // bosses: rearing back before the charge
 };
 type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string; pierce: number; evo: boolean };
 type PendingSpawn = { active: boolean; type: EnemyTypeId; dir: THREE.Vector3; at: number };
@@ -236,7 +238,7 @@ function randomDirNear(center: THREE.Vector3, minAng: number, maxAng: number) {
 const world = {
       enemies: Array.from({ length: MAX_ENEMIES }, (): Enemy => ({
         alive: false, type: "goblin", dir: new THREE.Vector3(), hp: 0, maxHp: 0,
-        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0, bossKind: "whale", markedUntil: 0,
+        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0, bossKind: "whale", markedUntil: 0, lungeAt: 0, windupUntil: 0,
       })),
       shurikens: Array.from({ length: MAX_SHURIKENS }, (): Shuriken => ({
         alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0, kind: "shuriken", pierce: 1, evo: false,
@@ -320,6 +322,30 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   // THE WHALE (boss #1) is the only GLB left — regular mobs are procedural
   // crypto creatures now (Mobs.tsx). Clones only for the boss slots.
   const whaleGltf = useGLTF(WHALE_GLB);
+  // the real CC0 shuriken model, flattened into one normalized geometry the
+  // whole projectile pool can share
+  const shurikenGltf = useGLTF("/models/shuriken.glb");
+  const shurikenGeo = useMemo(() => {
+    let src: THREE.Mesh | null = null;
+    shurikenGltf.scene.updateMatrixWorld(true);
+    shurikenGltf.scene.traverse((o) => {
+      if (!src && (o as THREE.Mesh).isMesh) src = o as THREE.Mesh;
+    });
+    if (!src) return null;
+    const mesh = src as THREE.Mesh;
+    const g = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+    g.center();
+    g.computeBoundingBox();
+    const size = g.boundingBox!.getSize(new THREE.Vector3());
+    const k = 0.085 / (Math.max(size.x, size.y, size.z) || 1);
+    g.scale(k, k, k);
+    // the star must lie flat (spin plane = XZ): flatten the thinnest axis to Y
+    if (size.y > size.x || size.y > size.z) {
+      if (size.x <= size.z) g.rotateZ(Math.PI / 2);
+      else g.rotateX(Math.PI / 2);
+    }
+    return g;
+  }, [shurikenGltf]);
   const enemyClones = useMemo(() => {
     return Array.from({ length: MAX_ENEMIES }, (_, i) => {
       if (typeForSlot(i) !== "boss") return null;
@@ -405,6 +431,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     e.biteAt = 0;
     e.recoilUntil = 0;
     e.markedUntil = 0; // pool slot reuse must not inherit THEO's scan mark
+    e.lungeAt = type === "boss" ? run.t + 4 : Number.POSITIVE_INFINITY;
+    e.windupUntil = 0;
     // boss ladder: THE WHALE first, then your dark mirror — alternating after
     if (type === "boss") e.bossKind = world.bossCount++ % 2 === 0 ? "whale" : "nemesis";
     return e;
@@ -619,8 +647,11 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         } else {
           grp.rotateX(Math.sin(e.t * 6) * 0.14); // chatter
         }
+        // windup shake: the boss visibly coils before its charge
+        const windup = e.type === "boss" && run.t < e.windupUntil;
         const wob = 1 + Math.sin(e.t * 9) * 0.04;
-        grp.scale.set(1, wob, 1);
+        const shake = windup ? 1 + Math.sin(run.t * 30) * 0.07 : 1;
+        grp.scale.set(shake, wob * (windup ? 1.1 : 1), shake);
         // THEO's scan mark — a spinning cyan lock glyph over analyzed enemies
         const halo = markRefs.current[i];
         if (halo) {
@@ -1148,12 +1179,23 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const inHalo = halo > 0 && e.dir.angleTo(world.pLocal) < halo + e.radius / R;
       // Core Meltdown: the halo is a tar pit
       const slow = inHalo && meltdown ? 0.45 : 1;
+      // bosses telegraph: rear back for 0.8s (red flare), then CHARGE
+      let bossMult = 1;
+      if (e.type === "boss") {
+        if (run.t >= e.lungeAt) {
+          e.windupUntil = run.t + 0.8;
+          e.lungeAt = run.t + 6.5 + Math.random() * 2;
+          spawnBurst(e.dir, "#ff4d4d", 6);
+        }
+        if (run.t < e.windupUntil) bossMult = 0.12;
+        else if (run.t < e.windupUntil + 1.1) bossMult = 2.5;
+      }
       // after biting, an enemy backs off briefly instead of gluing to you
       const recoiling = run.t < e.recoilUntil;
       if (recoiling) {
         rotateToward(e.dir, world.pLocal, -e.speed * 0.7 * dt);
       } else {
-        rotateToward(e.dir, world.pLocal, e.speed * lunge * slow * dt);
+        rotateToward(e.dir, world.pLocal, e.speed * lunge * slow * bossMult * dt);
       }
       // Ion Halo burns everything inside
       if (inHalo) dealDamage(e, (10 + 6 * (run.upgrades.halo ?? 0)) * dt);
@@ -1682,9 +1724,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         );
       })}
       {Array.from({ length: MAX_SHURIKENS }).map((_, i) => (
-        <mesh key={`s${i}`} ref={(el) => { shurikenRefs.current[i] = el; }} visible={false}>
-          <boxGeometry args={[0.05, 0.008, 0.05]} />
-          <meshStandardMaterial color="#c7d0e2" emissive="#7dd3fc" emissiveIntensity={0.9} metalness={0.8} roughness={0.2} />
+        <mesh
+          key={`s${i}`}
+          ref={(el) => { shurikenRefs.current[i] = el; }}
+          visible={false}
+          geometry={shurikenGeo ?? undefined}
+        >
+          {!shurikenGeo && <boxGeometry args={[0.05, 0.008, 0.05]} />}
+          <meshStandardMaterial color="#c7d0e2" emissive="#4f7dff" emissiveIntensity={0.8} metalness={0.85} roughness={0.2} />
         </mesh>
       ))}
       {/* Jack's XEN coins — black disc, bold white X on both faces */}

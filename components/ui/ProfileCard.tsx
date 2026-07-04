@@ -3,10 +3,14 @@
 import { useRef, useState } from "react";
 import { shortAddr, useProfile } from "@/lib/profile";
 import { removeMe } from "@/lib/leaderboard";
+import { useGame } from "@/lib/gameStore";
+import { CHARACTERS } from "@/lib/characters";
 
 /** The player card — arcade "enter your name" energy, not a KYC form. */
 export default function ProfileCard() {
   const { name, wallet, connecting, walletError, setName, connect, disconnect } = useProfile();
+  const charId = useGame((s) => s.character);
+  const ch = CHARACTERS[charId];
   const [removeState, setRemoveState] = useState<"idle" | "armed" | "busy" | "done">("idle");
   const disarm = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -31,8 +35,16 @@ export default function ProfileCard() {
         ★ player one
       </p>
       <div className="mt-2.5 flex items-center gap-3">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-gold bg-space text-2xl shadow-[0_0_20px_rgba(240,199,94,0.4)]">
-          🥷
+        <span
+          title={ch.name}
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 bg-space text-xl font-black"
+          style={{
+            borderColor: ch.colors.band,
+            color: ch.colors.band,
+            boxShadow: `0 0 20px ${ch.colors.band}55`,
+          }}
+        >
+          {ch.name.replace(/^X1 /, "")[0]}
         </span>
         <input
           value={name}

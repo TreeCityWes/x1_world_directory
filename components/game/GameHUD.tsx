@@ -297,6 +297,7 @@ export default function GameHUD() {
   const deathCause = useGame((s) => s.deathCause);
   const bossCard = useGame((s) => s.bossCard);
   const bossCardAt = useGame((s) => s.bossCardAt);
+  const scoreSubmit = useGame((s) => s.scoreSubmit);
   const [bossCardVisible, setBossCardVisible] = useState(false);
   useEffect(() => {
     if (!bossCardAt) return;
@@ -621,6 +622,21 @@ export default function GameHUD() {
               <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
                 score (incl. 1000 conquest bonus) · best {best}
               </p>
+              {scoreSubmit === "ok" && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#4ade80]">
+                  ✓ recorded on the global leaderboard
+                </p>
+              )}
+              {scoreSubmit === "fail" && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#ff8c6b]">
+                  ⚠ leaderboard unreachable — score kept locally
+                </p>
+              )}
+              {finalScore > 500000 && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim/70">
+                  board entries cap at 500,000
+                </p>
+              )}
               <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
                 {Math.floor(hud.time / 60)}m {Math.floor(hud.time % 60)}s · {hud.block} blocks ·{" "}
                 {hud.kills} kills
@@ -666,6 +682,21 @@ export default function GameHUD() {
               <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
                 score · best {best}
               </p>
+              {scoreSubmit === "ok" && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#4ade80]">
+                  ✓ recorded on the global leaderboard
+                </p>
+              )}
+              {scoreSubmit === "fail" && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#ff8c6b]">
+                  ⚠ leaderboard unreachable — score kept locally
+                </p>
+              )}
+              {finalScore > 500000 && (
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim/70">
+                  board entries cap at 500,000
+                </p>
+              )}
               <div className="mt-4 space-y-1 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
                 <p>{hud.block} blocks survived · {hud.kills} kills · {hud.captured} sites</p>
               </div>

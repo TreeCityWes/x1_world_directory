@@ -271,6 +271,8 @@ type GameStore = {
   /** boss entrance nameplate — set by the game loop, shown ~3s by the HUD */
   bossCard: string;
   bossCardAt: number;
+  /** leaderboard submit status for the end screens */
+  scoreSubmit: "" | "sending" | "ok" | "fail";
   start: (diff?: DifficultyId) => void;
   openMenu: () => void;
   pause: () => void;
@@ -323,6 +325,7 @@ export const useGame = create<GameStore>((set, get) => ({
   finalScore: 0,
   bossCard: "",
   bossCardAt: 0,
+  scoreSubmit: "",
   deathCause: "",
   start: (diff) => {
     resetRun(diff ?? run.difficulty, get().character);
@@ -361,8 +364,20 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.death();
     const pd = useProfile.getState();
-    if (pd.name.trim()) submitScore({ name: pd.name, wallet: pd.wallet, score, diff: run.difficulty });
-    set({ mode: "dead", finalScore: score, best, deathCause: run.killedBy, hud: emptyHud() });
+    const named = !!pd.name.trim();
+    if (named) {
+      void submitScore({ name: pd.name, wallet: pd.wallet, score, diff: run.difficulty }).then(
+        (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
+      );
+    }
+    set({
+      mode: "dead",
+      finalScore: score,
+      best,
+      deathCause: run.killedBy,
+      scoreSubmit: named ? "sending" : "",
+      hud: emptyHud(),
+    });
   },
   win: () => {
     const score = scoreOf() + 1000; // full-ecosystem bonus
@@ -373,8 +388,13 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.win();
     const pw = useProfile.getState();
-    if (pw.name.trim()) submitScore({ name: pw.name, wallet: pw.wallet, score, diff: run.difficulty });
-    set({ mode: "won", finalScore: score, best, hud: emptyHud() });
+    const named = !!pw.name.trim();
+    if (named) {
+      void submitScore({ name: pw.name, wallet: pw.wallet, score, diff: run.difficulty }).then(
+        (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
+      );
+    }
+    set({ mode: "won", finalScore: score, best, scoreSubmit: named ? "sending" : "", hud: emptyHud() });
   },
   syncHud: () => set({ hud: emptyHud() }),
   offerLevelUp: (choices) => set({ mode: "levelup", choices, hud: emptyHud() }),

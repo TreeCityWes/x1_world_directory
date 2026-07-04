@@ -22,37 +22,43 @@ export async function fetchBoard(): Promise<{ board: BoardEntry[]; persistent: b
 }
 
 /**
- * Fire-and-forget submit. If a wallet is connected we ask it to sign a
- * server nonce so the board can mark the run "verified" (proof the player
- * controls the address — watch-only imports can't produce this).
+ * Submit a run. If a wallet is connected we ask it to sign a server nonce so
+ * the board can mark the run "verified" (proof the player controls the
+ * address — watch-only imports can't produce this). Resolves true when the
+ * board acknowledged the score, so the death/win screens can say so.
  */
-export function submitScore(payload: { name: string; wallet: string; score: number; diff: string }) {
-  void (async () => {
-    try {
-      let proof: { ts: string; nonce: string; sig: string } | null = null;
-      if (payload.wallet) {
-        try {
-          const { ts, nonce } = (await (await fetch("/api/leaderboard/nonce")).json()) as {
-            ts: string;
-            nonce: string;
-          };
-          const msg = `x1.world run · score:${payload.score} · diff:${payload.diff} · ${nonce}`;
-          const sig = await signWithWallet(msg);
-          if (sig) proof = { ts, nonce, sig };
-        } catch {
-          // wallet declined or can't sign — submit unverified
-        }
+export async function submitScore(payload: {
+  name: string;
+  wallet: string;
+  score: number;
+  diff: string;
+}): Promise<boolean> {
+  try {
+    let proof: { ts: string; nonce: string; sig: string } | null = null;
+    if (payload.wallet) {
+      try {
+        const { ts, nonce } = (await (await fetch("/api/leaderboard/nonce")).json()) as {
+          ts: string;
+          nonce: string;
+        };
+        const msg = `x1.world run · score:${payload.score} · diff:${payload.diff} · ${nonce}`;
+        const sig = await signWithWallet(msg);
+        if (sig) proof = { ts, nonce, sig };
+      } catch {
+        // wallet declined or can't sign — submit unverified
       }
-      await fetch("/api/leaderboard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, deviceId: getDeviceId(), ...proof }),
-        keepalive: true,
-      });
-    } catch {
-      // offline — a lost submission must never affect the game
     }
-  })();
+    const res = await fetch("/api/leaderboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, deviceId: getDeviceId(), ...proof }),
+      keepalive: true,
+    });
+    return res.ok;
+  } catch {
+    // offline — a lost submission must never affect the game
+    return false;
+  }
 }
 
 /**

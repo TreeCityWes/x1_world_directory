@@ -17,6 +17,8 @@ import GameHUD from "@/components/game/GameHUD";
 export default function Overlay() {
   const mode = useGame((s) => s.mode);
   const openMenu = useGame((s) => s.openMenu);
+  const nearId = useWorld((s) => s.nearId);
+  const selectedId = useWorld((s) => s.selectedId);
   const mutedUi = useSyncExternalStore(subscribeMute, isMuted, () => false);
 
   useEffect(() => {
@@ -101,12 +103,23 @@ export default function Overlay() {
       )}
 
       <h1
-        className={`absolute bottom-4 left-5 text-5xl font-semibold leading-none tracking-tighter max-md:bottom-3 max-md:text-2xl md:text-6xl ${
+        className={`absolute bottom-6 left-5 text-5xl font-semibold leading-none tracking-tighter max-md:bottom-3 max-md:text-2xl md:text-6xl ${
           mode !== "explore" ? "max-md:hidden" : ""
         }`}
       >
         x1<span className="text-gold">.world</span>
       </h1>
+      <p className="absolute bottom-1.5 left-5 font-mono text-[8px] uppercase tracking-[0.22em] text-ink-dim/50 max-md:hidden">
+        unofficial fan project · not affiliated with the x1 foundation
+      </p>
+
+      {/* discoverability: the E lock is invisible without this */}
+      {mode === "explore" && nearId && !selectedId && (
+        <p className="absolute bottom-24 left-1/2 -translate-x-1/2 rounded-md border border-cyan/40 bg-space/80 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-cyan backdrop-blur max-md:hidden">
+          press <span className="rounded border border-cyan/60 px-1 text-cyan">e</span> to lock
+          focus
+        </p>
+      )}
 
       {/* sound toggle */}
       <button
