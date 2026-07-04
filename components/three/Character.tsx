@@ -29,18 +29,14 @@ export default function Character() {
   const scarf = useRef<THREE.Group>(null);
   const phase = useRef(0);
 
-  useFrame((state) => {
-    // THEO hovers — a gentle AI float layered over the walk bob (runs after
-    // the main frame handler below, so it adds on top of the walk offset)
-    if (charId === "theo" && bob.current) {
-      bob.current.position.y += 0.03 + Math.sin(state.clock.elapsedTime * 2.2) * 0.02;
-    }
-  });
-
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
     const speedNorm = Math.min(moveState.speed / 2.2, 1);
     phase.current += dt * (2 + moveState.speed * 4.5);
+    // THEO's AI float — an offset composed into the single bob write below.
+    // NEVER accumulate into position.y: a += here once leaked (reduced-motion
+    // skipped the reset) and characters drifted off the planet.
+    const hover = charId === "theo" ? 0.03 + Math.sin(t * 2.2) * 0.02 : 0;
 
     // face the direction of travel (smoothed, no flips)
     if (yaw.current && moveState.speed > 0.08) {
@@ -48,12 +44,18 @@ export default function Character() {
       yaw.current.quaternion.slerp(_target, 1 - Math.pow(0.0005, dt));
     }
 
-    // decorative motion only — freeze it for reduced-motion users (facing stays)
-    if (!prefersReducedMotion.current) {
+    // decorative motion freezes for reduced-motion users — but the pose is
+    // still WRITTEN every frame so nothing ever accumulates or goes stale
+    if (prefersReducedMotion.current) {
+      if (bob.current) {
+        bob.current.position.y = charId === "theo" ? 0.03 : 0;
+        bob.current.rotation.x = 0;
+      }
+    } else {
       // idle bob + run bounce + lean into the run
       if (bob.current) {
         bob.current.position.y =
-          0.02 * Math.sin(t * 2.2) + 0.05 * Math.abs(Math.sin(phase.current)) * speedNorm;
+          hover + 0.02 * Math.sin(t * 2.2) + 0.05 * Math.abs(Math.sin(phase.current)) * speedNorm;
         bob.current.rotation.x = 0.22 * speedNorm;
       }
 

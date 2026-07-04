@@ -283,8 +283,9 @@ export default function CharacterBody({
   const broGltf = useGLTF("/models/cryptobro.glb");
   const hatGltf = useGLTF("/models/tophat.glb");
   const jackGltf = useGLTF("/models/jack.glb");
-  // capybara.glb ships pre-smoothed (scripts/smooth-model.mjs)
-  const capyBody = useMemo(() => normClone(capyGltf.scene, 0.95), [capyGltf]);
+  // capybara.glb ships pre-smoothed (scripts/smooth-model.mjs); CAPY gets his
+  // own compact scale so the long quadruped doesn't dwarf the bipeds
+  const capyBody = useMemo(() => normClone(capyGltf.scene, 0.65), [capyGltf]);
   const theoBody = useMemo(
     () => normClone(broGltf.scene, 0.62, { tint: { color: "#9aa3b2", metal: 0.65 } }),
     [broGltf],
@@ -302,7 +303,9 @@ export default function CharacterBody({
     [hatGltf],
   );
   const jack = useMemo(() => {
-    const body = normClone(jackGltf.scene, 0.55, {
+    // full body, legs included — the legless float read as broken, and the
+    // model's arm proportions only work with the legs grounding them
+    const body = normClone(jackGltf.scene, 0.78, {
       recolor: {
         // a normal guy: short brown hair, plain white tee
         Hair: { color: "#4a2f15" },
@@ -310,15 +313,13 @@ export default function CharacterBody({
         Shirt: { color: "#f2f2f2" },
         Shirt2: { color: "#e9e9e9" },
       },
-      // PS2-mascot float: no legs, the torso hovers
-      hide: ["Pants", "Shoes", "Socks"],
     });
     // pin the tee print to the real chest surface (bbox lies — limbs poke
     // forward of the chest in the idle pose)
     body.updateMatrixWorld(true);
-    const ray = new THREE.Raycaster(new THREE.Vector3(0, 0.3, 1), new THREE.Vector3(0, 0, -1));
+    const ray = new THREE.Raycaster(new THREE.Vector3(0, 0.54, 1), new THREE.Vector3(0, 0, -1));
     const hit = ray.intersectObject(body, true)[0];
-    return { body, chestZ: hit ? hit.point.z : 0.06 };
+    return { body, chestZ: hit ? hit.point.z : 0.07 };
   }, [jackGltf]);
   const xenTex = useMemo(() => {
     const c = document.createElement("canvas");
@@ -337,23 +338,12 @@ export default function CharacterBody({
 
   if (charId === "jack")
     return (
-      <group position={[0, 0.16, 0]}>
+      <group>
         <primitive object={jack.body} />
         {/* the XEN tee — pinned to the raycast chest surface */}
-        <mesh position={[0, 0.3, jack.chestZ + 0.004]}>
+        <mesh position={[0, 0.54, jack.chestZ + 0.004]}>
           <planeGeometry args={[0.15, 0.075]} />
           <meshBasicMaterial map={xenTex} transparent alphaTest={0.4} />
-        </mesh>
-        {/* hover shadow-puff where the legs used to be */}
-        <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.09, 20]} />
-          <meshBasicMaterial
-            color="#f0c75e"
-            transparent
-            opacity={0.25}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-          />
         </mesh>
       </group>
     );
