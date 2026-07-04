@@ -96,16 +96,42 @@ page.on("console", (m) => {
 try {
   await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 30_000 });
 
-  // menu is the landing experience
-  const start = page.locator("button", { hasText: /start .* run/i }).first();
-  await start.waitFor({ timeout: 30_000 });
+  // DOM-dispatched clicks: Playwright's actionability check fights the
+  // framer-motion roster cards (whileHover keeps them animating under the
+  // pointer), and text-locators are brittle here ("Balanced Starter …
+  // your first run" matches /start .* run/ when the ninja card is
+  // unselected). Element.click() sidesteps both.
+  const clickButton = (pattern) =>
+    page.evaluate((src) => {
+      const rx = new RegExp(src, "i");
+      const b = [...document.querySelectorAll("button")].find((el) => rx.test(el.textContent));
+      if (b) b.click();
+      return !!b;
+    }, pattern);
+
+  // menu is the landing experience — the big CTA starts with ▶
+  await page.waitForFunction(
+    () => [...document.querySelectorAll("button")].some((b) => /▶\s*start/i.test(b.textContent)),
+    undefined,
+    { timeout: 30_000 },
+  );
   pass("landing menu rendered");
 
   // the canvas debug hook mounts with the 3D bundle
   await page.waitForFunction(() => !!window.__x1dbg, undefined, { timeout: 30_000 });
   pass("3D scene mounted (__x1dbg)");
 
-  await start.click();
+  // play as JACK — he's the RIGGED hero, which makes the gait probe below a
+  // required assertion instead of a skip (a fresh browser defaults to the
+  // procedural ninja, whose limbs three can't probe by bone name)
+  const jackSelected = await clickButton("Jack Levin");
+  if (!jackSelected) note("Jack roster card not found — running default character");
+
+  if (!(await clickButton("start\\s+(normal|hard|cursed)\\s+run"))) {
+    // dump state — a missing asset 404 escalates to Next's error page here
+    const body = await page.evaluate(() => document.body.innerText.slice(0, 200));
+    throw new Error(`start button vanished; body: ${body}; errors: ${JSON.stringify(pageErrors)}`);
+  }
 
   // countdown: grab mm:ss twice — it must tick DOWN (time attack is live)
   const clock = async () => {
@@ -201,8 +227,13 @@ try {
     }
     return { skinned: true, spread: Math.max(...samples) - Math.min(...samples) };
   });
-  if (!gait.skinned) note("no rigged hero in scene — gait probe skipped (procedural cast)");
-  else if (gait.spread < 0.05) fail(`rigged hero legs frozen while running (spread ${gait.spread})`);
+  if (!gait.skinned) {
+    // selecting Jack means a skinned rig MUST be in the scene — its absence
+    // is itself a regression (model failed to load / branch removed the rig)
+    if (jackSelected) fail("Jack selected but no skinned rig in scene");
+    else note("no rigged hero in scene — gait probe skipped");
+  } else if (gait.spread < 0.05)
+    fail(`rigged hero legs frozen while running (spread ${gait.spread})`);
   else pass(`rigged gait animates (bone spread ${gait.spread.toFixed(2)} rad)`);
   await page.keyboard.up("w");
 
