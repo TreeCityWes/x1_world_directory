@@ -50,9 +50,13 @@ export default function Character() {
       yaw.current.quaternion.slerp(_target, 1 - Math.pow(0.0005, dt));
     }
 
-    // decorative motion freezes for reduced-motion users — but the pose is
-    // still WRITTEN every frame so nothing ever accumulates or goes stale
-    if (prefersReducedMotion.current) {
+    // Reduced-motion freezes DECORATIVE motion (idle bob/sway/flutter) — but
+    // the GAIT is functional feedback, not decoration: frozen legs on a body
+    // the planet drags around is the "floating" bug (and the owner's own
+    // Windows box has this flag set browser-wide, which is why every gait
+    // tune looked broken to him). So: while actually MOVING, limbs animate
+    // for everyone; at rest, reduced-motion holds a static pose.
+    if (prefersReducedMotion.current && moveState.speed < 0.15) {
       if (bob.current) {
         bob.current.position.y = charId === "theo" ? 0.03 : 0;
         bob.current.rotation.x = 0;
@@ -64,11 +68,11 @@ export default function Character() {
       if (legL.current) legL.current.rotation.set(0, 0, 0);
       if (legR.current) legR.current.rotation.set(0, 0, 0);
     } else {
-      // ninja + jack are RIGGED now (SkinnedHero): their GLB Walk/Run cycles
-      // own the bounce and stride, so the procedural gait must NOT stack on
-      // top — a double-bounce is exactly the old float. They keep a light
-      // lean only. THEO/CAPY (unrigged) keep the full procedural treatment.
-      const rigged = charId === "ninja" || charId === "jack";
+      // Jack is RIGGED (SkinnedHero): his GLB Walk/Run cycles own the bounce
+      // and stride, so the procedural gait must NOT stack on top — a
+      // double-bounce is exactly the old float. He keeps a light lean only.
+      // The ninja is the procedural logo body: full gait treatment.
+      const rigged = charId === "jack";
       if (bob.current) {
         bob.current.position.y = rigged
           ? hover

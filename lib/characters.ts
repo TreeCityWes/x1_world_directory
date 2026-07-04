@@ -68,7 +68,6 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     luck: 1,
     xp: 1,
     passive: "Every shuriken pierces through 2 enemies",
-    model: { size: 0.78 },
     unlocked: true,
     colors: {
       hood: "#232936",

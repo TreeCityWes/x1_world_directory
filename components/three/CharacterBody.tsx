@@ -495,7 +495,6 @@ export default function CharacterBody({
   const capySize = CHARACTERS.capy.model?.size ?? 0.65;
   const theoSize = CHARACTERS.theo.model?.size ?? 0.62;
   const jackSize = CHARACTERS.jack.model?.size ?? 0.78;
-  const ninjaSize = CHARACTERS.ninja.model?.size ?? 0.78;
   const capyLift = CHARACTERS.capy.model?.lift ?? 0;
   const theoLift = CHARACTERS.theo.model?.lift ?? 0;
   const jackLift = CHARACTERS.jack.model?.lift ?? 0;
@@ -530,18 +529,6 @@ export default function CharacterBody({
       Hair2: { color: "#553a1d" },
       Shirt: { color: "#f2f2f2" },
       Shirt2: { color: "#e9e9e9" },
-    }),
-    [],
-  );
-  const ninjaRecolor = useMemo(
-    () => ({
-      // brand retint (x1.ninja logo): charcoal-blue suit, electric-blue trim,
-      // gold furniture, fierce glowing blue eyes
-      Ninja_Main: { color: "#161b28" },
-      Ninja_Secondary: { color: "#1e4fd8", emissive: "#1e4fd8", emissiveIntensity: 0.45 },
-      Belt: { color: "#f0c75e", emissive: "#c9921e", emissiveIntensity: 0.3 },
-      Gold: { color: "#f0c75e", emissive: "#c9921e", emissiveIntensity: 0.35 },
-      Eye_White: { color: "#4f7dff", emissive: "#4f7dff", emissiveIntensity: 2.2 },
     }),
     [],
   );
@@ -620,14 +607,11 @@ export default function CharacterBody({
       </group>
     );
 
-  if (charId === "ninja")
-    return (
-      // rigged Quaternius ninja, brand-retinted — real Walk/Run leg cycles
-      // instead of two capsules swinging at the hip
-      <SkinnedHero url="/models/ninja_anim.glb" size={ninjaSize} recolor={ninjaRecolor} />
-    );
-
-  // the locked "???" slot keeps the grey procedural silhouette
+  // X1 Ninja: the procedural logo-true body — owner call (twice now: 651ac87
+  // and again 2026-07-04): the mark IS the character; no GLB stand-ins. Its
+  // legs always animated — they only ever LOOKED frozen because the owner's
+  // machine runs prefers-reduced-motion (see Character.tsx gait exemption).
+  // The locked "???" slot renders the same body in grey.
   return (
     <NinjaBody
       pal={pal}
@@ -644,4 +628,3 @@ useGLTF.preload("/models/capybara.glb");
 useGLTF.preload("/models/cryptobro.glb");
 useGLTF.preload("/models/tophat.glb");
 useGLTF.preload("/models/jack_anim.glb");
-useGLTF.preload("/models/ninja_anim.glb");
