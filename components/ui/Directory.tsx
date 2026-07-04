@@ -45,6 +45,25 @@ export default function Directory() {
 
   const arrow = (key: SortKey) => (sortKey === key ? (asc ? " ↑" : " ↓") : "");
 
+  // sortable header: a real <button> inside the <th> (keyboard + AT operable)
+  // with aria-sort on the cell announcing the current order. Plain render
+  // helper, not a nested component — those reset state on every render.
+  const sortTh = (k: SortKey, label: string) => (
+    <th
+      className="px-0 py-0 font-medium"
+      aria-sort={sortKey === k ? (asc ? "ascending" : "descending") : "none"}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className="w-full px-4 py-3 text-left font-medium uppercase tracking-[0.18em] transition-colors hover:text-gold focus-visible:text-gold focus-visible:outline-none"
+      >
+        {label}
+        {arrow(k)}
+      </button>
+    </th>
+  );
+
   return (
     <section id="directory" className="mx-auto max-w-6xl px-5 py-16">
       <a
@@ -79,31 +98,11 @@ export default function Directory() {
           <thead>
             <tr className="border-b border-white/10 bg-space-2/50 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
               <th className="px-4 py-3 font-medium">preview</th>
-              <th
-                className="cursor-pointer px-4 py-3 font-medium transition-colors hover:text-gold"
-                onClick={() => onSort("name")}
-              >
-                project{arrow("name")}
-              </th>
-              <th
-                className="cursor-pointer px-4 py-3 font-medium transition-colors hover:text-gold"
-                onClick={() => onSort("category")}
-              >
-                category{arrow("category")}
-              </th>
+              {sortTh("name", "project")}
+              {sortTh("category", "category")}
               <th className="px-4 py-3 font-medium">description</th>
-              <th
-                className="cursor-pointer px-4 py-3 font-medium transition-colors hover:text-gold"
-                onClick={() => onSort("builder")}
-              >
-                builder{arrow("builder")}
-              </th>
-              <th
-                className="cursor-pointer px-4 py-3 font-medium transition-colors hover:text-gold"
-                onClick={() => onSort("ok")}
-              >
-                status{arrow("ok")}
-              </th>
+              {sortTh("builder", "builder")}
+              {sortTh("ok", "status")}
             </tr>
           </thead>
           <tbody>

@@ -180,6 +180,7 @@ export function GasWisp() {
         -0.08 + Math.cos((t + i * 1.7) * 1.3) * 0.08,
       );
       m.scale.setScalar(0.1 + ph * 0.26);
+      m.updateMatrix(); // pool children are matrix-frozen — compose by hand
       (m.material as THREE.MeshBasicMaterial).opacity = 0.32 * (1 - ph);
     }
   });

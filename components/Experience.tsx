@@ -24,10 +24,18 @@ export default function Experience() {
       {/* left screen — the world */}
       <div className="relative min-w-0 flex-1 max-md:h-[62vh] max-md:flex-none">
         <Canvas
-          shadows
+          // shadow pass renders every castShadow mesh a second time — on a
+          // dark starry globe the additive contact glows carry the grounding,
+          // so coarse GPUs skip shadows entirely
+          shadows={!LOW_GPU}
           camera={{ position: [0, 3.2, 9.2], fov: 40 }}
           gl={{ antialias: true, alpha: true }}
           dpr={[1, 1.5]}
+          onCreated={({ scene, gl }) => {
+            // debug escape hatch: lets headless perf scripts read
+            // renderer.info (draw calls) and walk the graph
+            (window as unknown as Record<string, unknown>).__x1dbg = { scene, gl };
+          }}
         >
           {/* single key light → a real lit/dark terminator on the globe; the
               fresnel atmosphere + a faint cool back-fill keep the night limb
@@ -37,7 +45,7 @@ export default function Experience() {
             position={[5, 8, 4]}
             intensity={2.1}
             color="#dbe6ff"
-            castShadow
+            castShadow={!LOW_GPU}
             shadow-mapSize={[1024, 1024]}
             shadow-bias={-0.0005}
           />

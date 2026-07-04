@@ -285,10 +285,13 @@ export default function CharacterBody({
   const hatGltf = useGLTF("/models/tophat.glb");
   const jackGltf = useGLTF("/models/jack.glb");
   // per-character placement comes from the registry (CHARACTERS[x].model),
-  // not per-asset guesses scattered through this file
+  // not per-asset guesses scattered through this file — size AND lift
   const capySize = CHARACTERS.capy.model?.size ?? 0.65;
   const theoSize = CHARACTERS.theo.model?.size ?? 0.62;
   const jackSize = CHARACTERS.jack.model?.size ?? 0.78;
+  const capyLift = CHARACTERS.capy.model?.lift ?? 0;
+  const theoLift = CHARACTERS.theo.model?.lift ?? 0;
+  const jackLift = CHARACTERS.jack.model?.lift ?? 0;
   // capybara.glb ships pre-smoothed (scripts/smooth-model.mjs); CAPY gets his
   // own compact scale so the long quadruped doesn't dwarf the bipeds
   const capyBody = useMemo(() => normClone(capyGltf.scene, capySize), [capyGltf, capySize]);
@@ -343,11 +346,16 @@ export default function CharacterBody({
     return new THREE.CanvasTexture(c);
   }, []);
 
-  if (charId === "capy") return <primitive object={capyBody} />;
+  if (charId === "capy")
+    return (
+      <group position={[0, capyLift, 0]}>
+        <primitive object={capyBody} />
+      </group>
+    );
 
   if (charId === "jack")
     return (
-      <group>
+      <group position={[0, jackLift, 0]}>
         <primitive object={jack.body} />
         {/* the XEN tee — pinned to the raycast chest surface */}
         <mesh position={[0, 0.54, jack.chestZ + 0.004]}>
@@ -359,7 +367,7 @@ export default function CharacterBody({
 
   if (charId === "theo")
     return (
-      <group>
+      <group position={[0, theoLift, 0]}>
         <primitive object={theoBody} />
         {/* group wrapper: the position prop must not clobber normClone's
             centering offset on the hat itself; buckle spun to the front.

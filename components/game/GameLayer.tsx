@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { mergeVertices } from "three-stdlib";
@@ -416,6 +416,22 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const dmgRefs = useRef<(THREE.Sprite | null)[]>([]);
   const beamRefs = useRef<(THREE.Group | null)[]>([]);
 
+  // The 56 pooled mobs are ~15-20 meshes each — over a thousand objects whose
+  // matrices three recomposed EVERY frame (profiled at ~20% of frame time on
+  // a throttled CPU) even though only the slot root moves. Freeze the rigid
+  // children; the two animated exceptions (scan halo, GasWisp smoke) call
+  // updateMatrix() by hand after their writes.
+  useEffect(() => {
+    for (const g of enemyRefs.current) {
+      if (!g) continue;
+      g.traverse((o) => {
+        if (o === g) return; // the slot root chases the player every frame
+        o.updateMatrix();
+        o.matrixAutoUpdate = false;
+      });
+    }
+  }, []);
+
   const spawnEnemy = (type: EnemyTypeId, dir?: THREE.Vector3) => {
     const [lo, hi] = TYPE_RANGES[type];
     let e: Enemy | undefined;
@@ -667,7 +683,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         if (halo) {
           const marked = e.markedUntil > run.t;
           halo.visible = marked;
-          if (marked) halo.rotation.set(-Math.PI / 2, 0, run.t * 4);
+          if (marked) {
+            halo.rotation.set(-Math.PI / 2, 0, run.t * 4);
+            halo.updateMatrix(); // pool children are matrix-frozen — compose by hand
+          }
         }
       }
     }
@@ -1716,9 +1735,6 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     <group>
       {Array.from({ length: MAX_ENEMIES }).map((_, i) => {
         const kind = typeForSlot(i);
-        const wraith = false; // the hooded robe retired with the wraith — wisps burn bare
-        const robeR = 0.075;
-        const robeH = 0.18;
         return (
           <group key={`e${i}`} ref={(el) => { enemyRefs.current[i] = el; }} visible={false}>
             {kind === "boss" ? (
@@ -1738,18 +1754,6 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
               <group scale={0.32}>
                 <RugMob />
               </group>
-            )}
-            {wraith && (
-              <mesh position={[0, -robeH * 0.55, 0]}>
-                <coneGeometry args={[robeR, robeH, 8, 1, true]} />
-                <meshStandardMaterial
-                  color="#141c33"
-                  emissive="#2a4080"
-                  emissiveIntensity={0.3}
-                  roughness={0.6}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
             )}
             {/* THEO scan-lock glyph (diamond ring), toggled by markedUntil */}
             <mesh

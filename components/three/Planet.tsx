@@ -12,6 +12,7 @@ import { run, useGame } from "@/lib/gameStore";
 import { touchStick } from "@/lib/touchInput";
 import { useKeyboard } from "@/lib/useKeyboard";
 import Landmark from "@/components/three/Landmarks";
+import MergeStatic from "@/components/three/MergeStatic";
 import GameLayer from "@/components/game/GameLayer";
 import { LOW_GPU } from "@/lib/quality";
 
@@ -26,6 +27,8 @@ const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const UP = new THREE.Vector3(0, 1, 0);
 const _q = new THREE.Quaternion();
 const _v = new THREE.Vector3();
+const _wp = new THREE.Vector3();
+const _camN = new THREE.Vector3();
 
 // Movement feel — tuned for "physical toy planet"
 const ACC = 1.9; // rad/s² from held keys
@@ -405,14 +408,47 @@ function RegionSite({
   const quat = useMemo(() => new THREE.Quaternion().setFromUnitVectors(UP, normal), [normal]);
   const pos = useMemo(() => normal.clone().multiplyScalar(PLANET_RADIUS * 0.995), [normal]);
 
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
+  // Sites never move in planet-local space, but three re-composes every
+  // object's matrix each frame because the rotating planet dirties the whole
+  // subtree. Freeze the static local matrices (~10 objects × 55 sites) —
+  // only the pulse group keeps animating. This was explore's missing half
+  // of play's frame rate on throttled CPUs.
+  useEffect(() => {
+    const g = site.current;
+    if (!g) return;
+    g.traverse((o) => {
+      o.updateMatrix();
+      o.matrixAutoUpdate = false;
+    });
+    // the pulse group stays frozen too — the useFrame below composes it
+    // by hand on the rare frames its scale actually changes
+  }, []);
 
-    // the focused landmark pulses gently
-    if (pulse.current) {
-      const s = lit ? 1 + Math.sin(t * 6 + index) * 0.05 : 1;
-      pulse.current.scale.setScalar(s);
+  const wasLit = useRef(false);
+  useFrame((state) => {
+    const g = site.current;
+    if (!g) return;
+
+    // occlusion cull: three only frustum-culls, so the far hemisphere's
+    // sites were drawn every frame behind the planet — at 55 sites that's
+    // hundreds of wasted draw calls. Sites solidly past the horizon skip
+    // render + raycast. World direction = local normal × planet rotation
+    // (getWorldPosition would force-recompute the parent matrix chain 55×
+    // a frame; the parent IS the planet group, so one quaternion is enough).
+    _wp.copy(normal).applyQuaternion(g.parent!.quaternion);
+    _camN.copy(state.camera.position).normalize();
+    const shown = _wp.dot(_camN) > -0.12;
+    if (g.visible !== shown) g.visible = shown;
+    if (!shown) return;
+
+    // the focused landmark pulses gently — write only while lit (plus one
+    // reset write when focus leaves) so 55 idle sites cost nothing
+    if (pulse.current && (lit || wasLit.current)) {
+      const t = state.clock.elapsedTime;
+      pulse.current.scale.setScalar(lit ? 1 + Math.sin(t * 6 + index) * 0.05 : 1);
+      pulse.current.updateMatrix(); // frozen subtree — compose by hand
     }
+    wasLit.current = lit;
   });
 
   return (
@@ -432,7 +468,11 @@ function RegionSite({
         }}
       >
         <group ref={pulse}>
-          <Landmark kind={region.kind} accent={region.accent} />
+          {/* ~7 primitives → 2-3 merged draws; the landmark never animates
+              internally (the pulse scales this whole group) so it's safe */}
+          <MergeStatic>
+            <Landmark kind={region.kind} accent={region.accent} />
+          </MergeStatic>
         </group>
         {/* glowing circular project pad */}
         <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
