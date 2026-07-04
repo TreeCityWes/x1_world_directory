@@ -12,7 +12,6 @@
   --cyan: #7dd3fc;
   --gold: #f0c75e;
   --gold-deep: #c9a13b;
-  --accent: #3b82f6;
 
   --background: var(--space);
   --foreground: var(--ink);
@@ -28,7 +27,6 @@
   --color-cyan: var(--cyan);
   --color-gold: var(--gold);
   --color-gold-deep: var(--gold-deep);
-  --color-accent: var(--accent);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

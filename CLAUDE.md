@@ -14,12 +14,23 @@ from the X1 Foundation / Jack Levin). We own the `x1.world` domain.
 - `docs/X1-FACTS.md` — accurate facts about X1 for copy (verify before shipping).
 - `docs/BUILD-PLAN.md` — stack, folder structure, phased build order, open decisions.
 
-**Status:** scaffolding + design docs are done. The 3D scene is intentionally a
-placeholder stub (spinning blue sphere) — the real experience is still to be
-built (handoff to Fable). Files marked `STUB`/`TODO` are the seams to build into.
+**Status:** SHIPPED and live. Two modes share one canvas:
+
+1. **Explore** — the walkable globe: 50+ real X1 ecosystem projects as beacons,
+   proximity cards, project directory below the fold (`components/three/*`,
+   `components/ui/*`, `lib/regions.ts`).
+2. **X1 Ninja Survivors** (the default landing mode) — a Vampire-Survivors run
+   on the globe: 4 playable characters (`lib/characters.ts`), capture all sites
+   + slay the final boss to win, Supabase leaderboard + inscribe-score-on-X1
+   (`components/game/*`, `lib/gameStore.ts`, `lib/leaderboard.ts`,
+   `lib/inscribe.ts`, `lib/profile.ts`).
+
+`ninja_game/` is an EARLIER standalone 2D prototype — not imported or built by
+the Next.js app. Treat the embedded 3D game as the product.
 
 **Stack:** Next.js (App Router, TS, Tailwind v4) · three · @react-three/fiber ·
-@react-three/drei · gsap · lenis · framer-motion.
+@react-three/drei · zustand · framer-motion. (gsap/lenis were planned but never
+installed — ignore mentions in older docs.)
 
 **Gotcha:** this is a newer Next.js — `ssr: false` dynamic imports must live in a
 Client Component (see `components/ExperienceLoader.tsx`). Check

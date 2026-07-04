@@ -9,6 +9,12 @@ rotates the planet beneath the ninja's feet. Walk up to a glowing beacon and its
 project card opens — screenshot, category, builder, and a link out. Every beacon
 is a real X1 ecosystem project.
 
+And it's a game: **X1 Ninja Survivors** — a Vampire-Survivors run on the globe.
+Pick one of four characters (X1 Ninja, Jack Levin, THEO, CAPY), survive the
+crypto bestiary (bugs, gas wisps, rugs, THE WHALE), capture every ecosystem
+site, slay the final boss, then inscribe your score on X1 mainnet and climb the
+global leaderboard.
+
 ## Run it
 
 ```bash
@@ -39,12 +45,25 @@ screenshots or a health re-check.
 
 ## Where things live
 
-- `components/Experience.tsx` — canvas root: stars, lighting, suspense
+- `components/Experience.tsx` — canvas root: stars, lighting, suspense, post
 - `components/three/Planet.tsx` — the world, movement/inertia, proximity, beacons
-- `components/three/Character.tsx` — the ninja (bob, facing, scarf, katanas)
+- `components/three/Character.tsx` + `CharacterBody.tsx` — playable characters
+  (procedural ninja + GLB bodies for Jack / THEO / CAPY)
 - `components/three/Rig.tsx` — camera framing + mouse drift
-- `components/ui/` — HUD overlay + project card (framer-motion)
+- `components/ui/` — HUD overlay, side panel console, project card
+- `components/game/` — X1 Ninja Survivors: `GameLayer.tsx` (the whole sim),
+  `GameHUD.tsx` (menus/cards/toasts), `Mobs.tsx` (procedural enemies),
+  `Nemesis.tsx`, `CharacterPreview.tsx` (select-screen turntable)
+- `lib/gameStore.ts` — run state, difficulties, upgrades + evolutions, scoring
+- `lib/characters.ts` — playable character registry (stats, weapons, colors)
+- `lib/leaderboard.ts` + `app/api/leaderboard/` — Supabase global leaderboard
+- `lib/inscribe.ts` — inscribe your score on X1 mainnet (SPL memo)
+- `lib/profile.ts` — name + wallet connect (X1 Wallet / Backpack; no Phantom)
 - `lib/regions.ts` — projects.json → placed regions
-- `docs/` — concept, design language, X1 facts, build plan
+- `scripts/` — site checker + GLB pipeline (`strip-models`, `pose-bake`,
+  `smooth-model`); the checker needs `npx playwright install chromium` once
+  (playwright-core ships without a browser)
+- `docs/` — concept, design language, X1 facts, build plan (historical)
+- `ninja_game/` — earlier standalone 2D prototype; not built or imported
 
 _Not affiliated with the X1 Foundation. A fan tribute._

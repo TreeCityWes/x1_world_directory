@@ -181,37 +181,25 @@ function getSiteLabel(name: string) {
 const _t = new THREE.Vector3();
 const _f0 = new THREE.Vector3();
 
-// The cast (kitbashed from CC0 packs — KayKit heads, Quaternius whale):
-//   goblin  = floating goblin skull (KayKit minion head, no body)
-//   gremlin = hooded wraith (KayKit mage head over a procedural robe)
-//   whale   = an actual crypto whale, swimming at you
-//   boss    = giant gold wraith
-const MODEL_PATH: Record<EnemyTypeId, string> = {
-  goblin: "/models/goblin_head.glb",
-  gremlin: "/models/wraith_head.glb",
-  whale: "/models/whale.glb",
-  boss: "/models/wraith_head.glb",
-};
-// world-unit size of each model's longest dimension after normalization
-const TARGET_SIZE: Record<EnemyTypeId, number> = {
-  goblin: 0.15,
-  gremlin: 0.2,
-  whale: 0.26, // violet elder skull (the whale model is now boss #1)
-  boss: 1.05, // THE WHALE — unmistakably the biggest thing on the field
-};
-useGLTF.preload(MODEL_PATH.whale);
+// The cast: goblin = BUG, gremlin = GAS wisp, rug = THE RUG (all procedural,
+// Mobs.tsx); boss alternates the whale GLB and the Nemesis shadow.
+// only the whale GLB is real — regular mobs are procedural (Mobs.tsx)
+const WHALE_GLB = "/models/whale.glb";
+// THE WHALE boss — unmistakably the biggest thing on the field
+const BOSS_SIZE = 1.05;
+useGLTF.preload(WHALE_GLB);
 
 // The pool is partitioned into fixed per-type slot ranges.
 const TYPE_RANGES: Record<EnemyTypeId, [number, number]> = {
   goblin: [0, 26],
   gremlin: [26, 42],
-  whale: [42, 52],
+  rug: [42, 52],
   boss: [52, 56],
 };
 function typeForSlot(i: number): EnemyTypeId {
   if (i < 26) return "goblin";
   if (i < 42) return "gremlin";
-  if (i < 52) return "whale";
+  if (i < 52) return "rug";
   return "boss";
 }
 function tangentToward(from: THREE.Vector3, to: THREE.Vector3, out: THREE.Vector3) {
@@ -331,7 +319,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
 
   // THE WHALE (boss #1) is the only GLB left — regular mobs are procedural
   // crypto creatures now (Mobs.tsx). Clones only for the boss slots.
-  const whaleGltf = useGLTF(MODEL_PATH.whale);
+  const whaleGltf = useGLTF(WHALE_GLB);
   const enemyClones = useMemo(() => {
     return Array.from({ length: MAX_ENEMIES }, (_, i) => {
       if (typeForSlot(i) !== "boss") return null;
@@ -340,7 +328,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const box = new THREE.Box3().setFromObject(clone);
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z) || 1;
-      const k = TARGET_SIZE.boss / maxDim;
+      const k = BOSS_SIZE / maxDim;
       const center = box.getCenter(new THREE.Vector3());
       clone.scale.setScalar(k);
       clone.position.set(-center.x * k, -center.y * k, -center.z * k);
@@ -1170,8 +1158,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const contact = (CONTACT_BASE * R + e.radius) / R;
       if (e.dir.angleTo(world.pLocal) < contact) {
         moveState.contactSlow = true;
-        // discrete BITE with a cooldown — you can graze the horde and escape
-        if (!shielded && run.t >= e.biteAt) {
+        // discrete BITE with a cooldown — you can graze the horde and escape.
+        // Global 0.4s i-frame after ANY bite: a fresh wave landing at once
+        // can't dump a dozen bites in a single frame (fairness, not mercy).
+        if (!shielded && run.t >= e.biteAt && run.t - run.lastHitAt >= 0.4) {
           e.biteAt = run.t + 1.0;
           e.recoilUntil = run.t + 0.45;
           run.hp -= e.dmg * 0.8 * armorMult(); // one chunk, not a melt

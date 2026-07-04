@@ -255,14 +255,26 @@ boss telegraph — see §3).
 
 ## Highest-leverage fixes (if you do nothing else)
 
-1. **Rewrite `CLAUDE.md` and README "Where things live"** to mention the game. (Onboarding.)
-2. **Decide the fate of `ninja_game/`** — archive or commit. (Repo coherence.)
-3. **Add a pause** to the embedded game. (Player-hostile without it.)
-4. **Add a global player i-frame** after any bite. (Fairness.)
-5. **Decouple the win target from `regions.length`.** (Correctness + balance.)
-6. **Rename the `whale` mob type** or make it a whale; clean `MODEL_PATH` dead entries. (Code honesty.)
-7. **Reconcile `HANDOFF.md`** — fixed bugs listed as open, atmosphere change claimed but absent, NetworkLinks gone. (Doc truth.)
-8. **Drop the `T²` term from `scoreOf`** to stop rewarding circle-running. (Balance.)
+1. ✅ **Rewrite `CLAUDE.md` and README "Where things live"** — done 2026-07-04 (Fable).
+2. ⏸ **Decide the fate of `ninja_game/`** — owner decision; docs now label it a
+   non-built prototype so it can't be mistaken for the product.
+3. ✅ **Add a pause** — Esc/P toggle pause overlay (resume / abandon); Esc no
+   longer quits mid-run. Planet inertia also freezes under all modals.
+4. ✅ **Add a global player i-frame** — 0.4s after any bite.
+5. ⏸ **Decouple the win target from `regions.length`** — deferred: `regions` is
+   filtered at build time, so the count is constant per deployment (it does NOT
+   mutate mid-run). Capturing every live project is the product's identity;
+   revisit if the roster grows past ~70.
+6. ✅ **Rename the `whale` mob type** → `rug` (+ color `#d4a03b` matches the
+   RugMob on screen); `MODEL_PATH`/`TARGET_SIZE` dead entries removed.
+7. ✅ **Reconcile `HANDOFF.md`** — superseded banner added pointing here.
+8. ✅ **Drop the `T²` term from `scoreOf`** — time is linear now; kills/damage/
+   captures carry the score.
+
+Also fixed from the body of this review (2026-07-04): openMenu clears
+capturedIds; POWER_LABEL notes the 8s shield; dead `BLOCK_SECONDS` export and
+vestigial `--accent` removed; leaderboard rate limiting added; Supabase write
+failures now surface as 500s; SidePanel uses per-character upgrade names.
 
 The bones are strong — the evolution system, character flavor, and the "explore
 projects as a survivors arena" hook are genuinely good design. The gaps are

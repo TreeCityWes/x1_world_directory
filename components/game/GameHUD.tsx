@@ -15,7 +15,7 @@ const TOTAL_SITES = regions.length;
 const DEATH_FLAVOR: Record<string, string> = {
   goblin: "exploited by a bug",
   gremlin: "burned alive by gas fees",
-  whale: "it was a rug pull all along",
+  rug: "it was a rug pull all along",
   "boss:whale": "swallowed whole by THE WHALE",
   "boss:nemesis": "slain by your own shadow",
 };
@@ -435,15 +435,56 @@ export default function GameHUD() {
         />
       )}
 
-      {/* quit chip */}
+      {/* pause chip */}
       {mode === "play" && (
         <button
-          onClick={quit}
+          onClick={() => useGame.getState().pause()}
           className="pointer-events-auto absolute right-4 top-3 rounded-md border border-white/15 bg-space/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-dim backdrop-blur transition-colors hover:border-gold/60 hover:text-gold"
         >
-          esc — quit run
+          esc — pause
         </button>
       )}
+
+      {/* pause screen — interruptions never cost the run */}
+      <AnimatePresence>
+        {mode === "paused" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/70 backdrop-blur-sm"
+          >
+            <div className="text-center">
+              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-gold">
+                ⏸ paused
+              </p>
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
+                block {hud.block} · lv {hud.level} · {hud.kills} kills ·{" "}
+                <span className="text-cyan">
+                  {hud.captured}/{TOTAL_SITES} sites
+                </span>
+              </p>
+              <div className="mt-5 flex items-center justify-center gap-3">
+                <button
+                  onClick={() => useGame.getState().resume()}
+                  className="rounded-xl border-2 border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-6 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.18em] text-space shadow-[0_0_24px_rgba(240,199,94,0.5)] transition-transform hover:-translate-y-0.5"
+                >
+                  ▶ resume
+                </button>
+                <button
+                  onClick={quit}
+                  className="rounded-xl border border-white/20 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.18em] text-ink-dim transition-colors hover:border-[#e0563f]/70 hover:text-[#ff8c6b]"
+                >
+                  abandon run
+                </button>
+              </div>
+              <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-dim/60">
+                esc or p to resume
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* run menu — pick your bet (Normal / Hard / Cursed) */}
       <AnimatePresence>

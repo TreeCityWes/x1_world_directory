@@ -11,7 +11,7 @@ const POWER_LABEL: Record<string, string> = {
   validatorTower: "+5% speed forever",
   chartBeacon: "+6% fire rate forever",
   dexGate: "+10% damage forever",
-  explorerFort: "+15 max hp & shield",
+  explorerFort: "+15 max hp & 8s shield",
   socialBeacon: "heal +35",
   gameArcade: "+10% xp forever",
   bridgePortal: "shockwave",

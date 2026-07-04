@@ -21,6 +21,24 @@ type Entry = { name: string; wallet: string; score: number; diff: string; at: nu
 const mem = (globalThis as unknown as { __x1lb?: Map<string, Entry> }).__x1lb ?? new Map<string, Entry>();
 (globalThis as unknown as { __x1lb?: Map<string, Entry> }).__x1lb = mem;
 
+// Best-effort per-instance rate limiting — enough to blunt casual spam;
+// provider-level protection is the real wall.
+const rlHits = new Map<string, number[]>();
+function rateLimited(req: Request, kind: string, max: number, windowMs = 60_000) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "local";
+  const key = `${kind}:${ip}`;
+  const now = Date.now();
+  const hits = (rlHits.get(key) ?? []).filter((t) => now - t < windowMs);
+  if (hits.length >= max) return true;
+  hits.push(now);
+  rlHits.set(key, hits);
+  if (rlHits.size > 5000) rlHits.clear(); // memory backstop
+  return false;
+}
+
 function sb(path: string, init?: RequestInit) {
   return fetch(`${SB_URL}/rest/v1/${path}`, {
     ...init,
@@ -65,6 +83,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    if (rateLimited(req, "post", 12)) {
+      return NextResponse.json({ ok: false, error: "rate" }, { status: 429 });
+    }
     const body = (await req.json()) as Partial<Entry>;
     const name = String(body.name ?? "")
       .replace(/[^\w \-.✨🥷]/g, "")
@@ -130,6 +151,9 @@ export async function POST(req: Request) {
  */
 export async function DELETE(req: Request) {
   try {
+    if (rateLimited(req, "del", 5)) {
+      return NextResponse.json({ ok: false, error: "rate" }, { status: 429 });
+    }
     const b = (await req.json()) as {
       wallet?: string;
       deviceId?: string;

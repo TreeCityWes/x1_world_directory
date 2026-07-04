@@ -12,7 +12,7 @@ import { useProfile } from "@/lib/profile";
  * snapshot ~4x/s for the DOM HUD, plus mode/choices/sites which change rarely.
  */
 
-export type GameMode = "explore" | "menu" | "play" | "levelup" | "dead" | "won";
+export type GameMode = "explore" | "menu" | "play" | "paused" | "levelup" | "dead" | "won";
 
 export const DIFFICULTIES = {
   normal: {
@@ -44,7 +44,7 @@ export type DifficultyId = keyof typeof DIFFICULTIES;
 
 // ---- registries (ported from the original X1 Ninja Survivors) ----
 
-export type EnemyTypeId = "goblin" | "gremlin" | "whale" | "boss";
+export type EnemyTypeId = "goblin" | "gremlin" | "rug" | "boss";
 
 export const ENEMY_TYPES: Record<
   EnemyTypeId,
@@ -61,7 +61,8 @@ export const ENEMY_TYPES: Record<
 > = {
   goblin: { hp: 22, speed: 0.26, radius: 0.055, dmg: 13, xp: 2, gemSplit: 1, color: "#e0563f", weight: () => 10 },
   gremlin: { hp: 10, speed: 0.42, radius: 0.04, dmg: 9, xp: 1, gemSplit: 1, color: "#fb923c", weight: (b) => (b >= 1 ? 8 : 0) },
-  whale: { hp: 90, speed: 0.13, radius: 0.09, dmg: 24, xp: 8, gemSplit: 4, color: "#a78bfa", weight: (b) => (b >= 2 ? 4 : 0) },
+  // the heavy mob IS the rug on screen (RugMob) — name and color now match
+  rug: { hp: 90, speed: 0.13, radius: 0.09, dmg: 24, xp: 8, gemSplit: 4, color: "#d4a03b", weight: (b) => (b >= 2 ? 4 : 0) },
   boss: { hp: 1100, speed: 0.19, radius: 0.18, dmg: 75, xp: 64, gemSplit: 10, color: "#f0c75e", weight: () => 0 },
 };
 
@@ -136,8 +137,6 @@ export function upgradeView(id: string, character: CharacterId = run.character) 
   };
 }
 
-export const BLOCK_SECONDS = 30; // difficulty ramps every "block" — X1 has 1s blocks, ours are chunkier
-
 // ---- per-run mutable state (game loop writes, never re-renders React) ----
 
 export const run = {
@@ -193,7 +192,9 @@ export function resetRun(diff?: DifficultyId, character?: CharacterId) {
 
 export function scoreOf() {
   const T = Math.min(600, run.t); // survival time caps at 10 minutes
-  const base = (T * T + run.kills * 30 + run.damage / 2) / 100 + run.captured * 50;
+  // linear time term — the old T² quadratically rewarded circle-running;
+  // kills, damage, and captures are the score now, surviving is the floor
+  const base = (T * 40 + run.kills * 40 + run.damage / 2) / 100 + run.captured * 50;
   return Math.round(base * DIFFICULTIES[run.difficulty].scoreMult);
 }
 
@@ -272,6 +273,8 @@ type GameStore = {
   bossCardAt: number;
   start: (diff?: DifficultyId) => void;
   openMenu: () => void;
+  pause: () => void;
+  resume: () => void;
   quit: () => void;
   deathCause: string;
   die: () => void;
@@ -340,7 +343,13 @@ export const useGame = create<GameStore>((set, get) => ({
     resetRun();
     const best =
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
-    set({ mode: "menu", hud: emptyHud(), choices: [], activeSites: [], best });
+    set({ mode: "menu", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best });
+  },
+  pause: () => {
+    if (get().mode === "play") set({ mode: "paused", hud: emptyHud() });
+  },
+  resume: () => {
+    if (get().mode === "paused") set({ mode: "play" });
   },
   quit: () => set({ mode: "explore", activeSites: [] }),
   die: () => {

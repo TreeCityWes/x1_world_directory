@@ -261,6 +261,12 @@ export default function Planet() {
       v.y = 0.04;
     }
 
+    // freeze the world under modals — no inertia drift beneath the pause /
+    // level-up / death cards (combat is frozen; the ground must be too)
+    if (gMode !== "explore" && gMode !== "play") {
+      v.x = v.y = v.z = 0;
+    }
+
     // rotate the world under the character's feet (world-space axes)
     g.quaternion.premultiply(_q.setFromAxisAngle(X_AXIS, v.x * dt));
     g.quaternion.premultiply(_q.setFromAxisAngle(Y_AXIS, v.y * dt));

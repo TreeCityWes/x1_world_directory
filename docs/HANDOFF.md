@@ -1,5 +1,11 @@
 # Handoff — visual polish pass
 
+> **⚠ HISTORICAL (superseded 2026-07-04).** This file describes a much earlier
+> state of the repo: the "open bugs" below are fixed, `NetworkLinks.tsx` was
+> removed, and the atmosphere shader claim never landed. For the live
+> punch-list see `GLM-REVIEW.md` and `CODEX-REVIEW.md` at the repo root.
+> Kept for archaeology only — do not work from this document.
+
 A second agent (aesthetics/visual pass) ran on top of your work for one session. This records **what changed**, the **direction locked with the owner**, and **what's open**. You know the repo, so no basics here.
 
 ## Aesthetic direction (decided with the owner this session — new)
