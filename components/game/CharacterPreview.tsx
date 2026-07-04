@@ -50,21 +50,21 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
     >
       {/* dark suits on a dark page need separation: brighter key, a hot
           white rim from behind-above, and the accent wash from the side */}
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[2, 3, 2]} intensity={2.2} color="#dbe6ff" />
-      <directionalLight position={[0, 2.4, -3]} intensity={2.6} color="#ffffff" />
+      <ambientLight intensity={0.9} />
+      <directionalLight position={[2, 3, 2]} intensity={2.6} color="#dbe6ff" />
+      <directionalLight position={[0, 2.4, -3]} intensity={3} color="#ffffff" />
       <pointLight position={[-2, 1, -1.5]} intensity={16} color={pal.band} />
       <pointLight position={[0, -0.5, 2]} intensity={6} color="#dbe6ff" />
       <Suspense fallback={null}>
         <Turntable charId={charId} yFeet={yFeet} scale={f.s} />
       </Suspense>
-      {/* soft accent halo behind the silhouette — reads even on pure black */}
+      {/* bright accent halo behind the silhouette — the studio backdrop */}
       <mesh position={[0, 0.05, -0.8]}>
-        <circleGeometry args={[0.85, 40]} />
+        <circleGeometry args={[1.05, 40]} />
         <meshBasicMaterial
           color={pal.band}
           transparent
-          opacity={0.14}
+          opacity={0.3}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />

@@ -121,10 +121,10 @@ function CharacterSelect() {
         <div
           className="relative overflow-hidden rounded-2xl border-2 backdrop-blur-md"
           style={{
-            borderColor: `${accent}55`,
-            // dark suits vanish on flat near-black — a soft accent-lit well
-            // behind the podium gives every silhouette an edge to read on
-            background: `radial-gradient(ellipse 90% 70% at 50% 40%, ${accent}2e 0%, ${accent}14 40%, rgba(9,13,28,0.88) 78%)`,
+            borderColor: `${accent}66`,
+            // dark suits vanish on flat near-black — the podium sits in a
+            // BRIGHT accent-lit studio well so every silhouette reads
+            background: `radial-gradient(ellipse 100% 80% at 50% 36%, ${accent}59 0%, ${accent}26 45%, rgba(16,22,44,0.85) 82%)`,
           }}
         >
           <div className="h-56 max-md:h-44">
