@@ -399,16 +399,6 @@
     "telegram": "",
     "checkedAt": "2026-07-03T13:47:26.287Z"
   },
-  "x1-delegation-program-delegation-mainnet-x1-xyz": {
-    "ok": true,
-    "note": "HTTP 200",
-    "domain": "delegation.mainnet.x1.xyz",
-    "project": "X1 Delegation Program",
-    "description": "Apply to become a validator in the X1 Delegation Program",
-    "twitter": "",
-    "telegram": "https://t.me/+HtiLywX2Dug3MjJk",
-    "checkedAt": "2026-07-03T13:38:20.542Z"
-  },
   "validator-management-validator-x1-wiki": {
     "ok": true,
     "note": "HTTP 200",
@@ -479,16 +469,6 @@
     "telegram": "",
     "checkedAt": "2026-07-03T13:38:50.086Z"
   },
-  "x1-brains-defi-hub-x1brains-io": {
-    "ok": true,
-    "note": "HTTP 200 +gate +gate +strip",
-    "domain": "x1brains.io",
-    "project": "X1 Brains DeFi Hub",
-    "description": "",
-    "twitter": "",
-    "telegram": "",
-    "checkedAt": "2026-07-03T13:39:00.509Z"
-  },
   "x1city-x1city-io": {
     "ok": true,
     "note": "HTTP 200 +strip",
@@ -498,16 +478,6 @@
     "twitter": "https://twitter.com/X1Brains",
     "telegram": "https://t.me/x1brainsxyz",
     "checkedAt": "2026-07-03T13:39:05.535Z"
-  },
-  "capy-nft-mint-capy-nft-mint-vercel-app": {
-    "ok": true,
-    "note": "HTTP 200 +gate",
-    "domain": "capy-nft-mint.vercel.app",
-    "project": "CAPY NFT Mint",
-    "description": "X1 Capy Warriors — 500 unique NFTs on X1 Blockchain. 30 Mythic, 120 Legendary, 350 Common. Powered by Geiger Entropy Oracle. Flat price: 10 XNT.",
-    "twitter": "",
-    "telegram": "https://t.me/CAPYX1",
-    "checkedAt": "2026-07-03T13:39:12.437Z"
   },
   "rise-phoenix-nft-rise-phoenix-nft-vercel-app": {
     "ok": true,
@@ -529,16 +499,6 @@
     "telegram": "",
     "checkedAt": "2026-07-03T13:39:23.588Z"
   },
-  "x1-oracle-github-com-jacklevin74-oracle-v2": {
-    "ok": true,
-    "note": "HTTP 200",
-    "domain": "github.com/jacklevin74/oracle-v2",
-    "project": "X1 Oracle",
-    "description": "Oracle V2: Secure price feed for X1 with Vault Transit signing, on-chain bounds, median computation, and circuit breaker - jacklevin74/oracle-v2",
-    "twitter": "",
-    "telegram": "",
-    "checkedAt": "2026-07-03T13:37:38.860Z"
-  },
   "degen-staking-app-degen-fyi-staking-v2": {
     "ok": true,
     "note": "HTTP 200",
@@ -548,5 +508,45 @@
     "twitter": "",
     "telegram": "",
     "checkedAt": "2026-07-03T13:37:46.722Z"
+  },
+  "x1-brains-x1brains-io": {
+    "ok": true,
+    "note": "HTTP 200 +gate +gate +strip",
+    "domain": "x1brains.io",
+    "project": "X1 Brains",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T13:39:00.509Z"
+  },
+  "capy-nft-capy-nft-mint-vercel-app": {
+    "ok": true,
+    "note": "HTTP 200 +gate",
+    "domain": "capy-nft-mint.vercel.app",
+    "project": "CAPY NFT",
+    "description": "X1 Capy Warriors — 500 unique NFTs on X1 Blockchain. 30 Mythic, 120 Legendary, 350 Common. Powered by Geiger Entropy Oracle. Flat price: 10 XNT.",
+    "twitter": "",
+    "telegram": "https://t.me/CAPYX1",
+    "checkedAt": "2026-07-03T13:39:12.437Z"
+  },
+  "x1-delegation-delegation-mainnet-x1-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "delegation.mainnet.x1.xyz",
+    "project": "X1 Delegation",
+    "description": "Apply to become a validator in the X1 Delegation Program",
+    "twitter": "",
+    "telegram": "https://t.me/+HtiLywX2Dug3MjJk",
+    "checkedAt": "2026-07-03T13:38:20.542Z"
+  },
+  "x1-oracle-feed-github-com-jacklevin74-oracle-v2": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "github.com/jacklevin74/oracle-v2",
+    "project": "X1 Oracle Feed",
+    "description": "Oracle V2: Secure price feed for X1 with Vault Transit signing, on-chain bounds, median computation, and circuit breaker - jacklevin74/oracle-v2",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-07-03T13:37:38.860Z"
   }
 }

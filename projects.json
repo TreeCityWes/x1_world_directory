@@ -195,7 +195,7 @@
   },
   {
     "category": "Data / Oracle",
-    "project": "X1 Oracle",
+    "project": "X1 Oracle Feed",
     "domain": "github.com/jacklevin74/oracle-v2",
     "builder": "Jack Levin"
   },
@@ -255,7 +255,7 @@
   },
   {
     "category": "Core Infra",
-    "project": "X1 Delegation Program",
+    "project": "X1 Delegation",
     "domain": "delegation.mainnet.x1.xyz",
     "builder": "Official"
   },
@@ -303,7 +303,7 @@
   },
   {
     "category": "DEX / Trading",
-    "project": "X1 Brains DeFi Hub",
+    "project": "X1 Brains",
     "domain": "x1brains.io",
     "builder": "Unknown"
   },
@@ -315,7 +315,7 @@
   },
   {
     "category": "NFT Marketplace",
-    "project": "CAPY NFT Mint",
+    "project": "CAPY NFT",
     "domain": "capy-nft-mint.vercel.app",
     "builder": "Unknown"
   },
