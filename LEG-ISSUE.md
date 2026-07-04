@@ -4,9 +4,15 @@
 > whole-body bounce 0.2 → 0.06 (the big hop WAS the float), full-cycle
 > scissor stride on `rotation.z` (the axis the behind-the-runner camera
 > sees), a dark planted contact shadow that never bobs (grounding), and
-> the additive glow/ring softened (0.22→0.14 / 0.7→0.45). Jack keeps the
-> waddle-roll stand-in (option 3) — splitting the GLB stays open as the
-> "real legs" follow-up. Frame-strip verified from the play camera.
+> the additive glow/ring softened (0.22→0.14 / 0.7→0.45).
+>
+> **Follow-up (same day): Jack got REAL legs** — `splitJackLegs()` in
+> `CharacterBody.tsx` carves the pose-baked mesh at the cut plane below
+> the crotch (Pants/Socks/Shoes triangles, bucketed left/right by
+> centroid), rebuilds them in character space under shared hip pivots,
+> and wires `legLRef`/`legRRef`. The ninja also got gold tabi feet —
+> dark feet on a dark planet were invisible markers. Frame-strip
+> verified: both characters now visibly stride from the play camera.
 
 **Audience:** Fable agent (or any dev picking up character motion)  
 **Symptom:** X1 Ninja and Jack Levin sprites' legs do not appear to move; both characters look like they float/glide across the map.  

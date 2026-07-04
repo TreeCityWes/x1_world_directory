@@ -73,10 +73,10 @@ export default function Character() {
         bob.current.rotation.x = 0.22 * speedNorm;
         bob.current.rotation.y =
           Math.sin(phase.current) * (charId === "jack" ? 0.16 : 0.1) * speedNorm;
-        // Jack has no leg joints (pose-baked GLB) — a strong waddle roll
-        // sways his body so he STOMPS instead of gliding
+        // Jack's carved legs (splitJackLegs) do the striding now — the
+        // waddle roll stays as a light accent, not the whole gait
         bob.current.rotation.z =
-          charId === "jack" ? Math.sin(phase.current) * 0.18 * speedNorm : 0;
+          charId === "jack" ? Math.sin(phase.current) * 0.09 * speedNorm : 0;
       }
 
       // arms: gentle sway idle, big swing running

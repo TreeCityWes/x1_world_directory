@@ -71,6 +71,113 @@ function normClone(
   return clone;
 }
 
+/** Give the pose-baked Jack REAL legs: his GLB has no skeleton, so carve
+ *  the mesh at a cut plane below the crotch — triangles of Pants/Socks/Shoes
+ *  fully below it bucket into left/right leg geometries (by centroid x),
+ *  rebuilt in character space under hip-pivot groups the run loop can swing.
+ *  The remainder (waist) stays on the body. */
+function splitJackLegs(body: THREE.Object3D) {
+  const CUT = 0.3; // character space: feet y=0, height 0.78
+  const LEG_MATS = new Set(["Pants", "Shoes", "Socks"]);
+  body.updateMatrixWorld(true);
+  const _p = new THREE.Vector3();
+  const _n = new THREE.Vector3();
+  const nrm = new THREE.Matrix3();
+
+  type Bucket = { pos: number[]; nor: number[]; uv: number[] };
+  const parts: Record<string, { L: Bucket; R: Bucket; rest: Bucket; mat: THREE.Material }> = {};
+  const doomed: THREE.Mesh[] = [];
+
+  body.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh || Array.isArray(mesh.material)) return;
+    const name = (mesh.material as THREE.Material).name;
+    if (!LEG_MATS.has(name)) return;
+    const geo = mesh.geometry.index
+      ? mesh.geometry.toNonIndexed()
+      : (mesh.geometry.clone() as THREE.BufferGeometry);
+    const pos = geo.getAttribute("position") as THREE.BufferAttribute;
+    const nor = geo.getAttribute("normal") as THREE.BufferAttribute | null;
+    const uv = geo.getAttribute("uv") as THREE.BufferAttribute | null;
+    nrm.getNormalMatrix(mesh.matrixWorld);
+    const part =
+      parts[name] ??
+      (parts[name] = {
+        L: { pos: [], nor: [], uv: [] },
+        R: { pos: [], nor: [], uv: [] },
+        rest: { pos: [], nor: [], uv: [] },
+        mat: mesh.material as THREE.Material,
+      });
+    for (let t = 0; t < pos.count; t += 3) {
+      const ws: number[][] = [];
+      const ns: number[][] = [];
+      const uvs: number[][] = [];
+      let below = true;
+      let cx = 0;
+      for (let j = 0; j < 3; j++) {
+        _p.fromBufferAttribute(pos, t + j).applyMatrix4(mesh.matrixWorld);
+        ws.push([_p.x, _p.y, _p.z]);
+        cx += _p.x / 3;
+        if (_p.y >= CUT) below = false;
+        if (nor) {
+          _n.fromBufferAttribute(nor, t + j).applyMatrix3(nrm).normalize();
+          ns.push([_n.x, _n.y, _n.z]);
+        }
+        if (uv) uvs.push([uv.getX(t + j), uv.getY(t + j)]);
+      }
+      const b = below ? (cx < 0 ? part.L : part.R) : part.rest;
+      for (let j = 0; j < 3; j++) {
+        b.pos.push(ws[j][0], ws[j][1], ws[j][2]);
+        if (nor) b.nor.push(ns[j][0], ns[j][1], ns[j][2]);
+        if (uv) b.uv.push(uvs[j][0], uvs[j][1]);
+      }
+    }
+    doomed.push(mesh);
+  });
+  doomed.forEach((m) => m.removeFromParent());
+
+  const build = (b: Bucket, offset?: THREE.Vector3) => {
+    const geo = new THREE.BufferGeometry();
+    const p = new Float32Array(b.pos);
+    if (offset) for (let i = 0; i < p.length; i += 3) {
+      p[i] -= offset.x;
+      p[i + 1] -= offset.y;
+      p[i + 2] -= offset.z;
+    }
+    geo.setAttribute("position", new THREE.BufferAttribute(p, 3));
+    if (b.nor.length) geo.setAttribute("normal", new THREE.BufferAttribute(new Float32Array(b.nor), 3));
+    if (b.uv.length) geo.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(b.uv), 2));
+    return geo;
+  };
+  // ONE hip pivot per side (centroid of that side's pants at the cut plane)
+  // shared by every material, or the parts drift apart when swung
+  const hipFor = (side: "L" | "R") => {
+    let sx = 0, sz = 0, n = 0;
+    for (const part of Object.values(parts)) {
+      const b = part[side];
+      for (let i = 0; i < b.pos.length; i += 3) {
+        sx += b.pos[i];
+        sz += b.pos[i + 2];
+        n++;
+      }
+    }
+    return new THREE.Vector3(n ? sx / n : 0, CUT, n ? sz / n : 0);
+  };
+  const hipL = hipFor("L");
+  const hipR = hipFor("R");
+  const legL = new THREE.Group();
+  const legR = new THREE.Group();
+  const waist = new THREE.Group(); // character space — NOT under the scaled body root
+  legL.position.copy(hipL);
+  legR.position.copy(hipR);
+  for (const { L, R, rest, mat } of Object.values(parts)) {
+    if (rest.pos.length) waist.add(new THREE.Mesh(build(rest), mat));
+    if (L.pos.length) legL.add(new THREE.Mesh(build(L, hipL), mat));
+    if (R.pos.length) legR.add(new THREE.Mesh(build(R, hipR), mat));
+  }
+  return { legL, legR, waist };
+}
+
 /** One katana for the crossed pair on the back. */
 function Katana({ tilt }: { tilt: number }) {
   return (
@@ -130,9 +237,17 @@ function NinjaBody({
             <capsuleGeometry args={[0.034, 0.13, 4, 8]} />
             <meshStandardMaterial color={pal.suit} roughness={0.6} />
           </mesh>
+          {/* gold-trimmed tabi: dark feet vanished against the dark planet —
+              a bright marker per foot is what makes the stride readable */}
           <mesh position={[0, -0.195, 0.02]}>
             <boxGeometry args={[0.058, 0.05, 0.1]} />
-            <meshStandardMaterial color={pal.hood} roughness={0.55} />
+            <meshStandardMaterial
+              color={GOLD}
+              emissive="#c9921e"
+              emissiveIntensity={0.25}
+              metalness={0.5}
+              roughness={0.45}
+            />
           </mesh>
         </group>
       ))}
@@ -344,7 +459,9 @@ export default function CharacterBody({
     body.updateMatrixWorld(true);
     const ray = new THREE.Raycaster(new THREE.Vector3(0, 0.54, 1), new THREE.Vector3(0, 0, -1));
     const hit = ray.intersectObject(body, true)[0];
-    return { body, chestZ: hit ? hit.point.z : 0.07 };
+    // carve the pose-baked mesh into hip-pivoted legs the run loop can swing
+    const { legL, legR, waist } = splitJackLegs(body);
+    return { body, legL, legR, waist, chestZ: hit ? hit.point.z : 0.07 };
   }, [jackGltf, jackSize]);
   const xenTex = useMemo(() => {
     const c = document.createElement("canvas");
@@ -370,6 +487,10 @@ export default function CharacterBody({
     return (
       <group position={[0, jackLift, 0]}>
         <primitive object={jack.body} />
+        <primitive object={jack.waist} />
+        {/* real carved legs — the run loop swings these refs */}
+        <primitive object={jack.legL} ref={legLRef} />
+        <primitive object={jack.legR} ref={legRRef} />
         {/* the XEN tee — pinned to the raycast chest surface */}
         <mesh position={[0, 0.54, jack.chestZ + 0.004]}>
           <planeGeometry args={[0.15, 0.075]} />
