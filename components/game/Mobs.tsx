@@ -12,13 +12,16 @@ function getLabelTexture(text: string, glow: string, fill: string) {
   c.width = 256;
   c.height = 128;
   const ctx = c.getContext("2d")!;
-  ctx.font = "900 82px 'Courier New', monospace";
+  // solid plate behind the text — dark-on-dark was invisible in the field
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.roundRect(10, 22, 236, 84, 14);
+  ctx.fill();
+  ctx.font = "900 72px 'Courier New', monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.shadowColor = glow;
-  ctx.shadowBlur = 16;
   ctx.fillStyle = fill;
-  ctx.fillText(text, 128, 68);
+  ctx.fillText(text, 128, 66);
   const tex = new THREE.CanvasTexture(c);
   labelCache.set(key, tex);
   return tex;
@@ -44,7 +47,7 @@ export function BugMob() {
       <mesh position={[0, 0.2, -0.3]} rotation={[-Math.PI / 2 + 0.18, 0, 0]}>
         <planeGeometry args={[0.52, 0.26]} />
         <meshBasicMaterial
-          map={getLabelTexture("BUG", "#39ff88", "#c8ffdd")}
+          map={getLabelTexture("BUG", "#39ff88", "#04120a")}
           transparent
           depthWrite={false}
           toneMapped={false}
@@ -106,15 +109,15 @@ export function BugMob() {
 export function GasWisp() {
   return (
     <group position={[0, 0.34, 0]}>
-      {/* rounded droplet body */}
-      <mesh scale={[0.3, 0.38, 0.3]}>
-        <sphereGeometry args={[1, 12, 12]} />
+      {/* smooth ghost dome — nothing on top, just a clean rounded head */}
+      <mesh position={[0, 0.04, 0]} scale={[0.3, 0.36, 0.3]}>
+        <sphereGeometry args={[1, 14, 14]} />
         <meshStandardMaterial
           color="#ff9a3d"
           emissive="#ff7a1f"
           emissiveIntensity={1.5}
           transparent
-          opacity={0.9}
+          opacity={0.92}
           roughness={0.3}
         />
       </mesh>
@@ -125,15 +128,6 @@ export function GasWisp() {
           <meshStandardMaterial color="#ff8a2d" emissive="#ff6a15" emissiveIntensity={1.2} transparent opacity={0.85} />
         </mesh>
       ))}
-      {/* flame licks on top — tilted, asymmetric, alive */}
-      <mesh position={[0.05, 0.42, 0]} rotation={[0, 0, -0.35]} scale={[0.1, 0.26, 0.1]}>
-        <sphereGeometry args={[1, 8, 8]} />
-        <meshStandardMaterial color="#ffd23d" emissive="#ffb52e" emissiveIntensity={2.2} transparent opacity={0.9} />
-      </mesh>
-      <mesh position={[-0.09, 0.34, 0.02]} rotation={[0, 0, 0.45]} scale={[0.06, 0.16, 0.06]}>
-        <sphereGeometry args={[1, 8, 8]} />
-        <meshStandardMaterial color="#ffe08a" emissive="#ffd23d" emissiveIntensity={2.6} transparent opacity={0.9} />
-      </mesh>
       {/* white-hot core */}
       <mesh position={[0, -0.04, 0.08]} scale={[0.16, 0.22, 0.16]}>
         <sphereGeometry args={[1, 10, 10]} />
@@ -152,7 +146,7 @@ export function GasWisp() {
       <mesh position={[0, -0.12, 0.28]} rotation={[-0.15, 0, 0]}>
         <planeGeometry args={[0.4, 0.2]} />
         <meshBasicMaterial
-          map={getLabelTexture("GAS", "#ff7a1f", "#ffe9c4")}
+          map={getLabelTexture("GAS", "#ff9a3d", "#1a0c05")}
           transparent
           depthWrite={false}
           toneMapped={false}

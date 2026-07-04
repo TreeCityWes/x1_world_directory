@@ -94,6 +94,34 @@ const _aPos = new THREE.Vector3();
 const _aT = new THREE.Vector3();
 const _aSite = new THREE.Vector3();
 const REGION_BY_ID = new Map(regions.map((r) => [r.id, r]));
+
+// floating site-name banners over active targets — free advertising
+const siteLabelCache = new Map<string, THREE.CanvasTexture>();
+function getSiteLabel(name: string) {
+  const hit = siteLabelCache.get(name);
+  if (hit) return hit;
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  let size = 58;
+  ctx.font = `800 ${size}px Arial, sans-serif`;
+  while (ctx.measureText(name).width > 470 && size > 26) {
+    size -= 4;
+    ctx.font = `800 ${size}px Arial, sans-serif`;
+  }
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 10;
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(5, 8, 20, 0.95)";
+  ctx.strokeText(name, 256, 64);
+  ctx.fillStyle = "#ffd97a";
+  ctx.fillText(name, 256, 64);
+  const tex = new THREE.CanvasTexture(c);
+  siteLabelCache.set(name, tex);
+  return tex;
+}
 const _t = new THREE.Vector3();
 const _f0 = new THREE.Vector3();
 
@@ -249,6 +277,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
 
   const enemyRefs = useRef<(THREE.Group | null)[]>([]);
   const arrowRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const labelRefs = useRef<(THREE.Sprite | null)[]>([]);
+  const labelIds = useRef<(string | null)[]>([null, null, null]);
   const shurikenRefs = useRef<(THREE.Mesh | null)[]>([]);
   const gemRefs = useRef<(THREE.Mesh | null)[]>([]);
   const katanaRefs = useRef<(THREE.Mesh | null)[]>([]);
@@ -379,6 +409,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (!m) continue;
       const id = world.siteIds[i];
       const reg = id ? REGION_BY_ID.get(id) : undefined;
+      // name banner floats over the target itself (sprites face the camera)
+      const label = labelRefs.current[i];
+      if (label) {
+        if (!reg || world.captured.has(reg.id)) {
+          label.visible = false;
+        } else {
+          label.visible = true;
+          label.position.set(reg.dir[0], reg.dir[1], reg.dir[2]).multiplyScalar(R + 0.42);
+          if (labelIds.current[i] !== reg.id) {
+            labelIds.current[i] = reg.id;
+            (label.material as THREE.SpriteMaterial).map = getSiteLabel(reg.name);
+            (label.material as THREE.SpriteMaterial).needsUpdate = true;
+          }
+        }
+      }
       if (!reg || world.captured.has(reg.id)) {
         m.visible = false;
         continue;
@@ -1086,6 +1131,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={1.2} toneMapped={false} />
           </mesh>
         </mesh>
+      ))}
+      {/* site-name banners over the active targets */}
+      {Array.from({ length: 3 }).map((_, i) => (
+        <sprite key={`lb${i}`} ref={(el) => { labelRefs.current[i] = el; }} visible={false} scale={[0.92, 0.23, 1]}>
+          <spriteMaterial transparent depthWrite={false} toneMapped={false} />
+        </sprite>
       ))}
       {Array.from({ length: MAX_GEMS }).map((_, i) => (
         // classic arcade coin: upright gold disc, spinning on its vertical axis

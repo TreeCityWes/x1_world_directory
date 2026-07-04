@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { DIFFICULTIES, UPGRADES, run, useGame, type DifficultyId } from "@/lib/gameStore";
@@ -18,6 +18,58 @@ const DEATH_FLAVOR: Record<string, string> = {
   "boss:nemesis": "slain by your own shadow",
 };
 const ONBOARD_KEY = "x1world_onboarded";
+
+/** Lower-right flash when a site is captured: screenshot + name + power. */
+function CaptureToast() {
+  const capturedIds = useGame((s) => s.capturedIds);
+  const [toast, setToast] = useState<(typeof regions)[number] | null>(null);
+  const seen = useRef(0);
+
+  useEffect(() => {
+    if (capturedIds.length > seen.current) {
+      const r = regions.find((x) => x.id === capturedIds[capturedIds.length - 1]);
+      if (r) {
+        const show = setTimeout(() => setToast(r), 0);
+        const hide = setTimeout(() => setToast(null), 3400);
+        seen.current = capturedIds.length;
+        return () => {
+          clearTimeout(show);
+          clearTimeout(hide);
+        };
+      }
+    }
+    seen.current = capturedIds.length;
+  }, [capturedIds]);
+
+  return (
+    <AnimatePresence>
+      {toast && (
+        <motion.div
+          key={toast.id}
+          initial={{ opacity: 0, x: 40, scale: 0.9 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 14 }}
+          transition={{ type: "spring", stiffness: 320, damping: 24 }}
+          className="pointer-events-none absolute bottom-4 right-4 z-40 w-48 overflow-hidden rounded-xl border-2 bg-[rgba(9,13,28,0.94)] backdrop-blur max-md:bottom-40 max-md:right-3 max-md:w-36"
+          style={{ borderColor: toast.accent, boxShadow: `0 0 24px ${toast.accent}66` }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- site capture */}
+          <img
+            src={toast.screenshot}
+            alt={toast.name}
+            className="aspect-[8/5] w-full object-cover object-top"
+          />
+          <div className="px-3 py-2">
+            <p className="font-mono text-[8px] font-bold uppercase tracking-[0.24em] text-gold">
+              ⚡ captured!
+            </p>
+            <p className="truncate text-sm font-bold leading-tight">{toast.name}</p>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 /** Inscribe-on-X1 + view-leaderboard row for the end-of-run screens. */
 function InscribeRow({ score }: { score: number }) {
@@ -186,6 +238,8 @@ export default function GameHUD() {
           </button>
         </div>
       )}
+
+      {mode === "play" && <CaptureToast />}
 
       {/* quit chip */}
       {mode === "play" && (
