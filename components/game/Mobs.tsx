@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 // mob name tags in glowing arcade type — one shared texture per word
@@ -43,15 +45,16 @@ export function BugMob() {
         <sphereGeometry args={[1, 12, 10]} />
         <meshStandardMaterial color="#0c1c11" emissive="#39ff88" emissiveIntensity={0.2} roughness={0.35} />
       </mesh>
-      {/* it literally says BUG on it — floated clear of the shell so the
-          abdomen can't poke through the middle of the word */}
-      <mesh position={[0, 0.31, -0.3]} rotation={[-Math.PI / 2 + 0.15, 0, 0]}>
-        <planeGeometry args={[0.56, 0.28]} />
+      {/* it literally says BUG on it — a curved decal band draped over the
+          shell (open cylinder segment), so the word follows the carapace */}
+      <mesh position={[0, -0.05, -0.3]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.32, 0.32, 0.46, 24, 1, true, Math.PI - 0.78, 1.56]} />
         <meshBasicMaterial
           map={getLabelTexture("BUG", "#39ff88", "#04120a")}
           transparent
           depthWrite={false}
           toneMapped={false}
+          side={THREE.DoubleSide}
         />
       </mesh>
       {/* thorax segment */}
@@ -108,8 +111,32 @@ export function BugMob() {
 
 /** GAS WISP — a fee spike come alive: a little flame-ghost, not a cone. */
 export function GasWisp() {
+  // dissipating gas cloud: puffs rise off the wisp, swell, and fade
+  const smoke = useRef<(THREE.Mesh | null)[]>([]);
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    for (let i = 0; i < 4; i++) {
+      const m = smoke.current[i];
+      if (!m) continue;
+      const ph = (t * 0.45 + i / 4) % 1; // staggered 0..1 loops
+      m.position.set(
+        Math.sin((t + i * 2.3) * 1.6) * 0.1,
+        0.15 + ph * 0.6,
+        -0.08 + Math.cos((t + i * 1.7) * 1.3) * 0.08,
+      );
+      m.scale.setScalar(0.1 + ph * 0.26);
+      (m.material as THREE.MeshBasicMaterial).opacity = 0.32 * (1 - ph);
+    }
+  });
   return (
     <group position={[0, 0.34, 0]}>
+      {/* rising smoke puffs */}
+      {Array.from({ length: 4 }).map((_, i) => (
+        <mesh key={`s${i}`} ref={(el) => { smoke.current[i] = el; }}>
+          <sphereGeometry args={[1, 8, 8]} />
+          <meshBasicMaterial color="#ff9a3d" transparent opacity={0} depthWrite={false} />
+        </mesh>
+      ))}
       {/* smooth ghost dome — nothing on top, just a clean rounded head */}
       <mesh position={[0, 0.04, 0]} scale={[0.3, 0.36, 0.3]}>
         <sphereGeometry args={[1, 14, 14]} />
