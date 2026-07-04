@@ -59,6 +59,14 @@ export default function Character() {
   const scarf = useRef<THREE.Group>(null);
   const phase = useRef(0);
 
+  useFrame((state) => {
+    // THEO hovers — a gentle AI float layered over the walk bob (runs after
+    // the main frame handler below, so it adds on top of the walk offset)
+    if (charId === "theo" && bob.current) {
+      bob.current.position.y += 0.03 + Math.sin(state.clock.elapsedTime * 2.2) * 0.02;
+    }
+  });
+
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
     const speedNorm = Math.min(moveState.speed / 2.2, 1);

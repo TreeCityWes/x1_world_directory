@@ -75,7 +75,7 @@ type Enemy = {
   bossKind: "whale" | "nemesis";
   markedUntil: number; // THEO scan mark: +50% damage taken, +50% xp
 };
-type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string };
+type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string; pierce: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
 type Wake = { alive: boolean; dir: THREE.Vector3; life: number };
 type Flame = { alive: boolean; dir: THREE.Vector3; life: number; maxLife: number };
@@ -198,7 +198,7 @@ const world = {
         speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0, bossKind: "whale", markedUntil: 0,
       })),
       shurikens: Array.from({ length: MAX_SHURIKENS }, (): Shuriken => ({
-        alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0, kind: "shuriken",
+        alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0, kind: "shuriken", pierce: 1,
       })),
       gems: Array.from({ length: MAX_GEMS }, (): Gem => ({
         alive: false, dir: new THREE.Vector3(), xp: 0, t: 0,
@@ -221,6 +221,7 @@ const world = {
   wakeAt: 0,
   arcAt: 0,
   scanAt: 0,
+  capyShieldAt: 0,
   arcFlash: 0,
   arcPoints: [] as THREE.Vector3[],
   arcDirty: false,
@@ -527,6 +528,23 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         mesh.position.copy(s.pos).multiplyScalar(R + 0.07);
         mesh.quaternion.setFromUnitVectors(UP, s.pos);
         mesh.rotateY(s.spin);
+        const pm = mesh.material as THREE.MeshStandardMaterial;
+        if (s.kind === "xcoin") {
+          mesh.scale.setScalar(2.1);
+          pm.color.set("#f0c75e");
+          pm.emissive.set("#f5f5f5");
+          pm.emissiveIntensity = 1.2;
+        } else if (s.kind === "pulse") {
+          mesh.scale.setScalar(1.4);
+          pm.color.set("#67e8f9");
+          pm.emissive.set("#67e8f9");
+          pm.emissiveIntensity = 2;
+        } else {
+          mesh.scale.setScalar(1);
+          pm.color.set("#c7d0e2");
+          pm.emissive.set("#39c7f5");
+          pm.emissiveIntensity = 0.6;
+        }
       }
     }
     for (let i = 0; i < MAX_GEMS; i++) {
@@ -672,6 +690,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.bossAtBlock = 0;
       world.bossCount = 0;
       world.scanAt = 0;
+      world.capyShieldAt = 0;
       world.finalSpawned = false;
       world.finalIdx = -1;
       world.captured.clear();
@@ -867,6 +886,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         s.dmg = shurikenDamage();
         s.spin = 0;
         s.kind = weaponKind;
+        s.pierce = charDef().weapon.pierce ?? 1;
       }
     }
     for (const s of world.shurikens) {
@@ -885,14 +905,24 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         if (s.pos.angleTo(e.dir) < (e.radius + 0.05) / R + 0.02) {
           if (s.kind === "xcoin") {
             explodeXCoin(s.pos, s.dmg);
-          } else {
-            dealDamage(e, s.dmg);
-            if (s.kind === "pulse") e.recoilUntil = run.t + 0.7; // debugged: glitches backwards
+            s.alive = false;
+            break;
           }
-          s.alive = false;
-          break;
+          dealDamage(e, s.dmg);
+          if (s.kind === "pulse") e.recoilUntil = run.t + 0.7; // debugged: glitches backwards
+          s.pierce -= 1;
+          if (s.pierce <= 0) {
+            s.alive = false;
+            break;
+          }
         }
       }
+    }
+
+    // ---- CAPY signature: Validator Shield cycles on a visible clock ----
+    if (weaponKind === "slash" && run.t >= world.capyShieldAt) {
+      world.capyShieldAt = run.t + 10;
+      run.fx.shield = Math.max(run.fx.shield, run.t + 2.5);
     }
 
     // ---- THEO signature: FTS5 Scan — mark everything, farm everything ----
@@ -1061,7 +1091,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       run.kills++;
       sfx.kill();
       spawnBurst(e.dir, ENEMY_TYPES[e.type].color, e.type === "boss" ? 14 : 6);
-      dropGems(e.dir, e.markedUntil > run.t ? Math.round(e.xp * 1.5) : e.xp, e.gemSplit);
+      dropGems(e.dir, e.markedUntil > run.t ? Math.round(e.xp * 1.25) : e.xp, e.gemSplit);
       if (world.finalIdx >= 0 && world.enemies[world.finalIdx] === e) {
         world.finalIdx = -1;
         run.finalBossAlive = false;

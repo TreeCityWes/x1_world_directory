@@ -6,7 +6,7 @@ import { regions } from "@/lib/regions";
 import { DIFFICULTIES, UPGRADES, run, useGame, type DifficultyId } from "@/lib/gameStore";
 import { CHARACTERS, CHARACTER_ORDER } from "@/lib/characters";
 
-const CHAR_ICON: Record<string, string> = { ninja: "🥷", jack: "🪙", theo: "🎩", capy: "🦫" };
+const CHAR_ICON: Record<string, string> = { ninja: "🥷", jack: "🪙", theo: "🎩", capy: "🦫", mystery: "❓" };
 import { useProfile } from "@/lib/profile";
 import { explorerTx, inscribeRun } from "@/lib/inscribe";
 
@@ -31,7 +31,7 @@ function CharacterSelect() {
 
   return (
     <div className="mx-auto max-w-xl px-4">
-      <div className="mt-3 grid grid-cols-4 gap-2 max-md:grid-cols-2">
+      <div className="mt-3 grid grid-cols-5 gap-2 max-md:grid-cols-2">
         {CHARACTER_ORDER.map((id) => {
           const c = CHARACTERS[id];
           const sel = id === selected;
