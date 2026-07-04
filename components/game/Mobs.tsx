@@ -1,5 +1,26 @@
 "use client";
 
+import * as THREE from "three";
+
+// "BUG" stamped in glowing terminal green — one shared texture for the swarm
+let bugTex: THREE.CanvasTexture | null = null;
+function getBugTexture() {
+  if (bugTex) return bugTex;
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  ctx.font = "900 82px 'Courier New', monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = "#39ff88";
+  ctx.shadowBlur = 16;
+  ctx.fillStyle = "#c8ffdd";
+  ctx.fillText("BUG", 128, 68);
+  bugTex = new THREE.CanvasTexture(c);
+  return bugTex;
+}
+
 /**
  * Crypto-native enemy cast, all procedural (built ~1 unit tall/long; the
  * pool wrapper scales them). The sync loop drives position/facing/wobble;
@@ -16,13 +37,16 @@ export function BugMob() {
         <sphereGeometry args={[1, 12, 10]} />
         <meshStandardMaterial color="#0c1c11" emissive="#39ff88" emissiveIntensity={0.2} roughness={0.35} />
       </mesh>
-      {/* glowing exploit stripes across the abdomen */}
-      {[-0.42, -0.24].map((z) => (
-        <mesh key={z} position={[0, 0.08, z]} rotation={[0.25, 0, 0]}>
-          <boxGeometry args={[0.4, 0.03, 0.05]} />
-          <meshStandardMaterial color="#39ff88" emissive="#39ff88" emissiveIntensity={2} toneMapped={false} />
-        </mesh>
-      ))}
+      {/* it literally says BUG on it */}
+      <mesh position={[0, 0.2, -0.3]} rotation={[-Math.PI / 2 + 0.18, 0, 0]}>
+        <planeGeometry args={[0.52, 0.26]} />
+        <meshBasicMaterial
+          map={getBugTexture()}
+          transparent
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
       {/* thorax segment */}
       <mesh position={[0, 0.02, 0.1]} scale={[0.22, 0.18, 0.22]}>
         <sphereGeometry args={[1, 10, 8]} />
