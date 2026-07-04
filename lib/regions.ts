@@ -34,6 +34,19 @@ export type LandmarkKind =
   | "explorerFort"
   | "oracleShrine";
 
+/** Human-readable buff each landmark grants when captured (shared by the
+ *  side panel and the in-run capture flash). */
+export const POWER_LABEL: Record<LandmarkKind, string> = {
+  validatorTower: "+5% speed forever",
+  chartBeacon: "+6% fire rate forever",
+  dexGate: "+10% damage forever",
+  explorerFort: "+15 max hp & 8s shield",
+  socialBeacon: "heal +35",
+  gameArcade: "+10% xp forever",
+  bridgePortal: "shockwave — clears the screen",
+  oracleShrine: "coin vacuum & +magnet",
+};
+
 export type Region = {
   id: string;
   order: number;

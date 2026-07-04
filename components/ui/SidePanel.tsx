@@ -1,22 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { regions } from "@/lib/regions";
+import { POWER_LABEL, regions } from "@/lib/regions";
 import { useWorld } from "@/lib/store";
 import { UPGRADES, scoreOf, upgradeView, useGame } from "@/lib/gameStore";
 import ProfileCard from "@/components/ui/ProfileCard";
 import Leaderboard from "@/components/ui/Leaderboard";
-
-const POWER_LABEL: Record<string, string> = {
-  validatorTower: "+5% speed forever",
-  chartBeacon: "+6% fire rate forever",
-  dexGate: "+10% damage forever",
-  explorerFort: "+15 max hp & 8s shield",
-  socialBeacon: "heal +35",
-  gameArcade: "+10% xp forever",
-  bridgePortal: "shockwave",
-  oracleShrine: "coin vacuum & +magnet",
-};
 
 /** Right screen during a survival run: capture progress + targets + build. */
 function GamePanel() {

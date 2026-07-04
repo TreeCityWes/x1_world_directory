@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { regions } from "@/lib/regions";
+import { POWER_LABEL, regions } from "@/lib/regions";
 import { DIFFICULTIES, UPGRADES, run, upgradeView, useGame, type DifficultyId } from "@/lib/gameStore";
 import { CHARACTERS, CHARACTER_ORDER } from "@/lib/characters";
 import CharacterPreview from "@/components/game/CharacterPreview";
@@ -212,6 +212,86 @@ function CaptureToast() {
   );
 }
 
+/** Center-screen reward beat when a site is captured: big project name +
+ *  the bonus it grants, in bold display type. Pairs with the corner toast. */
+function CaptureFlash() {
+  const capturedIds = useGame((s) => s.capturedIds);
+  const [flash, setFlash] = useState<{ id: string; name: string; power: string; accent: string } | null>(
+    null,
+  );
+  const seen = useRef(0);
+
+  useEffect(() => {
+    if (capturedIds.length > seen.current) {
+      const r = regions.find((x) => x.id === capturedIds[capturedIds.length - 1]);
+      seen.current = capturedIds.length;
+      if (r) {
+        const power = POWER_LABEL[r.kind] ?? "captured";
+        const show = setTimeout(
+          () => setFlash({ id: r.id, name: r.name, power, accent: r.accent }),
+          0,
+        );
+        const hide = setTimeout(() => setFlash(null), 1900);
+        return () => {
+          clearTimeout(show);
+          clearTimeout(hide);
+        };
+      }
+    }
+    seen.current = capturedIds.length;
+  }, [capturedIds]);
+
+  return (
+    <AnimatePresence>
+      {flash && (
+        <motion.div
+          key={flash.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="pointer-events-none absolute inset-x-0 top-[34%] z-40 flex flex-col items-center text-center max-md:top-[28%]"
+        >
+          <motion.p
+            initial={{ scale: 0.6, y: 18, letterSpacing: "0.4em" }}
+            animate={{ scale: 1, y: 0, letterSpacing: "0.02em" }}
+            transition={{ type: "spring", stiffness: 240, damping: 16 }}
+            className="font-mono text-[10px] font-bold uppercase tracking-[0.4em] text-gold"
+          >
+            ⚡ site captured
+          </motion.p>
+          <motion.h2
+            initial={{ scale: 1.3, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.04 }}
+            className="mt-1 text-5xl font-black italic tracking-tight max-md:text-3xl"
+            style={{
+              color: "#fff",
+              textShadow: `0 0 18px ${flash.accent}, 0 0 40px ${flash.accent}88, 0 2px 4px rgba(0,0,0,0.6)`,
+            }}
+          >
+            {flash.name}
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+            className="mt-2 rounded-full border-2 px-4 py-1 font-mono text-sm font-bold uppercase tracking-[0.18em] backdrop-blur max-md:text-xs"
+            style={{
+              color: flash.accent,
+              borderColor: `${flash.accent}aa`,
+              background: `${flash.accent}1a`,
+              boxShadow: `0 0 24px ${flash.accent}55`,
+            }}
+          >
+            {flash.power}
+          </motion.p>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 /** Inscribe-on-X1 + view-leaderboard row for the end-of-run screens. */
 function InscribeRow({ score }: { score: number }) {
   const wallet = useProfile((s) => s.wallet);
@@ -399,6 +479,7 @@ export default function GameHUD() {
       )}
 
       {mode === "play" && <CaptureToast />}
+      {mode === "play" && <CaptureFlash />}
 
       {/* boss entrance card — brief danger nameplate */}
       <AnimatePresence>
