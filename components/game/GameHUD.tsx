@@ -1,10 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { DIFFICULTIES, UPGRADES, useGame, type DifficultyId } from "@/lib/gameStore";
 
 const TOTAL_SITES = regions.length;
+
+// what actually got you — crypto death certificates
+const DEATH_FLAVOR: Record<string, string> = {
+  goblin: "exploited by a bug",
+  gremlin: "burned alive by gas fees",
+  whale: "it was a rug pull all along",
+  "boss:whale": "swallowed whole by THE WHALE",
+  "boss:nemesis": "slain by your own shadow",
+};
+const ONBOARD_KEY = "x1world_onboarded";
 
 /**
  * DOM HUD for survival runs: HP/XP bars, run stats, level-up cards, death
@@ -19,8 +30,16 @@ export default function GameHUD() {
   const quit = useGame((s) => s.quit);
   const best = useGame((s) => s.best);
   const finalScore = useGame((s) => s.finalScore);
+  const deathCause = useGame((s) => s.deathCause);
+  const [onboarded, setOnboarded] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem(ONBOARD_KEY) === "1",
+  );
 
   if (mode === "explore") return null;
+  const dismissOnboard = () => {
+    setOnboarded(true);
+    localStorage.setItem(ONBOARD_KEY, "1");
+  };
 
   return (
     <>
@@ -79,6 +98,23 @@ export default function GameHUD() {
           {hud.captured}/{TOTAL_SITES} sites
         </span>
       </div>
+
+      {/* first-run onboarding — one line, dismiss once, never again */}
+      {mode === "play" && !onboarded && (
+        <div className="pointer-events-auto absolute left-1/2 top-14 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-gold/40 bg-[rgba(9,13,28,0.9)] px-4 py-2 backdrop-blur max-md:top-24 max-md:w-[92%] max-md:justify-between max-md:gap-2 max-md:px-3">
+          <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.15em] text-gold max-md:text-[9px]">
+            capture all {TOTAL_SITES} glowing sites to win — follow the arrows · grab coins to
+            level up
+          </p>
+          <button
+            onClick={dismissOnboard}
+            aria-label="dismiss"
+            className="shrink-0 text-sm text-ink-dim transition-colors hover:text-gold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* quit chip */}
       {mode === "play" && (
@@ -253,7 +289,7 @@ export default function GameHUD() {
               className="rounded-2xl border border-white/10 bg-[rgba(9,13,28,0.95)] p-8 text-center"
             >
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-[#e0563f]">
-                the bear market got you
+                {DEATH_FLAVOR[deathCause] ?? "the bear market got you"}
               </p>
               <p className="mt-3 text-5xl font-semibold tracking-tight">{finalScore}</p>
               <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">

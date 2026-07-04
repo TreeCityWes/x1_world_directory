@@ -119,6 +119,7 @@ export const run = {
   perm: { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 },
   speedMult: 1, // consumed by the planet movement controller
   lastHitAt: -10,
+  killedBy: "", // flavor id of the last thing that bit us
   damage: 0, // total damage dealt (feeds the score formula)
   difficulty: "normal" as DifficultyId,
 };
@@ -140,6 +141,7 @@ export function resetRun(diff?: DifficultyId) {
   run.perm = { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 };
   run.speedMult = 1;
   run.lastHitAt = -10;
+  run.killedBy = "";
   run.damage = 0;
 }
 
@@ -217,6 +219,7 @@ type GameStore = {
   start: (diff?: DifficultyId) => void;
   openMenu: () => void;
   quit: () => void;
+  deathCause: string;
   die: () => void;
   win: () => void;
   syncHud: () => void;
@@ -252,6 +255,7 @@ export const useGame = create<GameStore>((set) => ({
   capturedIds: [],
   best: 0,
   finalScore: 0,
+  deathCause: "",
   start: (diff) => {
     resetRun(diff ?? run.difficulty);
     const best =
@@ -275,7 +279,7 @@ export const useGame = create<GameStore>((set) => ({
     sfx.death();
     const pd = useProfile.getState();
     if (pd.name.trim()) submitScore({ name: pd.name, wallet: pd.wallet, score, diff: run.difficulty });
-    set({ mode: "dead", finalScore: score, best, hud: emptyHud() });
+    set({ mode: "dead", finalScore: score, best, deathCause: run.killedBy, hud: emptyHud() });
   },
   win: () => {
     const score = scoreOf() + 1000; // full-ecosystem bonus

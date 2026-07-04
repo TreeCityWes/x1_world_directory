@@ -696,6 +696,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           e.recoilUntil = run.t + 0.45;
           run.hp -= e.dmg * 0.8 * armorMult(); // one chunk, not a melt
           run.lastHitAt = run.t;
+          run.killedBy = e.type === "boss" ? "boss:" + e.bossKind : e.type;
           sfx.bite();
           // knockback: shove the ninja away from the enemy (world-space tangent)
           if (run.t >= world.knockAt) {
