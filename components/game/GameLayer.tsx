@@ -93,6 +93,7 @@ const _qInv = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _axis = new THREE.Vector3();
+const _m4 = new THREE.Matrix4();
 const _aPos = new THREE.Vector3();
 const _aT = new THREE.Vector3();
 const _aSite = new THREE.Vector3();
@@ -222,6 +223,10 @@ const world = {
   arcAt: 0,
   scanAt: 0,
   capyShieldAt: 0,
+  // character signature FX timestamps (run.t clock)
+  slashFxAt: -10,
+  slashDir: new THREE.Vector3(1, 0, 0),
+  scanFxAt: -10,
   arcFlash: 0,
   arcPoints: [] as THREE.Vector3[],
   arcDirty: false,
@@ -302,6 +307,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const haloFillRef = useRef<THREE.Mesh | null>(null);
   const magnetRef = useRef<THREE.Mesh | null>(null);
   const flameRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const slashRef = useRef<THREE.Mesh | null>(null);
+  const scanRef = useRef<THREE.Mesh | null>(null);
+  const reticleRef = useRef<THREE.Mesh | null>(null);
 
   const spawnEnemy = (type: EnemyTypeId) => {
     const [lo, hi] = TYPE_RANGES[type];
@@ -547,6 +555,68 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         }
       }
     }
+    // ---- character signature FX: slash sweep, scan ring, lock-on reticle ----
+    {
+      const wkind = charDef().weapon.kind;
+      const slash = slashRef.current;
+      if (slash) {
+        const age = run.t - world.slashFxAt;
+        const show = world.started && wkind === "slash" && age >= 0 && age < 0.24;
+        slash.visible = show;
+        if (show) {
+          const k = age / 0.24;
+          slash.position.copy(world.pLocal).multiplyScalar(R + 0.035);
+          // basis: arc centered on the slash direction, flat on the surface
+          _axis.crossVectors(world.pLocal, world.slashDir).normalize();
+          _m4.makeBasis(_v.copy(world.slashDir), _axis, _f0.copy(world.pLocal));
+          slash.quaternion.setFromRotationMatrix(_m4);
+          slash.scale.setScalar(R * Math.sin(0.34) * (0.55 + 0.45 * k));
+          (slash.material as THREE.MeshBasicMaterial).opacity = 0.55 * (1 - k);
+        }
+      }
+      const scan = scanRef.current;
+      if (scan) {
+        const age = run.t - world.scanFxAt;
+        const show = world.started && age >= 0 && age < 0.6;
+        scan.visible = show;
+        if (show) {
+          const k = age / 0.6;
+          scan.position.copy(world.pLocal).multiplyScalar(R + 0.03);
+          scan.quaternion.setFromUnitVectors(UP, world.pLocal);
+          scan.rotateX(Math.PI / 2);
+          scan.scale.setScalar(Math.max(0.02, R * Math.sin(1.2 * k)));
+          (scan.material as THREE.MeshBasicMaterial).opacity = 0.5 * (1 - k);
+        }
+      }
+      const ret = reticleRef.current;
+      if (ret) {
+        let target: Enemy | null = null;
+        if (world.started && wkind === "pulse") {
+          let bestScore = -Infinity;
+          for (const e of world.enemies) {
+            if (!e.alive) continue;
+            const ang = e.dir.angleTo(world.pLocal);
+            if (ang > 1.4) continue;
+            const t2 = tangentToward(world.pLocal, e.dir, _v2);
+            if (!t2) continue;
+            const facingDot = world.facingLocal.lengthSq() > 0.5 ? t2.dot(world.facingLocal) : 1;
+            const score = facingDot * 2 - ang;
+            if (score > bestScore) {
+              bestScore = score;
+              target = e;
+            }
+          }
+        }
+        ret.visible = !!target;
+        if (target) {
+          ret.position.copy(target.dir).multiplyScalar(R + 0.02);
+          ret.quaternion.setFromUnitVectors(UP, target.dir);
+          ret.rotateY(run.t * 2.5);
+          ret.rotateX(Math.PI / 2);
+          ret.scale.setScalar((target.radius + 0.05) * 1.6);
+        }
+      }
+    }
     for (let i = 0; i < MAX_GEMS; i++) {
       const mesh = gemRefs.current[i];
       const gm = world.gems[i];
@@ -691,6 +761,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.bossCount = 0;
       world.scanAt = 0;
       world.capyShieldAt = 0;
+      world.slashFxAt = -10;
+      world.scanFxAt = -10;
       world.finalSpawned = false;
       world.finalIdx = -1;
       world.captured.clear();
@@ -858,19 +930,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       }
       sfx.throw();
       if (weaponKind === "slash") {
-        // CAPY: Bad Block Slash — cleave everything in the frontal arc
-        let hitAny = false;
+        // CAPY: Bad Block Slash — a wide, always-visible cleave. Only enemies
+        // squarely behind the back are safe; hits knock back.
+        if (f.lengthSq() > 0.5) world.slashDir.copy(f);
+        world.slashFxAt = run.t;
         for (const e of world.enemies) {
           if (!e.alive) continue;
-          if (world.pLocal.angleTo(e.dir) > 0.24) continue;
+          if (world.pLocal.angleTo(e.dir) > 0.32) continue;
           const t2 = tangentToward(world.pLocal, e.dir, _v2);
-          if (t2 && f.lengthSq() > 0.5 && t2.dot(f) < 0.05) continue;
+          if (t2 && t2.dot(world.slashDir) < -0.2) continue;
           dealDamage(e, shurikenDamage() * 2.2);
-          hitAny = true;
-        }
-        if (hitAny) {
-          _v2.copy(world.pLocal).applyQuaternion(_q.setFromAxisAngle(_axis.crossVectors(world.pLocal, f).normalize(), 0.1));
-          spawnBurst(_v2, "#e8f4ff", 5);
+          e.recoilUntil = Math.max(e.recoilUntil, run.t + 0.25);
+          spawnBurst(e.dir, "#4ade80", 4);
         }
       }
       const count = weaponKind === "slash" ? 0 : 1 + (run.upgrades.multishot ?? 0);
@@ -909,7 +980,25 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             break;
           }
           dealDamage(e, s.dmg);
-          if (s.kind === "pulse") e.recoilUntil = run.t + 0.7; // debugged: glitches backwards
+          if (s.kind === "pulse") {
+            e.recoilUntil = run.t + 0.7; // debugged: glitches backwards
+            // AI chaining — the pulse forks to the nearest other enemy
+            let chained: Enemy | null = null;
+            let bestAng = 0.45;
+            for (const c of world.enemies) {
+              if (!c.alive || c === e) continue;
+              const ang = c.dir.angleTo(e.dir);
+              if (ang < bestAng) {
+                bestAng = ang;
+                chained = c;
+              }
+            }
+            if (chained) {
+              dealDamage(chained, s.dmg * 0.5);
+              chained.recoilUntil = run.t + 0.4;
+              spawnBurst(chained.dir, "#67e8f9", 3);
+            }
+          }
           s.pierce -= 1;
           if (s.pierce <= 0) {
             s.alive = false;
@@ -928,6 +1017,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     // ---- THEO signature: FTS5 Scan — mark everything, farm everything ----
     if (weaponKind === "pulse" && run.t >= world.scanAt) {
       world.scanAt = run.t + 8;
+      world.scanFxAt = run.t; // expanding ring visual
       let found = 0;
       for (const e of world.enemies) {
         if (!e.alive || e.dir.angleTo(world.pLocal) > 1.2) continue;
@@ -1329,6 +1419,41 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           />
         </mesh>
       ))}
+      {/* CAPY — Bad Block Slash sweep */}
+      <mesh ref={slashRef} visible={false}>
+        <ringGeometry args={[0.28, 1, 28, 1, -1.15, 2.3]} />
+        <meshBasicMaterial
+          color="#4ade80"
+          transparent
+          opacity={0.5}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {/* THEO — FTS5 scan ring */}
+      <mesh ref={scanRef} visible={false}>
+        <ringGeometry args={[0.9, 1, 48]} />
+        <meshBasicMaterial
+          color="#67e8f9"
+          transparent
+          opacity={0.5}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {/* THEO — lock-on reticle (4-segment torus = targeting diamond) */}
+      <mesh ref={reticleRef} visible={false}>
+        <torusGeometry args={[1, 0.05, 6, 4]} />
+        <meshBasicMaterial
+          color="#67e8f9"
+          transparent
+          opacity={0.8}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
       {/* Coin Magnet — pickup-radius shimmer ring (8-segment = dashed look) */}
       <mesh ref={magnetRef} visible={false}>
         <torusGeometry args={[1, 0.008, 6, 8]} />

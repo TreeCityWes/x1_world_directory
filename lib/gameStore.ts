@@ -262,10 +262,17 @@ const emptyHud = (): Hud => ({
 
 const BEST_KEY = "x1world_best_score";
 
+/** Only trust localStorage if it names a real, unlocked character. */
+function readSavedCharacter(): CharacterId {
+  if (typeof window === "undefined") return "ninja";
+  const c = localStorage.getItem("x1world_char") as CharacterId | null;
+  return c && CHARACTERS[c]?.unlocked ? c : "ninja";
+}
+
 export const useGame = create<GameStore>((set, get) => ({
   mode: "menu", // the game IS the landing experience; explore is the side quest
   hud: emptyHud(),
-  character: (typeof window !== "undefined" && (localStorage.getItem("x1world_char") as CharacterId)) || "ninja",
+  character: readSavedCharacter(),
   choices: [],
   activeSites: [],
   capturedIds: [],
@@ -274,6 +281,15 @@ export const useGame = create<GameStore>((set, get) => ({
   deathCause: "",
   start: (diff) => {
     resetRun(diff ?? run.difficulty, get().character);
+    // selection bugs are invisible without this — one line per run start
+    console.info("[x1:run]", {
+      selectedCharacterId: get().character,
+      spawnedCharacterId: run.character,
+      startingWeaponId: charDef().weapon.kind,
+      activeWeapons: [charDef().weapon.name],
+      maxHp: run.maxHp,
+      difficulty: run.difficulty,
+    });
     const best =
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
     set({ mode: "play", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best });
@@ -343,7 +359,8 @@ export function rollChoices(): string[] {
   const pool = UPGRADES.filter((u) => u.weight > 0 && (run.upgrades[u.id] ?? 0) < u.maxLevel);
   const out: string[] = evo ? [evo.id] : [];
   const candidates = [...pool];
-  while (out.length < 3 && candidates.length > 0) {
+  const want = charDef().choices ?? 3; // THEO's AI surfaces an extra option
+  while (out.length < want && candidates.length > 0) {
     const total = candidates.reduce((s, u) => s + u.weight, 0);
     let r = Math.random() * total;
     let idx = 0;

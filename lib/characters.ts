@@ -24,6 +24,10 @@ export type CharacterDef = {
   cooldown: number; // >1 = slower attacks
   luck: number; // chance-based coin bonuses scale off (luck - 1)
   xp: number;
+  /** upgrade cards offered per level-up (default 3) */
+  choices?: number;
+  /** one-line signature ability, shown on the select screen */
+  passive: string;
   unlocked: boolean;
   colors: {
     hood: string;
@@ -52,6 +56,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     cooldown: 1,
     luck: 1,
     xp: 1,
+    passive: "Every shuriken pierces through 2 enemies",
     unlocked: true,
     colors: {
       hood: "#232936",
@@ -76,6 +81,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     cooldown: 1.6,
     luck: 1,
     xp: 1,
+    passive: "Every coin detonates in an area — hits the whole pack",
     unlocked: true,
     colors: {
       hood: "#0b0b0d",
@@ -90,16 +96,18 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     id: "theo",
     name: "THEO",
     title: "the x1 ai",
-    description: "AI utility character. Smart targeting and debuffs.",
-    playstyle: "Prompt pulses lock onto targets perfectly and glitch them backwards. Fragile, but levels fast (bonus XP capped so he can't snowball forever).",
-    weapon: { kind: "pulse", name: "AI Prompt Pulse", desc: "auto-locked pulses that debug enemies" },
+    description: "AI utility character. Smart targeting, chaining pulses, more options.",
+    playstyle: "Prompt pulses lock on anywhere, chain to a second target, and glitch enemies backwards. His FTS5 Scan marks the field for +50% damage — and the AI surfaces 4 upgrade choices instead of 3.",
+    weapon: { kind: "pulse", name: "AI Prompt Pulse", desc: "auto-locked pulses that chain between enemies" },
     hp: 0.8,
     armor: 0,
     speed: 1,
-    dmg: 0.85,
+    dmg: 0.9,
     cooldown: 0.8,
     luck: 1.2,
     xp: 1.15,
+    choices: 4,
+    passive: "AI-assisted level-ups: pick from 4 upgrades, not 3",
     unlocked: true,
     colors: {
       hood: "#0e2733",
@@ -116,7 +124,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     title: "validator protector",
     description: "Tank melee. Validator Shield: immune 2.5s of every 10s.",
     playstyle: "Wades in and cleaves. The Validator Shield cycles — 2.5s immune, 7.5s exposed — so time your dives.",
-    weapon: { kind: "slash", name: "Bad Block Slash", desc: "close-range cleave in your path" },
+    weapon: { kind: "slash", name: "Bad Block Slash", desc: "sweeping cleave in front of you" },
     hp: 1.35,
     armor: 0.08,
     speed: 0.85,
@@ -124,6 +132,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     cooldown: 1.15,
     luck: 1,
     xp: 1,
+    passive: "Validator Shield: immune 2.5s of every 10s",
     unlocked: true,
     colors: {
       hood: "#7a5f3d",
@@ -148,6 +157,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDef> = {
     cooldown: 1,
     luck: 1,
     xp: 1,
+    passive: "Unrevealed.",
     unlocked: false,
     colors: {
       hood: "#232936",

@@ -5,8 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { DIFFICULTIES, UPGRADES, run, useGame, type DifficultyId } from "@/lib/gameStore";
 import { CHARACTERS, CHARACTER_ORDER } from "@/lib/characters";
-
-const CHAR_ICON: Record<string, string> = { ninja: "🥷", jack: "🪙", theo: "🎩", capy: "🦫", mystery: "❓" };
+import CharacterPreview from "@/components/game/CharacterPreview";
 import { useProfile } from "@/lib/profile";
 import { explorerTx, inscribeRun } from "@/lib/inscribe";
 
@@ -22,16 +21,38 @@ const DEATH_FLAVOR: Record<string, string> = {
 };
 const ONBOARD_KEY = "x1world_onboarded";
 
-/** 4-card character grid + preview panel (data-driven from CHARACTERS). */
+/** One labeled stat bar in the character dossier. */
+function StatBar({ label, v, accent }: { label: string; v: number; accent: string }) {
+  const pct = Math.round(Math.min(1, v / 1.6) * 100);
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-14 shrink-0 text-right font-mono text-[8px] uppercase tracking-[0.14em] text-ink-dim">
+        {label}
+      </span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{ width: `${pct}%`, background: accent }}
+        />
+      </div>
+      <span className="w-8 shrink-0 font-mono text-[8px] tabular-nums text-ink-dim">
+        ×{v.toFixed(2)}
+      </span>
+    </div>
+  );
+}
+
+/** Fighting-game style select: roster row + live 3D turntable + full dossier. */
 function CharacterSelect() {
   const selected = useGame((s) => s.character);
   const setCharacter = useGame((s) => s.setCharacter);
   const ch = CHARACTERS[selected];
-  const bar = (v: number) => `${Math.round(Math.min(1, v / 1.6) * 100)}%`;
+  const accent = ch.colors.band;
 
   return (
-    <div className="mx-auto max-w-xl px-4">
-      <div className="mt-3 grid grid-cols-5 gap-2 max-md:grid-cols-2">
+    <div className="mx-auto mt-3 w-full max-w-3xl px-4 text-left">
+      {/* roster row */}
+      <div className="grid grid-cols-5 gap-2 max-md:grid-cols-3">
         {CHARACTER_ORDER.map((id) => {
           const c = CHARACTERS[id];
           const sel = id === selected;
@@ -40,50 +61,78 @@ function CharacterSelect() {
               key={id}
               onClick={() => c.unlocked && setCharacter(id)}
               disabled={!c.unlocked}
-              className={`rounded-xl border-2 p-2.5 text-left backdrop-blur-md transition-all ${
+              className={`rounded-xl border-2 px-2.5 py-2 text-left backdrop-blur-md transition-all ${
                 sel
-                  ? "border-gold bg-gold/10 shadow-[0_0_20px_rgba(240,199,94,0.25)]"
+                  ? ""
                   : c.unlocked
-                    ? "border-white/15 bg-space/80 hover:-translate-y-0.5 hover:border-gold/50"
+                    ? "border-white/15 bg-space/80 hover:-translate-y-0.5 hover:border-white/40"
                     : "border-white/10 bg-space/60 opacity-40"
               }`}
+              style={
+                sel
+                  ? {
+                      borderColor: c.colors.band,
+                      boxShadow: `0 0 22px ${c.colors.band}44`,
+                      background: `linear-gradient(160deg, ${c.colors.band}24, rgba(9,13,28,0.92))`,
+                    }
+                  : undefined
+              }
             >
-              <div className="text-2xl">{CHAR_ICON[id] ?? "🥷"}</div>
-              <p className="mt-1 truncate text-sm font-bold leading-tight">{c.name}</p>
-              <p className="truncate font-mono text-[8px] uppercase tracking-[0.12em] text-ink-dim">
-                {c.unlocked ? c.title : "coming soon"}
+              <span
+                className="block h-1 w-8 rounded-full"
+                style={{ background: c.unlocked ? c.colors.band : "#4b5563" }}
+              />
+              <p className="mt-1.5 truncate text-sm font-bold leading-tight">{c.name}</p>
+              <p
+                className="truncate font-mono text-[8px] uppercase tracking-[0.12em] text-ink-dim"
+                style={sel ? { color: c.colors.band } : undefined}
+              >
+                {c.unlocked ? (sel ? "▸ selected" : c.title) : "coming soon"}
               </p>
-              <div className="mt-1.5 space-y-1">
-                {(
-                  [
-                    ["hp", c.hp, "#4ade80"],
-                    ["dmg", c.dmg, "#ff8c6b"],
-                    ["spd", c.speed, "#7dd3fc"],
-                  ] as const
-                ).map(([label, v, color]) => (
-                  <div key={label} className="flex items-center gap-1">
-                    <span className="w-6 font-mono text-[7px] uppercase text-ink-dim/70">
-                      {label}
-                    </span>
-                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
-                      <div className="h-full rounded-full" style={{ width: bar(v), background: color }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
             </button>
           );
         })}
       </div>
-      {/* preview panel for the selected character */}
-      <div
-        className="mt-2 rounded-xl border bg-space/85 px-4 py-2.5 text-left backdrop-blur-md"
-        style={{ borderColor: `${ch.colors.band}55` }}
-      >
-        <p className="font-mono text-[9px] uppercase tracking-[0.18em]" style={{ color: ch.colors.band }}>
-          ⚔ {ch.weapon.name} — {ch.weapon.desc}
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-ink-dim">{ch.playstyle}</p>
+
+      {/* dossier: live 3D preview + stats + weapon + signature */}
+      <div className="mt-2 grid grid-cols-[240px_1fr] gap-2 max-md:grid-cols-1">
+        <div
+          className="relative overflow-hidden rounded-2xl border-2 bg-space/85 backdrop-blur-md"
+          style={{ borderColor: `${accent}55` }}
+        >
+          <div className="h-56 max-md:h-44">
+            <CharacterPreview charId={selected} />
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(5,8,18,0.92)] to-transparent px-3 pb-2.5 pt-8">
+            <p className="text-lg font-bold leading-none">{ch.name}</p>
+            <p
+              className="mt-1 font-mono text-[9px] uppercase tracking-[0.2em]"
+              style={{ color: accent }}
+            >
+              {ch.title}
+            </p>
+          </div>
+        </div>
+        <div className="rounded-2xl border-2 border-white/10 bg-space/85 px-4 py-3 backdrop-blur-md">
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em]" style={{ color: accent }}>
+            ⚔ {ch.weapon.name}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-dim">{ch.weapon.desc}</p>
+          <div className="mt-2.5 space-y-1.5">
+            <StatBar label="vitality" v={ch.hp} accent="#4ade80" />
+            <StatBar label="damage" v={ch.dmg} accent="#ff8c6b" />
+            <StatBar label="speed" v={ch.speed} accent="#7dd3fc" />
+            <StatBar label="fire rate" v={Math.max(0.2, 2 - ch.cooldown)} accent="#f0c75e" />
+            <StatBar label="fortune" v={ch.luck} accent="#c084fc" />
+          </div>
+          <p
+            className="mt-2.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em]"
+            style={{ color: accent }}
+          >
+            ★ {ch.passive}
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-ink-dim">{ch.playstyle}</p>
+        </div>
       </div>
     </div>
   );
@@ -337,7 +386,7 @@ export default function GameHUD() {
           >
             <div className="max-h-full overflow-y-auto py-4 text-center">
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
-                choose your ninja
+                select your character
               </p>
               <CharacterSelect />
               <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
