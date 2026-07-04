@@ -206,7 +206,9 @@ function CharacterSelect() {
   );
 }
 
-/** Lower-right flash when a site is captured: screenshot + name + power. */
+/** Lower-right flash when a site is captured: screenshot + name + power.
+ *  Desktop-only (max-md:hidden): the card ate half a phone screen, and the
+ *  center flash + quest ribbon already announce the capture there. */
 function CaptureToast() {
   const capturedIds = useGame((s) => s.capturedIds);
   const [toast, setToast] = useState<(typeof regions)[number] | null>(null);
@@ -237,7 +239,7 @@ function CaptureToast() {
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, y: 14 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="pointer-events-none absolute bottom-4 right-4 z-40 w-48 overflow-hidden rounded-xl border-2 bg-[rgba(9,13,28,0.94)] backdrop-blur max-md:bottom-40 max-md:right-3 max-md:w-36"
+          className="pointer-events-none absolute bottom-4 right-4 z-40 w-48 overflow-hidden rounded-xl border-2 bg-[rgba(9,13,28,0.94)] backdrop-blur max-md:hidden"
           style={{ borderColor: toast.accent, boxShadow: `0 0 24px ${toast.accent}66` }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- site capture */}
