@@ -142,8 +142,8 @@ export function RugMob() {
         <boxGeometry args={[0.8, 0.035, 0.5]} />
         <meshStandardMaterial color={RUG_DARK} roughness={0.85} />
       </mesh>
-      {/* front third REARS UP like a striking cobra */}
-      <mesh position={[0, 0.28, 0.3]} rotation={[1.15, 0, 0]}>
+      {/* front third — flat, just a whisper of lift at the leading edge */}
+      <mesh position={[0, 0.05, 0.38]} rotation={[0.18, 0, 0]}>
         <boxGeometry args={[0.8, 0.035, 0.55]} />
         <meshStandardMaterial color={RUG} roughness={0.8} />
       </mesh>
@@ -154,7 +154,7 @@ export function RugMob() {
             <boxGeometry args={[0.07, 0.04, 0.95]} />
             <meshStandardMaterial color={TRIM} metalness={0.5} roughness={0.4} emissive="#c9921e" emissiveIntensity={0.25} />
           </mesh>
-          <mesh position={[s * 0.37, 0.29, 0.31]} rotation={[1.15, 0, 0]}>
+          <mesh position={[s * 0.37, 0.06, 0.38]} rotation={[0.18, 0, 0]}>
             <boxGeometry args={[0.07, 0.04, 0.55]} />
             <meshStandardMaterial color={TRIM} metalness={0.5} roughness={0.4} emissive="#c9921e" emissiveIntensity={0.25} />
           </mesh>
@@ -165,12 +165,12 @@ export function RugMob() {
         <boxGeometry args={[0.26, 0.02, 0.26]} />
         <meshStandardMaterial color={TRIM} metalness={0.55} roughness={0.35} emissive="#c9921e" emissiveIntensity={0.35} />
       </mesh>
-      {/* eyes glaring over the reared lip */}
-      <mesh position={[0.15, 0.5, 0.42]}>
+      {/* eyes sitting on the front edge, glaring ahead */}
+      <mesh position={[0.15, 0.15, 0.6]}>
         <sphereGeometry args={[0.06, 8, 8]} />
         <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={3} toneMapped={false} />
       </mesh>
-      <mesh position={[-0.15, 0.5, 0.42]}>
+      <mesh position={[-0.15, 0.15, 0.6]}>
         <sphereGeometry args={[0.06, 8, 8]} />
         <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={3} toneMapped={false} />
       </mesh>
@@ -181,9 +181,9 @@ export function RugMob() {
           <meshStandardMaterial color={TRIM} roughness={0.6} />
         </mesh>
       ))}
-      {/* fringe on the raised front lip — teeth when it rears */}
+      {/* gold fringe on the leading edge */}
       {[-0.28, -0.14, 0, 0.14, 0.28].map((x) => (
-        <mesh key={`f${x}`} position={[x, 0.51, 0.52]} rotation={[1.15, 0, 0]}>
+        <mesh key={`f${x}`} position={[x, 0.1, 0.68]} rotation={[0.18, 0, 0]}>
           <boxGeometry args={[0.06, 0.025, 0.13]} />
           <meshStandardMaterial color={TRIM} roughness={0.55} emissive="#c9921e" emissiveIntensity={0.4} />
         </mesh>
