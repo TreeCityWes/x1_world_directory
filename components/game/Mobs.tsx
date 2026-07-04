@@ -75,34 +75,50 @@ export function BugMob() {
   );
 }
 
-/** GAS WISP — a fee spike come alive. Fast, flickery, burns you. */
+/** GAS WISP — a fee spike come alive: a little flame-ghost, not a cone. */
 export function GasWisp() {
   return (
-    <group position={[0, 0.4, 0]}>
-      {/* outer flame */}
-      <mesh scale={[0.35, 0.55, 0.35]}>
-        <coneGeometry args={[1, 1.6, 8]} />
+    <group position={[0, 0.34, 0]}>
+      {/* rounded droplet body */}
+      <mesh scale={[0.3, 0.38, 0.3]}>
+        <sphereGeometry args={[1, 12, 12]} />
         <meshStandardMaterial
           color="#ff9a3d"
           emissive="#ff7a1f"
-          emissiveIntensity={1.4}
+          emissiveIntensity={1.5}
           transparent
-          opacity={0.85}
+          opacity={0.9}
           roughness={0.3}
         />
       </mesh>
-      {/* hot core */}
-      <mesh position={[0, -0.12, 0]} scale={[0.2, 0.3, 0.2]}>
-        <sphereGeometry args={[1, 10, 10]} />
-        <meshStandardMaterial color="#ffe08a" emissive="#ffd23d" emissiveIntensity={3} toneMapped={false} />
+      {/* wavy ghost skirt — three lobes poking below */}
+      {[-0.16, 0, 0.16].map((x, i) => (
+        <mesh key={x} position={[x, -0.32 + (i === 1 ? -0.06 : 0), 0]} scale={[0.11, 0.14, 0.11]}>
+          <sphereGeometry args={[1, 8, 8]} />
+          <meshStandardMaterial color="#ff8a2d" emissive="#ff6a15" emissiveIntensity={1.2} transparent opacity={0.85} />
+        </mesh>
+      ))}
+      {/* flame licks on top — tilted, asymmetric, alive */}
+      <mesh position={[0.05, 0.42, 0]} rotation={[0, 0, -0.35]} scale={[0.1, 0.26, 0.1]}>
+        <sphereGeometry args={[1, 8, 8]} />
+        <meshStandardMaterial color="#ffd23d" emissive="#ffb52e" emissiveIntensity={2.2} transparent opacity={0.9} />
       </mesh>
-      {/* angry little eyes */}
-      <mesh position={[0.09, 0.05, 0.24]}>
-        <sphereGeometry args={[0.05, 8, 8]} />
+      <mesh position={[-0.09, 0.34, 0.02]} rotation={[0, 0, 0.45]} scale={[0.06, 0.16, 0.06]}>
+        <sphereGeometry args={[1, 8, 8]} />
+        <meshStandardMaterial color="#ffe08a" emissive="#ffd23d" emissiveIntensity={2.6} transparent opacity={0.9} />
+      </mesh>
+      {/* white-hot core */}
+      <mesh position={[0, -0.04, 0.08]} scale={[0.16, 0.22, 0.16]}>
+        <sphereGeometry args={[1, 10, 10]} />
+        <meshStandardMaterial color="#fff3c4" emissive="#ffe08a" emissiveIntensity={3.2} toneMapped={false} />
+      </mesh>
+      {/* angry slanted eyes */}
+      <mesh position={[0.1, 0.08, 0.26]} rotation={[0, 0, -0.5]} scale={[0.06, 0.035, 0.03]}>
+        <sphereGeometry args={[1, 8, 8]} />
         <meshStandardMaterial color="#1a0c05" roughness={0.4} />
       </mesh>
-      <mesh position={[-0.09, 0.05, 0.24]}>
-        <sphereGeometry args={[0.05, 8, 8]} />
+      <mesh position={[-0.1, 0.08, 0.26]} rotation={[0, 0, 0.5]} scale={[0.06, 0.035, 0.03]}>
+        <sphereGeometry args={[1, 8, 8]} />
         <meshStandardMaterial color="#1a0c05" roughness={0.4} />
       </mesh>
     </group>

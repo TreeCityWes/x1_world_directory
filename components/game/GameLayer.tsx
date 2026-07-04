@@ -1064,11 +1064,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <meshStandardMaterial color="#c7d0e2" emissive="#7dd3fc" emissiveIntensity={0.9} metalness={0.8} roughness={0.2} />
         </mesh>
       ))}
-      {/* compass arrows to the active capture targets */}
+      {/* compass arrows to the active capture targets — head + shaft so they
+          read as ARROWS, not tiny traffic cones */}
       {Array.from({ length: 3 }).map((_, i) => (
         <mesh key={`ar${i}`} ref={(el) => { arrowRefs.current[i] = el; }} visible={false}>
-          <coneGeometry args={[0.045, 0.15, 6]} />
+          <coneGeometry args={[0.05, 0.12, 4]} />
           <meshStandardMaterial emissiveIntensity={1.8} toneMapped={false} />
+          <mesh position={[0, -0.11, 0]}>
+            <boxGeometry args={[0.035, 0.12, 0.018]} />
+            <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={1.2} toneMapped={false} />
+          </mesh>
         </mesh>
       ))}
       {Array.from({ length: MAX_GEMS }).map((_, i) => (
