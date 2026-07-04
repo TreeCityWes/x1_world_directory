@@ -25,6 +25,7 @@ import {
   regenRate,
   rollChoices,
   run,
+  RUN_SECONDS,
   shurikenDamage,
   useGame,
   xpMult,
@@ -1194,7 +1195,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       store.mode === "explore" ||
       store.mode === "menu" ||
       store.mode === "dead" ||
-      store.mode === "won"
+      store.mode === "won" ||
+      store.mode === "timeup"
     ) {
       if (world.started) {
         world.started = false;
@@ -1817,8 +1819,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       store.setActiveSites(world.siteIds);
     }
 
-    // ---- death & HUD sync ----
-    if (run.hp <= 0) {
+    // ---- end-of-run: clock, death, HUD sync ----
+    // the run is a time attack — when the clock runs out, bank the score. (win()
+    // fires earlier in the capture handler if you complete the map first.)
+    if (run.t >= RUN_SECONDS) {
+      store.timeUp();
+    } else if (run.hp <= 0) {
       run.hp = 0;
       store.die();
     } else if (run.t >= world.syncAt || (run.t - run.lastHitAt < 0.1 && run.t >= world.syncAt - 0.2)) {
