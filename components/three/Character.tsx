@@ -4,18 +4,16 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { moveState } from "@/lib/gameState";
+import { useGame } from "@/lib/gameStore";
+import { CHARACTERS } from "@/lib/characters";
 import { prefersReducedMotion } from "@/lib/motion";
 import { PLANET_RADIUS } from "./Planet";
 
 // x1.ninja logo palette: charcoal hood + electric-blue headband/X + gold
 // katana furniture + steel blades.
-const HOOD = "#3d4454";
-const SUIT = "#232936";
 const MASK = "#171c28";
-const BLUE = "#2f6bff";
 const GOLD = "#f0c75e";
 const STEEL = "#c7d0e2";
-const EYES = "#e8eefc";
 
 const Y = new THREE.Vector3(0, 1, 0);
 const _target = new THREE.Quaternion();
@@ -52,6 +50,8 @@ function Katana({ tilt }: { tilt: number }) {
  * swings its limbs, and its scarf flutters harder the faster it runs.
  */
 export default function Character() {
+  const charId = useGame((s) => s.character);
+  const pal = CHARACTERS[charId].colors;
   const yaw = useRef<THREE.Group>(null);
   const bob = useRef<THREE.Group>(null);
   const armL = useRef<THREE.Group>(null);
@@ -121,16 +121,32 @@ export default function Character() {
       <group ref={yaw} rotation={[0, Math.PI, 0]}>
         <group ref={bob}>
           {/* hooded head — charcoal like the logo */}
+          {charId === "theo" && (
+            <group position={[0, 0.8, 0]}>
+              <mesh>
+                <cylinderGeometry args={[0.115, 0.115, 0.16, 16]} />
+                <meshStandardMaterial color="#0a0a10" roughness={0.35} />
+              </mesh>
+              <mesh position={[0, -0.075, 0]}>
+                <cylinderGeometry args={[0.19, 0.19, 0.018, 16]} />
+                <meshStandardMaterial color="#0a0a10" roughness={0.35} />
+              </mesh>
+              <mesh position={[0, -0.045, 0]}>
+                <cylinderGeometry args={[0.12, 0.12, 0.035, 16]} />
+                <meshStandardMaterial color="#7dd3fc" emissive="#7dd3fc" emissiveIntensity={0.9} />
+              </mesh>
+            </group>
+          )}
           <mesh position={[0, 0.66, 0]} castShadow>
             <sphereGeometry args={[0.14, 24, 24]} />
-            <meshStandardMaterial color={HOOD} roughness={0.6} />
+            <meshStandardMaterial color={pal.hood} roughness={0.6} />
           </mesh>
           {/* the electric-blue headband — the logo's signature */}
           <mesh position={[0, 0.705, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[0.132, 0.024, 10, 24]} />
             <meshStandardMaterial
-              color={BLUE}
-              emissive={BLUE}
+              color={pal.band}
+              emissive={pal.band}
               emissiveIntensity={0.35}
               roughness={0.45}
             />
@@ -138,7 +154,7 @@ export default function Character() {
           {/* headband knot + tails at the back */}
           <mesh position={[0, 0.705, -0.14]}>
             <sphereGeometry args={[0.03, 10, 10]} />
-            <meshStandardMaterial color={BLUE} roughness={0.5} />
+            <meshStandardMaterial color={pal.band} roughness={0.5} />
           </mesh>
           {/* mask opening: a curved band hugging the hood (no boxy corners) */}
           <mesh position={[0, 0.66, 0]}>
@@ -148,29 +164,29 @@ export default function Character() {
           {/* glowing eyes floating just proud of the band */}
           <mesh position={[0.042, 0.652, 0.139]}>
             <sphereGeometry args={[0.015, 10, 10]} />
-            <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={1.4} />
+            <meshStandardMaterial color={pal.eyes} emissive={pal.eyes} emissiveIntensity={1.4} />
           </mesh>
           <mesh position={[-0.042, 0.652, 0.139]}>
             <sphereGeometry args={[0.015, 10, 10]} />
-            <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={1.4} />
+            <meshStandardMaterial color={pal.eyes} emissive={pal.eyes} emissiveIntensity={1.4} />
           </mesh>
 
           {/* blue scarf: collar + trailing tail */}
           <mesh position={[0, 0.55, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[0.052, 0.02, 10, 20]} />
-            <meshStandardMaterial color={BLUE} roughness={0.7} />
+            <meshStandardMaterial color={pal.band} roughness={0.7} />
           </mesh>
           <group ref={scarf} position={[0, 0.545, -0.05]}>
             <mesh position={[0, 0, -0.1]} castShadow>
               <boxGeometry args={[0.055, 0.014, 0.2]} />
-              <meshStandardMaterial color={BLUE} roughness={0.7} />
+              <meshStandardMaterial color={pal.band} roughness={0.7} />
             </mesh>
           </group>
 
           {/* torso */}
           <mesh position={[0, 0.37, 0]} castShadow>
             <capsuleGeometry args={[0.055, 0.24, 4, 12]} />
-            <meshStandardMaterial color={SUIT} roughness={0.55} metalness={0.1} />
+            <meshStandardMaterial color={pal.suit} roughness={0.55} metalness={0.1} />
           </mesh>
           {/* gold belt */}
           <mesh position={[0, 0.3, 0]} rotation={[Math.PI / 2, 0, 0]}>
@@ -192,13 +208,13 @@ export default function Character() {
           <group ref={armL} position={[0.075, 0.49, 0]} rotation={[0, 0, 0.5]}>
             <mesh position={[0, -0.11, 0]} castShadow>
               <capsuleGeometry args={[0.026, 0.18, 4, 8]} />
-              <meshStandardMaterial color={SUIT} roughness={0.6} />
+              <meshStandardMaterial color={pal.suit} roughness={0.6} />
             </mesh>
           </group>
           <group ref={armR} position={[-0.075, 0.49, 0]} rotation={[0, 0, -0.5]}>
             <mesh position={[0, -0.11, 0]} castShadow>
               <capsuleGeometry args={[0.026, 0.18, 4, 8]} />
-              <meshStandardMaterial color={SUIT} roughness={0.6} />
+              <meshStandardMaterial color={pal.suit} roughness={0.6} />
             </mesh>
           </group>
 

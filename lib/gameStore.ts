@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { sfx } from "@/lib/sound";
+import { CHARACTERS, type CharacterId } from "@/lib/characters";
 import { submitScore } from "@/lib/leaderboard";
 import { useProfile } from "@/lib/profile";
 
@@ -121,15 +122,21 @@ export const run = {
   lastHitAt: -10,
   killedBy: "", // flavor id of the last thing that bit us
   finalBossAlive: false,
+  character: "ninja" as CharacterId,
   damage: 0, // total damage dealt (feeds the score formula)
   difficulty: "normal" as DifficultyId,
 };
 
-export function resetRun(diff?: DifficultyId) {
+export function charDef() {
+  return CHARACTERS[run.character];
+}
+
+export function resetRun(diff?: DifficultyId, character?: CharacterId) {
   if (diff) run.difficulty = diff;
   const statMult = DIFFICULTIES[run.difficulty].statMult;
   run.t = 0;
-  run.maxHp = Math.round(100 * statMult);
+  run.character = character ?? run.character;
+  run.maxHp = Math.round(100 * statMult * charDef().hp);
   run.hp = run.maxHp;
   run.xp = 0;
   run.xpNext = 8;
@@ -155,10 +162,10 @@ export function scoreOf() {
 
 // derived combat numbers (upgrades + timed powerups)
 export function shurikenDamage() {
-  return (10 + 6 * (run.upgrades.damage ?? 0)) * (1 + Math.min(1.5, 0.1 * run.perm.dmg));
+  return (10 + 6 * (run.upgrades.damage ?? 0)) * (1 + Math.min(1.5, 0.1 * run.perm.dmg)) * charDef().dmg;
 }
 export function fireCooldown() {
-  return Math.max(0.18, 0.55 * Math.pow(0.88, run.upgrades.firerate ?? 0) * Math.pow(0.94, run.perm.rate));
+  return Math.max(0.15, 0.55 * charDef().cooldown * Math.pow(0.88, run.upgrades.firerate ?? 0) * Math.pow(0.94, run.perm.rate));
 }
 export function magnetAngle() {
   // capped: a fully-stacked magnet used to vacuum more than the visible planet
@@ -170,14 +177,15 @@ export function currentSpeedMult() {
     (1 + 0.1 * (run.upgrades.speed ?? 0)) *
     (1 + Math.min(0.4, 0.05 * run.perm.speed)) *
     DIFFICULTIES[run.difficulty].statMult *
+    charDef().speed *
     finalStand
   );
 }
 export function xpMult() {
-  return 1 + 0.1 * run.perm.xp;
+  return (1 + 0.1 * run.perm.xp) * charDef().xp;
 }
 export function armorMult() {
-  return 1 - 0.08 * (run.upgrades.armor ?? 0);
+  return Math.max(0.15, 1 - 0.08 * (run.upgrades.armor ?? 0) - charDef().armor);
 }
 export function lifestealPct() {
   return 0.03 * (run.upgrades.lifesteal ?? 0);
@@ -219,6 +227,8 @@ type GameStore = {
   choices: string[];
   activeSites: string[];
   best: number;
+  character: CharacterId;
+  setCharacter: (c: CharacterId) => void;
   finalScore: number;
   start: (diff?: DifficultyId) => void;
   openMenu: () => void;
@@ -252,9 +262,10 @@ const emptyHud = (): Hud => ({
 
 const BEST_KEY = "x1world_best_score";
 
-export const useGame = create<GameStore>((set) => ({
+export const useGame = create<GameStore>((set, get) => ({
   mode: "menu", // the game IS the landing experience; explore is the side quest
   hud: emptyHud(),
+  character: (typeof window !== "undefined" && (localStorage.getItem("x1world_char") as CharacterId)) || "ninja",
   choices: [],
   activeSites: [],
   capturedIds: [],
@@ -262,7 +273,7 @@ export const useGame = create<GameStore>((set) => ({
   finalScore: 0,
   deathCause: "",
   start: (diff) => {
-    resetRun(diff ?? run.difficulty);
+    resetRun(diff ?? run.difficulty, get().character);
     const best =
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
     set({ mode: "play", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best });
@@ -313,6 +324,11 @@ export const useGame = create<GameStore>((set) => ({
     set({ mode: "play", choices: [], hud: emptyHud() });
   },
   setActiveSites: (ids) => set({ activeSites: ids }),
+  setCharacter: (c) => {
+    if (typeof window !== "undefined") localStorage.setItem("x1world_char", c);
+    set({ character: c });
+    sfx.ui();
+  },
 }));
 
 /** Roll 3 distinct upgrade choices weighted like the original game. */

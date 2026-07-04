@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { DIFFICULTIES, UPGRADES, run, useGame, type DifficultyId } from "@/lib/gameStore";
+import { CHARACTERS, CHARACTER_ORDER } from "@/lib/characters";
+
+const CHAR_ICON: Record<string, string> = { ninja: "🥷", jack: "🪙", theo: "🎩", capy: "🦫" };
 import { useProfile } from "@/lib/profile";
 import { explorerTx, inscribeRun } from "@/lib/inscribe";
 
@@ -18,6 +21,73 @@ const DEATH_FLAVOR: Record<string, string> = {
   "boss:nemesis": "slain by your own shadow",
 };
 const ONBOARD_KEY = "x1world_onboarded";
+
+/** 4-card character grid + preview panel (data-driven from CHARACTERS). */
+function CharacterSelect() {
+  const selected = useGame((s) => s.character);
+  const setCharacter = useGame((s) => s.setCharacter);
+  const ch = CHARACTERS[selected];
+  const bar = (v: number) => `${Math.round(Math.min(1, v / 1.6) * 100)}%`;
+
+  return (
+    <div className="mx-auto max-w-xl px-4">
+      <div className="mt-3 grid grid-cols-4 gap-2 max-md:grid-cols-2">
+        {CHARACTER_ORDER.map((id) => {
+          const c = CHARACTERS[id];
+          const sel = id === selected;
+          return (
+            <button
+              key={id}
+              onClick={() => c.unlocked && setCharacter(id)}
+              disabled={!c.unlocked}
+              className={`rounded-xl border-2 p-2.5 text-left backdrop-blur-md transition-all ${
+                sel
+                  ? "border-gold bg-gold/10 shadow-[0_0_20px_rgba(240,199,94,0.25)]"
+                  : c.unlocked
+                    ? "border-white/15 bg-space/80 hover:-translate-y-0.5 hover:border-gold/50"
+                    : "border-white/10 bg-space/60 opacity-40"
+              }`}
+            >
+              <div className="text-2xl">{CHAR_ICON[id] ?? "🥷"}</div>
+              <p className="mt-1 truncate text-sm font-bold leading-tight">{c.name}</p>
+              <p className="truncate font-mono text-[8px] uppercase tracking-[0.12em] text-ink-dim">
+                {c.unlocked ? c.title : "coming soon"}
+              </p>
+              <div className="mt-1.5 space-y-1">
+                {(
+                  [
+                    ["hp", c.hp, "#4ade80"],
+                    ["dmg", c.dmg, "#ff8c6b"],
+                    ["spd", c.speed, "#7dd3fc"],
+                  ] as const
+                ).map(([label, v, color]) => (
+                  <div key={label} className="flex items-center gap-1">
+                    <span className="w-6 font-mono text-[7px] uppercase text-ink-dim/70">
+                      {label}
+                    </span>
+                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full rounded-full" style={{ width: bar(v), background: color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {/* preview panel for the selected character */}
+      <div
+        className="mt-2 rounded-xl border bg-space/85 px-4 py-2.5 text-left backdrop-blur-md"
+        style={{ borderColor: `${ch.colors.band}55` }}
+      >
+        <p className="font-mono text-[9px] uppercase tracking-[0.18em]" style={{ color: ch.colors.band }}>
+          ⚔ {ch.weapon.name} — {ch.weapon.desc}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-ink-dim">{ch.playstyle}</p>
+      </div>
+    </div>
+  );
+}
 
 /** Lower-right flash when a site is captured: screenshot + name + power. */
 function CaptureToast() {
@@ -265,11 +335,15 @@ export default function GameHUD() {
             exit={{ opacity: 0 }}
             className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/60 backdrop-blur-sm"
           >
-            <div className="text-center">
+            <div className="max-h-full overflow-y-auto py-4 text-center">
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
-                🥷 choose your run
+                choose your ninja
               </p>
-              <div className="mt-4 flex flex-wrap items-stretch justify-center gap-3 px-4">
+              <CharacterSelect />
+              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
+                choose your run
+              </p>
+              <div className="mt-3 flex flex-wrap items-stretch justify-center gap-3 px-4">
                 {(Object.keys(DIFFICULTIES) as DifficultyId[]).map((id, i) => {
                   const d = DIFFICULTIES[id];
                   return (

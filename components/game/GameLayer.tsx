@@ -11,6 +11,7 @@ import Nemesis from "@/components/game/Nemesis";
 import { BugMob, GasWisp, RugMob } from "@/components/game/Mobs";
 import { moveState } from "@/lib/gameState";
 import {
+  charDef,
   DIFFICULTIES,
   ENEMY_TYPES,
   armorMult,
@@ -72,8 +73,9 @@ type Enemy = {
   biteAt: number; // next time this enemy may bite (discrete attacks, not dps)
   recoilUntil: number; // after a bite it backs off briefly
   bossKind: "whale" | "nemesis";
+  markedUntil: number; // THEO scan mark: +50% damage taken, +50% xp
 };
-type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number };
+type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
 type Wake = { alive: boolean; dir: THREE.Vector3; life: number };
 type Flame = { alive: boolean; dir: THREE.Vector3; life: number; maxLife: number };
@@ -193,10 +195,10 @@ function randomDirNear(center: THREE.Vector3, minAng: number, maxAng: number) {
 const world = {
       enemies: Array.from({ length: MAX_ENEMIES }, (): Enemy => ({
         alive: false, type: "goblin", dir: new THREE.Vector3(), hp: 0, maxHp: 0,
-        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0, bossKind: "whale",
+        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0, bossKind: "whale", markedUntil: 0,
       })),
       shurikens: Array.from({ length: MAX_SHURIKENS }, (): Shuriken => ({
-        alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0,
+        alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0, kind: "shuriken",
       })),
       gems: Array.from({ length: MAX_GEMS }, (): Gem => ({
         alive: false, dir: new THREE.Vector3(), xp: 0, t: 0,
@@ -218,6 +220,7 @@ const world = {
   novaAt: 0,
   wakeAt: 0,
   arcAt: 0,
+  scanAt: 0,
   arcFlash: 0,
   arcPoints: [] as THREE.Vector3[],
   arcDirty: false,
@@ -328,6 +331,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     return e;
   };
 
+  // Jack Levin: the X coin detonates — area damage around the blast point
+  const explodeXCoin = (at: THREE.Vector3, dmg: number) => {
+    sfx.kill();
+    spawnBurst(at, "#f5f5f5", 8);
+    for (const e of world.enemies) {
+      if (!e.alive) continue;
+      if (at.angleTo(e.dir) < 0.26) dealDamage(e, dmg);
+    }
+  };
+
   const dropGems = (at: THREE.Vector3, xp: number, split: number) => {
     const per = Math.max(1, Math.round(xp / split));
     for (let i = 0; i < split; i++) {
@@ -343,6 +356,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   // ALL damage funnels through here: crit roll, lifesteal, damage tally.
   // Score/lifesteal only count damage that actually landed (no overkill).
   const dealDamage = (e: Enemy, base: number, alwaysCrit = false) => {
+    if (e.markedUntil > run.t) base *= 1.5; // THEO scan mark
     const crit = alwaysCrit || Math.random() < critChance();
     const dmg = base * (crit ? 2 : 1);
     const applied = Math.max(0, Math.min(e.hp, dmg));
@@ -657,6 +671,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       for (const p of world.parts) p.alive = false;
       world.bossAtBlock = 0;
       world.bossCount = 0;
+      world.scanAt = 0;
       world.finalSpawned = false;
       world.finalIdx = -1;
       world.captured.clear();
@@ -802,6 +817,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     }
 
     // ---- shurikens: auto-fire with aim assist ----
+    const weaponKind = charDef().weapon.kind;
     if (run.t >= world.fireAt) {
       world.fireAt = run.t + fireCooldown();
       // aim: nearest enemy in frontal cone, else facing
@@ -814,7 +830,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         const t = tangentToward(world.pLocal, e.dir, _v2);
         if (!t) continue;
         const facingDot = f.lengthSq() > 0.5 ? t.dot(f) : 1;
-        if (facingDot < 0.35) continue;
+        if (facingDot < 0.35 && weaponKind !== "pulse") continue; // pulses lock on anywhere
         const score = facingDot * 2 - ang;
         if (score > bestScore) {
           bestScore = score;
@@ -822,7 +838,23 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         }
       }
       sfx.throw();
-      const count = 1 + (run.upgrades.multishot ?? 0);
+      if (weaponKind === "slash") {
+        // CAPY: Bad Block Slash — cleave everything in the frontal arc
+        let hitAny = false;
+        for (const e of world.enemies) {
+          if (!e.alive) continue;
+          if (world.pLocal.angleTo(e.dir) > 0.24) continue;
+          const t2 = tangentToward(world.pLocal, e.dir, _v2);
+          if (t2 && f.lengthSq() > 0.5 && t2.dot(f) < 0.05) continue;
+          dealDamage(e, shurikenDamage() * 2.2);
+          hitAny = true;
+        }
+        if (hitAny) {
+          _v2.copy(world.pLocal).applyQuaternion(_q.setFromAxisAngle(_axis.crossVectors(world.pLocal, f).normalize(), 0.1));
+          spawnBurst(_v2, "#e8f4ff", 5);
+        }
+      }
+      const count = weaponKind === "slash" ? 0 : 1 + (run.upgrades.multishot ?? 0);
       for (let i = 0; i < count; i++) {
         const s = world.shurikens.find((x) => !x.alive);
         if (!s) break;
@@ -831,9 +863,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         s.alive = true;
         s.pos.copy(world.pLocal);
         s.axis.crossVectors(world.pLocal, _v2).normalize();
-        s.ttl = SHURIKEN_TTL;
+        s.ttl = weaponKind === "xcoin" ? 0.85 : SHURIKEN_TTL;
         s.dmg = shurikenDamage();
         s.spin = 0;
+        s.kind = weaponKind;
       }
     }
     for (const s of world.shurikens) {
@@ -841,18 +874,38 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       s.ttl -= dt;
       s.spin += dt * 20;
       if (s.ttl <= 0) {
+        if (s.kind === "xcoin") explodeXCoin(s.pos, s.dmg);
         s.alive = false;
         continue;
       }
-      s.pos.applyQuaternion(_q.setFromAxisAngle(s.axis, SHURIKEN_SPEED * dt)).normalize();
+      const speed = s.kind === "xcoin" ? 1.15 : s.kind === "pulse" ? 2.2 : SHURIKEN_SPEED;
+      s.pos.applyQuaternion(_q.setFromAxisAngle(s.axis, speed * dt)).normalize();
       for (const e of world.enemies) {
         if (!e.alive) continue;
         if (s.pos.angleTo(e.dir) < (e.radius + 0.05) / R + 0.02) {
-          dealDamage(e, s.dmg);
+          if (s.kind === "xcoin") {
+            explodeXCoin(s.pos, s.dmg);
+          } else {
+            dealDamage(e, s.dmg);
+            if (s.kind === "pulse") e.recoilUntil = run.t + 0.7; // debugged: glitches backwards
+          }
           s.alive = false;
           break;
         }
       }
+    }
+
+    // ---- THEO signature: FTS5 Scan — mark everything, farm everything ----
+    if (weaponKind === "pulse" && run.t >= world.scanAt) {
+      world.scanAt = run.t + 8;
+      let found = 0;
+      for (const e of world.enemies) {
+        if (!e.alive || e.dir.angleTo(world.pLocal) > 1.2) continue;
+        e.markedUntil = run.t + 3;
+        spawnBurst(e.dir, "#67e8f9", 2);
+        found++;
+      }
+      if (found > 0) sfx.capture();
     }
 
     // ---- Arc Node: lightning that chains through the herd ----
@@ -1008,7 +1061,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       run.kills++;
       sfx.kill();
       spawnBurst(e.dir, ENEMY_TYPES[e.type].color, e.type === "boss" ? 14 : 6);
-      dropGems(e.dir, e.xp, e.gemSplit);
+      dropGems(e.dir, e.markedUntil > run.t ? Math.round(e.xp * 1.5) : e.xp, e.gemSplit);
       if (world.finalIdx >= 0 && world.enemies[world.finalIdx] === e) {
         world.finalIdx = -1;
         run.finalBossAlive = false;
@@ -1030,7 +1083,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (ang < GEM_PICKUP) {
         gm.alive = false;
         sfx.coin();
-        run.xp += gm.xp * xpMult();
+        const lucky = Math.random() < (charDef().luck - 1) * 0.45;
+        run.xp += gm.xp * xpMult() * (lucky ? 2 : 1);
       }
     }
     if (run.xp >= run.xpNext) {
