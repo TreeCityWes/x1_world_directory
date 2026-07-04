@@ -213,6 +213,7 @@ export default function Planet() {
         mx /= mlen;
         mz /= mlen;
       }
+      if (mlen > 0.001) moveState.inputAz = Math.atan2(-mx, -mz);
       // map to planet angular velocity (ω_x moves the ninja -Z, ω_z moves +X)
       v.x += ACC * mult * dt * -mz;
       v.z += ACC * mult * dt * mx;

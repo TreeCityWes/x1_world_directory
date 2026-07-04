@@ -89,6 +89,10 @@ const _qInv = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _axis = new THREE.Vector3();
+const _aPos = new THREE.Vector3();
+const _aT = new THREE.Vector3();
+const _aSite = new THREE.Vector3();
+const REGION_BY_ID = new Map(regions.map((r) => [r.id, r]));
 const _t = new THREE.Vector3();
 const _f0 = new THREE.Vector3();
 
@@ -253,6 +257,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   }, [goblinGltf, wraithGltf, whaleGltf]);
 
   const enemyRefs = useRef<(THREE.Group | null)[]>([]);
+  const arrowRefs = useRef<(THREE.Mesh | null)[]>([]);
   const shurikenRefs = useRef<(THREE.Mesh | null)[]>([]);
   const gemRefs = useRef<(THREE.Mesh | null)[]>([]);
   const katanaRefs = useRef<(THREE.Mesh | null)[]>([]);
@@ -376,6 +381,42 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   };
 
   function syncMeshes() {
+    // compass arrows — hover on the surface just ahead of the ninja, each
+    // pointing along the great circle toward an active (uncaptured) target
+    for (let i = 0; i < 3; i++) {
+      const m = arrowRefs.current[i];
+      if (!m) continue;
+      const id = world.siteIds[i];
+      const reg = id ? REGION_BY_ID.get(id) : undefined;
+      if (!reg || world.captured.has(reg.id)) {
+        m.visible = false;
+        continue;
+      }
+      _aSite.set(reg.dir[0], reg.dir[1], reg.dir[2]);
+      const ang = world.pLocal.angleTo(_aSite);
+      _axis.crossVectors(world.pLocal, _aSite);
+      if (ang < 0.34 || _axis.lengthSq() < 1e-6) {
+        m.visible = false; // target on screen (or antipodal) — no arrow needed
+        continue;
+      }
+      m.visible = true;
+      _q.setFromAxisAngle(_axis.normalize(), 0.3);
+      _aPos.copy(world.pLocal).applyQuaternion(_q);
+      m.position.copy(_aPos).multiplyScalar(R + 0.14);
+      m.quaternion.setFromUnitVectors(UP, _aPos);
+      const t = tangentToward(_aPos, _aSite, _aT);
+      if (t) {
+        _f0.set(0, 0, 1).applyQuaternion(m.quaternion);
+        _f0.addScaledVector(_aPos, -_aPos.dot(_f0)).normalize();
+        const yaw = Math.atan2(_v.crossVectors(_f0, t).dot(_aPos), _f0.dot(t));
+        m.rotateY(yaw);
+      }
+      m.rotateX(Math.PI / 2);
+      m.scale.setScalar(1 + Math.sin(run.t * 5 + i * 2.1) * 0.18);
+      const mat = m.material as THREE.MeshStandardMaterial;
+      mat.color.set(reg.accent);
+      mat.emissive.set(reg.accent);
+    }
     for (let i = 0; i < MAX_ENEMIES; i++) {
       const grp = enemyRefs.current[i];
       const e = world.enemies[i];
@@ -1030,6 +1071,13 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         <mesh key={`s${i}`} ref={(el) => { shurikenRefs.current[i] = el; }} visible={false}>
           <boxGeometry args={[0.05, 0.008, 0.05]} />
           <meshStandardMaterial color="#c7d0e2" emissive="#7dd3fc" emissiveIntensity={0.9} metalness={0.8} roughness={0.2} />
+        </mesh>
+      ))}
+      {/* compass arrows to the active capture targets */}
+      {Array.from({ length: 3 }).map((_, i) => (
+        <mesh key={`ar${i}`} ref={(el) => { arrowRefs.current[i] = el; }} visible={false}>
+          <coneGeometry args={[0.045, 0.15, 6]} />
+          <meshStandardMaterial emissiveIntensity={1.8} toneMapped={false} />
         </mesh>
       ))}
       {Array.from({ length: MAX_GEMS }).map((_, i) => (

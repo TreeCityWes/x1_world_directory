@@ -9,6 +9,7 @@
 export const moveState = {
   vx: 0,
   vz: 0,
+  inputAz: 0, // azimuth of the DESIRED direction (input frame) — camera follows this, not velocity, so reversals jump 180deg and the Lakitu gate blocks them instead of chasing the velocity sweep
   speed: 0,
   /** camera azimuth (rad) — Rig writes, input mapping reads (camera-relative WASD) */
   camAz: 0,

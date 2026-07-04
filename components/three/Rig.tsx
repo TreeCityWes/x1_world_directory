@@ -28,7 +28,7 @@ export default function Rig() {
       // follow azimuth — only for DELIBERATE movement (keys held, not
       // knockback shoves) that is away-ish/lateral (≤ ~105°)
       if (moveState.inputActive && moveState.speed > 0.25) {
-        const mAz = Math.atan2(-moveState.vx, -moveState.vz);
+        const mAz = moveState.inputAz; // intent, not velocity — no mid-reversal sweep
         const delta = wrapPI(mAz - moveState.camAz);
         if (Math.abs(delta) < 1.85) {
           moveState.camAz += delta * (1 - Math.exp(-2.6 * dt));
