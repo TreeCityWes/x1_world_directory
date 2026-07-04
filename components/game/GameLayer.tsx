@@ -1416,7 +1416,11 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         const t = tangentToward(world.pLocal, e.dir, _v2);
         if (!t) continue;
         const facingDot = f.lengthSq() > 0.5 ? t.dot(f) : 1;
-        if (facingDot < 0.35 && weaponKind !== "pulse") continue; // pulses lock on anywhere
+        // aim assist stays FRONTAL: ±53° on the move (so the multishot fan
+        // never launches stars behind the shoulder), a bit wider when
+        // standing still. THEO's pulses lock on anywhere — that's his kit.
+        const coneMin = moveState.speed > 0.15 ? 0.6 : 0.2;
+        if (facingDot < coneMin && weaponKind !== "pulse") continue;
         const score = facingDot * 2 - ang;
         if (score > bestScore) {
           bestScore = score;
