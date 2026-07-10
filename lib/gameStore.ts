@@ -382,8 +382,8 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.death();
     const pd = useProfile.getState();
-    const named = !!pd.name.trim();
-    if (named) {
+    const ranked = !!pd.name.trim() && !!pd.wallet;
+    if (ranked) {
       void submitScore({ name: pd.name, wallet: pd.wallet, score, diff: run.difficulty }).then(
         (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
       );
@@ -393,7 +393,7 @@ export const useGame = create<GameStore>((set, get) => ({
       finalScore: score,
       best,
       deathCause: run.killedBy,
-      scoreSubmit: named ? "sending" : "",
+      scoreSubmit: ranked ? "sending" : "",
       hud: emptyHud(),
     });
   },
@@ -409,8 +409,8 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.win(); // a "you made it to the bell" flourish, not the death sting
     const pt = useProfile.getState();
-    const named = !!pt.name.trim();
-    if (named) {
+    const ranked = !!pt.name.trim() && !!pt.wallet;
+    if (ranked) {
       void submitScore({ name: pt.name, wallet: pt.wallet, score, diff: run.difficulty }).then(
         (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
       );
@@ -419,7 +419,7 @@ export const useGame = create<GameStore>((set, get) => ({
       mode: "timeup",
       finalScore: score,
       best,
-      scoreSubmit: named ? "sending" : "",
+      scoreSubmit: ranked ? "sending" : "",
       hud: emptyHud(),
     });
   },
@@ -432,13 +432,13 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.win();
     const pw = useProfile.getState();
-    const named = !!pw.name.trim();
-    if (named) {
+    const ranked = !!pw.name.trim() && !!pw.wallet;
+    if (ranked) {
       void submitScore({ name: pw.name, wallet: pw.wallet, score, diff: run.difficulty }).then(
         (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
       );
     }
-    set({ mode: "won", finalScore: score, best, scoreSubmit: named ? "sending" : "", hud: emptyHud() });
+    set({ mode: "won", finalScore: score, best, scoreSubmit: ranked ? "sending" : "", hud: emptyHud() });
   },
   syncHud: () => set({ hud: emptyHud() }),
   offerLevelUp: (choices) => set({ mode: "levelup", choices, hud: emptyHud() }),

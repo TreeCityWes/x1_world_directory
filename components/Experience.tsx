@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Stars } from "@react-three/drei";
 import {
@@ -19,6 +19,7 @@ import Rig from "@/components/three/Rig";
 import Overlay from "@/components/ui/Overlay";
 import SidePanel from "@/components/ui/SidePanel";
 import { LOW_GPU } from "@/lib/quality";
+import { useGame } from "@/lib/gameStore";
 
 // Chromatic aberration: radial, so the center stays razor sharp and only the
 // frame's rim picks up a whisper of lens fringing. The offset is TINY on
@@ -31,11 +32,36 @@ const CA_OFFSET = new THREE.Vector2(0.0005, 0.0012);
  * walking (WASD) and dragging the planet.
  */
 export default function Experience() {
+  const mode = useGame((s) => s.mode);
+  const immersive = mode === "play" || mode === "paused" || mode === "levelup";
+
+  useEffect(() => {
+    if (!immersive) return;
+    const htmlOverflow = document.documentElement.style.overflow;
+    const bodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = htmlOverflow;
+      document.body.style.overflow = bodyOverflow;
+    };
+  }, [immersive]);
+
   return (
     <MotionConfig reducedMotion="user">
-    <div className="absolute inset-0 flex select-none max-md:static max-md:flex-col">
+    <div
+      className={`absolute inset-0 flex select-none max-md:flex-col ${
+        immersive
+          ? "max-md:fixed max-md:z-30 max-md:h-dvh max-md:bg-space"
+          : "max-md:static"
+      }`}
+    >
       {/* left screen — the world */}
-      <div className="relative min-w-0 flex-1 max-md:h-[62vh] max-md:flex-none">
+      <div
+        className={`relative min-w-0 flex-1 max-md:flex-none ${
+          immersive ? "max-md:h-dvh max-md:touch-none max-md:overflow-hidden" : "max-md:h-[62dvh]"
+        }`}
+      >
         <Canvas
           // shadow pass renders every castShadow mesh a second time — on a
           // dark starry globe the additive contact glows carry the grounding,
@@ -130,7 +156,9 @@ export default function Experience() {
       </div>
 
       {/* right screen — the console */}
-      <SidePanel />
+      <div className={immersive ? "contents max-md:hidden" : "contents"}>
+        <SidePanel />
+      </div>
     </div>
     </MotionConfig>
   );

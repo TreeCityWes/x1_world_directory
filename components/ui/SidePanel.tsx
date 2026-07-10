@@ -71,8 +71,11 @@ function GamePanel() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- site captures */}
                 <img
-                  src={r.screenshot}
+                  src={r.screenshot.replace("/projects/", "/projects/thumbs/").replace(/\.(png|svg)$/, ".jpg")}
                   alt={r.name}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = r.screenshot;
+                  }}
                   className="aspect-[8/5] w-20 shrink-0 rounded border border-white/10 object-cover object-top"
                 />
                 <div className="min-w-0">

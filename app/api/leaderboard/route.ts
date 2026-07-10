@@ -35,8 +35,8 @@ function sb(path: string, init?: RequestInit) {
   });
 }
 
-// Stable identity: the wallet when connected, else the browser's device ID.
-// The display name is a LABEL, never the key — renames relabel, not duplicate.
+// Ranked identity is the proven wallet. Guest device IDs are retained only so
+// existing guest rows can still be removed by their owners.
 function deriveMember(wallet: string, deviceId: unknown): string | null {
   if (wallet) return `w:${wallet}`;
   const d = String(deviceId ?? "");
@@ -47,7 +47,7 @@ export async function GET() {
   try {
     if (SB_URL && SB_KEY) {
       const res = await sb(
-        "leaderboard?select=name,wallet,score,diff,verified&order=score.desc&limit=25",
+        "leaderboard?select=name,wallet,score,diff,verified&verified=eq.true&order=score.desc&limit=25",
       );
       if (!res.ok) throw new Error(`sb ${res.status}`);
       const rows = (await res.json()) as Omit<Entry, "at">[];
@@ -79,54 +79,61 @@ export async function POST(req: Request) {
     const diff = ["normal", "hard", "cursed"].includes(String(body.diff)) ? String(body.diff) : "normal";
     if (!name || score <= 0) return NextResponse.json({ ok: false }, { status: 400 });
 
-    // proof of wallet ownership: ed25519 signature over a server nonce
-    let verified = false;
+    // Ranked submissions require proof of wallet ownership. This prevents
+    // anonymous Sybil flooding; it does not make a client-side run cheat-proof.
     const b = body as Partial<Entry> & { ts?: string; nonce?: string; sig?: string };
-    if (wallet && b.ts && b.nonce && b.sig && nonceValid(b.ts, b.nonce)) {
-      try {
-        const msg = new TextEncoder().encode(
-          `x1.world run · score:${score} · diff:${diff} · ${b.nonce}`,
-        );
-        verified = ed25519.verify(base64.decode(b.sig), msg, base58.decode(wallet));
-      } catch {
-        verified = false;
-      }
+    if (!(wallet && b.ts && b.nonce && b.sig && nonceValid(b.ts, b.nonce))) {
+      return NextResponse.json({ ok: false, error: "wallet_proof_required" }, { status: 401 });
+    }
+    const msg = new TextEncoder().encode(
+      `x1.world run · score:${score} · diff:${diff} · ${b.nonce}`,
+    );
+    let verified = false;
+    try {
+      verified = ed25519.verify(base64.decode(b.sig), msg, base58.decode(wallet));
+    } catch {
+      verified = false;
+    }
+    if (!verified) {
+      return NextResponse.json({ ok: false, error: "invalid_wallet_proof" }, { status: 401 });
     }
 
-    // SEC-02: only claim a wallet's leaderboard slot when the signature
-    // actually verified — an unsigned "wallet" is treated as a guest entry so
-    // nobody can squat an address they don't control (and we don't display it).
-    const deviceId = (body as { deviceId?: string }).deviceId;
-    const member = verified ? `w:${wallet}` : deriveMember("", deviceId);
-    if (!member) return NextResponse.json({ ok: false }, { status: 400 });
-    const storedWallet = verified ? wallet : "";
+    const member = `w:${wallet}`;
     if (SB_URL && SB_KEY) {
-      // keep personal best only: read current, upsert if beaten. A failed
-      // READ must NOT be treated as "no row" — that could overwrite a higher
-      // personal best with a lower score. Bail with 500 instead.
-      const cur = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}&select=score`);
-      if (!cur.ok) throw new Error(`sb read ${cur.status}`);
-      const rows = (await cur.json()) as { score: number }[];
-      if (rows.length === 0 || rows[0].score < score) {
-        const res = await sb("leaderboard?on_conflict=member", {
-          method: "POST",
-          headers: { Prefer: "resolution=merge-duplicates" },
-          body: JSON.stringify([
-            { member, name, wallet: storedWallet, score, diff, verified, updated_at: new Date().toISOString() },
-          ]),
-        });
-        if (!res.ok) throw new Error(`sb upsert ${res.status}`);
-      } else {
-        // score didn't beat the best — still honor a rename (label update only)
-        const res = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, {
-          method: "PATCH",
-          body: JSON.stringify({ name }),
-        });
-        if (!res.ok) throw new Error(`sb rename ${res.status}`);
-      }
+      const row = {
+        member,
+        name,
+        wallet,
+        score,
+        diff,
+        verified: true,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Insert without replacing, then promote only when the stored score is
+      // lower. The predicate prevents concurrent submissions lowering a best.
+      const inserted = await sb("leaderboard?on_conflict=member", {
+        method: "POST",
+        headers: { Prefer: "resolution=ignore-duplicates" },
+        body: JSON.stringify([row]),
+      });
+      if (!inserted.ok) throw new Error(`sb insert ${inserted.status}`);
+
+      const promoted = await sb(
+        `leaderboard?member=eq.${encodeURIComponent(member)}&score=lt.${score}`,
+        { method: "PATCH", body: JSON.stringify(row) },
+      );
+      if (!promoted.ok) throw new Error(`sb promote ${promoted.status}`);
+
+      // A lower run may still rename the player's existing row.
+      const renamed = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      });
+      if (!renamed.ok) throw new Error(`sb rename ${renamed.status}`);
     } else {
       const prev = mem.get(member);
-      if (!prev || prev.score < score) mem.set(member, { name, wallet: storedWallet, score, diff, at: Date.now() });
+      if (!prev || prev.score < score) mem.set(member, { name, wallet, score, diff, at: Date.now() });
       else mem.set(member, { ...prev, name });
     }
     return NextResponse.json({ ok: true });

@@ -614,9 +614,12 @@ export default function GameHUD() {
       {mode === "play" && (
         <button
           onClick={() => useGame.getState().pause()}
-          className="pointer-events-auto absolute right-4 top-3 rounded-md border border-white/15 bg-space/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-dim backdrop-blur transition-colors hover:border-gold/60 hover:text-gold"
+          aria-label="pause"
+          title="pause"
+          className="pointer-events-auto absolute right-4 top-3 rounded-md border border-white/15 bg-space/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-dim backdrop-blur transition-colors hover:border-gold/60 hover:text-gold max-md:grid max-md:h-11 max-md:w-11 max-md:place-items-center max-md:p-0 max-md:text-base"
         >
-          esc — pause
+          <span className="max-md:hidden">esc — pause</span>
+          <span className="md:hidden">⏸</span>
         </button>
       )}
 
@@ -670,15 +673,15 @@ export default function GameHUD() {
             exit={{ opacity: 0 }}
             className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/60 backdrop-blur-sm max-md:fixed"
           >
-            <div className="max-h-full overflow-y-auto py-4 text-center">
+            <div className="max-h-full overflow-y-auto py-4 text-center max-md:w-full max-md:pb-36">
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
                 select your character
               </p>
               <CharacterSelect />
-              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
+              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.24em] text-gold max-md:hidden">
                 choose your run
               </p>
-              <div className="mt-3 flex flex-wrap items-stretch justify-center gap-3 px-4">
+              <div className="mt-3 flex flex-wrap items-stretch justify-center gap-3 px-4 max-md:hidden">
                 {(Object.keys(DIFFICULTIES) as DifficultyId[]).map((id, i) => {
                   const d = DIFFICULTIES[id];
                   const selDiff = id === diff;
@@ -727,7 +730,7 @@ export default function GameHUD() {
                 })}
               </div>
               {/* the CTA — the screen finally ends in a button, not a shrug */}
-              <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-dim">
+              <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-dim max-md:hidden">
                 selected: <span className="text-ink">{CHARACTERS[character].name}</span> ·{" "}
                 <span className="text-ink">{DIFFICULTIES[diff].name}</span>
               </p>
@@ -738,16 +741,64 @@ export default function GameHUD() {
                   sfx.ui();
                   start(diff);
                 }}
-                className="mt-2 rounded-xl border-2 border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-10 py-3 font-mono text-sm font-bold uppercase tracking-[0.2em] text-space shadow-[0_0_32px_rgba(240,199,94,0.5)]"
+                className="mt-2 rounded-xl border-2 border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-10 py-3 font-mono text-sm font-bold uppercase tracking-[0.2em] text-space shadow-[0_0_32px_rgba(240,199,94,0.5)] max-md:hidden"
               >
                 ▶ start {DIFFICULTIES[diff].name} run
               </motion.button>
-              <div>
+              <div className="max-md:hidden">
                 <button
                   onClick={quit}
                   className="mt-4 rounded-md border border-white/15 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
                 >
                   back to explore
+                </button>
+              </div>
+            </div>
+            <div
+              className="absolute inset-x-0 bottom-0 border-t border-white/15 bg-[rgba(5,8,18,0.96)] px-3 pt-2.5 backdrop-blur-xl md:hidden"
+              style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+            >
+              <div className="grid grid-cols-3 overflow-hidden rounded-md border border-white/15">
+                {(Object.keys(DIFFICULTIES) as DifficultyId[]).map((id) => {
+                  const selectedDiff = id === diff;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        if (selectedDiff) return;
+                        sfx.ui();
+                        setDiff(id);
+                      }}
+                      aria-pressed={selectedDiff}
+                      className={`h-9 border-r border-white/10 font-mono text-[9px] font-bold uppercase tracking-[0.12em] last:border-r-0 ${
+                        selectedDiff ? "bg-gold text-space" : "bg-space-2/80 text-ink-dim"
+                      }`}
+                    >
+                      {DIFFICULTIES[id].name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={quit}
+                  aria-label="back to explore"
+                  title="back to explore"
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-md border border-white/20 bg-space-2 text-lg text-ink-dim"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.ui();
+                    start(diff);
+                  }}
+                  className="h-12 min-w-0 flex-1 rounded-md border-2 border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-space shadow-[0_0_24px_rgba(240,199,94,0.45)]"
+                >
+                  ▶ start {DIFFICULTIES[diff].name} run
                 </button>
               </div>
             </div>

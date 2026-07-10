@@ -63,6 +63,11 @@ export default function Leaderboard() {
             name your ninja above to compete on the board
           </p>
         )}
+        {!!name.trim() && !wallet && (
+          <p className="rounded-md border border-cyan/30 bg-cyan/5 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-cyan">
+            connect a wallet to submit ranked scores
+          </p>
+        )}
         {loaded && board.length === 0 && (
           <p className="text-xs text-ink-dim">no runs yet — be the first ninja on the board</p>
         )}
@@ -108,7 +113,7 @@ export default function Leaderboard() {
         })}
       </div>
       <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.12em] text-ink-dim/40">
-        we store only what you see here — remove yourself anytime from your profile
+        ranked entries require wallet proof — remove yourself anytime from your profile
       </p>
     </div>
   );

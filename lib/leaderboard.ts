@@ -22,10 +22,9 @@ export async function fetchBoard(): Promise<{ board: BoardEntry[]; persistent: b
 }
 
 /**
- * Submit a run. If a wallet is connected we ask it to sign a server nonce so
- * the board can mark the run "verified" (proof the player controls the
- * address — watch-only imports can't produce this). Resolves true when the
- * board acknowledged the score, so the death/win screens can say so.
+ * Submit a ranked run. The wallet must sign a server nonce proving control of
+ * the address; guests keep local bests but do not write to the global board.
+ * The signature proves identity, not that the client-side run is cheat-proof.
  */
 export async function submitScore(payload: {
   name: string;
@@ -34,24 +33,18 @@ export async function submitScore(payload: {
   diff: string;
 }): Promise<boolean> {
   try {
-    let proof: { ts: string; nonce: string; sig: string } | null = null;
-    if (payload.wallet) {
-      try {
-        const { ts, nonce } = (await (await fetch("/api/leaderboard/nonce")).json()) as {
-          ts: string;
-          nonce: string;
-        };
-        const msg = `x1.world run · score:${payload.score} · diff:${payload.diff} · ${nonce}`;
-        const sig = await signWithWallet(msg);
-        if (sig) proof = { ts, nonce, sig };
-      } catch {
-        // wallet declined or can't sign — submit unverified
-      }
-    }
+    if (!payload.wallet) return false;
+    const nonceRes = await fetch("/api/leaderboard/nonce", { cache: "no-store" });
+    if (!nonceRes.ok) return false;
+    const { ts, nonce } = (await nonceRes.json()) as { ts?: string; nonce?: string };
+    if (!ts || !nonce) return false;
+    const msg = `x1.world run · score:${payload.score} · diff:${payload.diff} · ${nonce}`;
+    const sig = await signWithWallet(msg);
+    if (!sig) return false;
     const res = await fetch("/api/leaderboard", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, deviceId: getDeviceId(), ...proof }),
+      body: JSON.stringify({ ...payload, ts, nonce, sig }),
       keepalive: true,
     });
     return res.ok;

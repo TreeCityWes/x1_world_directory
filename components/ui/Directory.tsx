@@ -132,15 +132,19 @@ export default function Directory() {
 }
 
 function Row({ d }: { d: DirectoryEntry }) {
+  const thumb = d.screenshot.replace("/projects/", "/projects/thumbs/").replace(/\.(png|svg)$/, ".jpg");
   return (
     <tr className="border-b border-white/5 transition-colors last:border-0 hover:bg-space-2/40">
       <td className="px-4 py-3">
         <a href={d.href} target="_blank" rel="noopener noreferrer">
           {/* eslint-disable-next-line @next/next/no-img-element -- svg/png site captures */}
           <img
-            src={d.screenshot}
+            src={thumb}
             alt={`${d.name} preview`}
             loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = d.screenshot;
+            }}
             className="aspect-[8/5] w-28 rounded-md border border-white/10 object-cover object-top transition-transform hover:scale-[1.7] hover:border-gold/50"
           />
         </a>

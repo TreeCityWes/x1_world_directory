@@ -466,6 +466,94 @@ function NinjaBody({
   );
 }
 
+function CapyModel() {
+  const gltf = useGLTF("/models/capybara.glb");
+  const size = CHARACTERS.capy.model?.size ?? 0.65;
+  const lift = CHARACTERS.capy.model?.lift ?? 0;
+  const body = useMemo(() => normClone(gltf.scene, size), [gltf, size]);
+  return (
+    <group position={[0, lift, 0]}>
+      <primitive object={body} />
+    </group>
+  );
+}
+function TheoModel() {
+  const bodyGltf = useGLTF("/models/cryptobro.glb");
+  const hatGltf = useGLTF("/models/tophat.glb");
+  const size = CHARACTERS.theo.model?.size ?? 0.62;
+  const lift = CHARACTERS.theo.model?.lift ?? 0;
+  const body = useMemo(
+    () => normClone(bodyGltf.scene, size, { tint: { color: "#9aa3b2", metal: 0.65 } }),
+    [bodyGltf, size],
+  );
+  const hat = useMemo(
+    () =>
+      normClone(hatGltf.scene, size, {
+        recolor: {
+          F44336: { color: "#1e4fd8", emissive: "#1e4fd8", emissiveIntensity: 0.7 },
+          FFCC88: { color: GOLD, emissive: "#c9921e", emissiveIntensity: 0.3 },
+        },
+      }),
+    [hatGltf, size],
+  );
+
+  return (
+    <group position={[0, lift, 0]}>
+      <primitive object={body} />
+      <group position={[0, size * 0.99, 0]} rotation={[0, Math.PI, 0]}>
+        <primitive object={hat} />
+      </group>
+      {[0.052, -0.052].map((x) => (
+        <mesh key={x} position={[x, 0.47, 0.188]}>
+          <sphereGeometry args={[0.024, 8, 8]} />
+          <meshStandardMaterial
+            color="#4f7dff"
+            emissive="#4f7dff"
+            emissiveIntensity={3}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function JackModel() {
+  const size = CHARACTERS.jack.model?.size ?? 0.78;
+  const lift = CHARACTERS.jack.model?.lift ?? 0;
+  const recolor = useMemo(
+    () => ({
+      Hair: { color: "#4a2f15" },
+      Hair2: { color: "#553a1d" },
+      Shirt: { color: "#f2f2f2" },
+      Shirt2: { color: "#e9e9e9" },
+    }),
+    [],
+  );
+  const xenTex = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 128;
+    const ctx = c.getContext("2d")!;
+    ctx.font = monoFont(900, 70);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#0b0b0d";
+    ctx.fillText("XEN", 128, 64);
+    return new THREE.CanvasTexture(c);
+  }, []);
+  const decal = useMemo(
+    () => ({ bone: "Torso", texture: xenTex, width: 0.15, out: 0.06 }),
+    [xenTex],
+  );
+
+  return (
+    <group position={[0, lift, 0]}>
+      <SkinnedHero url="/models/jack_anim.glb" size={size} recolor={recolor} decal={decal} />
+    </group>
+  );
+}
+
 /**
  * The character mesh itself — shared by the in-game Character (which animates
  * arms/headband tails via the optional refs) and the select-screen turntable.
@@ -487,125 +575,10 @@ export default function CharacterBody({
   scarfRef?: React.Ref<THREE.Group>;
 }) {
   const pal = CHARACTERS[charId].colors;
-  const capyGltf = useGLTF("/models/capybara.glb");
-  const broGltf = useGLTF("/models/cryptobro.glb");
-  const hatGltf = useGLTF("/models/tophat.glb");
-  // per-character placement comes from the registry (CHARACTERS[x].model),
-  // not per-asset guesses scattered through this file — size AND lift
-  const capySize = CHARACTERS.capy.model?.size ?? 0.65;
-  const theoSize = CHARACTERS.theo.model?.size ?? 0.62;
-  const jackSize = CHARACTERS.jack.model?.size ?? 0.78;
-  const capyLift = CHARACTERS.capy.model?.lift ?? 0;
-  const theoLift = CHARACTERS.theo.model?.lift ?? 0;
-  const jackLift = CHARACTERS.jack.model?.lift ?? 0;
-  // capybara.glb ships pre-smoothed (scripts/smooth-model.mjs); CAPY gets his
-  // own compact scale so the long quadruped doesn't dwarf the bipeds
-  const capyBody = useMemo(() => normClone(capyGltf.scene, capySize), [capyGltf, capySize]);
-  const theoBody = useMemo(
-    () => normClone(broGltf.scene, theoSize, { tint: { color: "#9aa3b2", metal: 0.65 } }),
-    [broGltf, theoSize],
-  );
-  // the hat IS the persona — oversized, trimmed like the X1 Ninja:
-  // royal-blue band with gold piping. Measured: the robot's boxy head is
-  // ~0.44 wide but the hat's crown tube is only ~0.26, so the head can never
-  // sit INSIDE the crown — the brim must rest ON the flat head top instead.
-  // Brim = 1.0× body height: the in-game chase cam looks from ~75°, and a
-  // narrower brim let the head's near side peek out under it (parallax).
-  const theoHat = useMemo(
-    () =>
-      normClone(hatGltf.scene, theoSize * 1.0, {
-        recolor: {
-          F44336: { color: "#1e4fd8", emissive: "#1e4fd8", emissiveIntensity: 0.7 },
-          FFCC88: { color: GOLD, emissive: "#c9921e", emissiveIntensity: 0.3 },
-        },
-      }),
-    [hatGltf, theoSize],
-  );
-  // stable recolor/decal objects — SkinnedHero memoizes its clone on these
-  const jackRecolor = useMemo(
-    () => ({
-      // a normal guy: short brown hair, plain white tee
-      Hair: { color: "#4a2f15" },
-      Hair2: { color: "#553a1d" },
-      Shirt: { color: "#f2f2f2" },
-      Shirt2: { color: "#e9e9e9" },
-    }),
-    [],
-  );
-  const xenTex = useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = 256;
-    c.height = 128;
-    const ctx = c.getContext("2d")!;
-    ctx.font = monoFont(900, 70);
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#0b0b0d";
-    ctx.fillText("XEN", 128, 64);
-    return new THREE.CanvasTexture(c);
-  }, []);
-  const jackDecal = useMemo(
-    () => ({ bone: "Torso", texture: xenTex, width: 0.15, out: 0.06 }),
-    [xenTex],
-  );
 
-  if (charId === "capy")
-    return (
-      <group position={[0, capyLift, 0]}>
-        <primitive object={capyBody} />
-      </group>
-    );
-
-  if (charId === "jack") {
-    return (
-      <group position={[0, jackLift, 0]}>
-        {/* rigged Quaternius Man — the SAME casual-dev source jack.glb was
-            pose-baked from, with the skeleton and Walk/Run cycles kept.
-            The XEN tee rides the Torso bone through the animation. */}
-        <SkinnedHero
-          url="/models/jack_anim.glb"
-          size={jackSize}
-          recolor={jackRecolor}
-          decal={jackDecal}
-        />
-      </group>
-    );
-  }
-
-  if (charId === "theo")
-    return (
-      <group position={[0, theoLift, 0]}>
-        <primitive object={theoBody} />
-        {/* group wrapper: the position prop must not clobber normClone's
-            centering offset on the hat itself; buckle spun to the front.
-            Brim seated at 0.99× head-top so the skull tucks INSIDE the brim
-            solid instead of cresting through it. */}
-        <group position={[0, theoSize * 0.99, 0]} rotation={[0, Math.PI, 0]}>
-          <primitive object={theoHat} />
-        </group>
-        {/* glowing blue eyes, proud of the faceplate (red is for enemies) —
-            the screen's outer surface is at z≈0.194, so the eye centers must
-            clear it or they vanish inside the plate */}
-        <mesh position={[0.052, 0.47, 0.188]}>
-          <sphereGeometry args={[0.024, 8, 8]} />
-          <meshStandardMaterial
-            color="#4f7dff"
-            emissive="#4f7dff"
-            emissiveIntensity={3}
-            toneMapped={false}
-          />
-        </mesh>
-        <mesh position={[-0.052, 0.47, 0.188]}>
-          <sphereGeometry args={[0.024, 8, 8]} />
-          <meshStandardMaterial
-            color="#4f7dff"
-            emissive="#4f7dff"
-            emissiveIntensity={3}
-            toneMapped={false}
-          />
-        </mesh>
-      </group>
-    );
+  if (charId === "capy") return <CapyModel />;
+  if (charId === "jack") return <JackModel />;
+  if (charId === "theo") return <TheoModel />;
 
   // X1 Ninja: the procedural logo-true body — owner call (twice now: 651ac87
   // and again 2026-07-04): the mark IS the character; no GLB stand-ins. Its
@@ -623,8 +596,3 @@ export default function CharacterBody({
     />
   );
 }
-
-useGLTF.preload("/models/capybara.glb");
-useGLTF.preload("/models/cryptobro.glb");
-useGLTF.preload("/models/tophat.glb");
-useGLTF.preload("/models/jack_anim.glb");

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { shortAddr, useProfile } from "@/lib/profile";
+import { useEffect, useRef, useState } from "react";
+import { shortAddr, useProfile, watchWalletProvider } from "@/lib/profile";
 import { removeMe } from "@/lib/leaderboard";
 import { useGame } from "@/lib/gameStore";
 import { CHARACTERS } from "@/lib/characters";
@@ -13,6 +13,8 @@ export default function ProfileCard() {
   const ch = CHARACTERS[charId];
   const [removeState, setRemoveState] = useState<"idle" | "armed" | "busy" | "done">("idle");
   const disarm = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => watchWalletProvider(), []);
 
   const onRemove = async () => {
     if (removeState === "idle") {
