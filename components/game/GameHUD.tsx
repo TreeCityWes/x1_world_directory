@@ -56,11 +56,10 @@ export default function GameHUD() {
           <motion.div
             key="hit"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
+            animate={{ opacity: 1, transition: { duration: 0.08 } }}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }}
             className="pointer-events-none absolute inset-0 z-40"
-            style={{ boxShadow: "inset 0 0 90px 30px rgba(224, 60, 47, 0.55)" }}
+            style={{ boxShadow: "inset 0 0 70px 22px rgba(224, 86, 63, 0.32)" }}
           />
         )}
       </AnimatePresence>
@@ -69,7 +68,7 @@ export default function GameHUD() {
       <div className="pointer-events-none absolute bottom-16 left-1/2 w-[min(300px,60%)] -translate-x-1/2 space-y-1.5 max-md:bottom-4 max-md:left-3 max-md:w-[42%] max-md:translate-x-0">
         <div className="h-2 overflow-hidden rounded-full border border-white/15 bg-space/70">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-[#e0563f] to-[#ff8c6b] transition-[width] duration-200"
+            className="h-full rounded-full bg-gradient-to-r from-[#e0563f] to-[#ff7a62] transition-[width] duration-200"
             style={{ width: `${(hud.hp / hud.maxHp) * 100}%` }}
           />
         </div>
@@ -88,16 +87,16 @@ export default function GameHUD() {
       )}
 
       {/* run stats — under the focus-header slot */}
-      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md max-md:left-2 max-md:top-12 max-md:translate-x-0 max-md:px-2 max-md:py-1 max-md:text-[8px] max-md:tracking-[0.12em]">
+      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md max-md:left-2 max-md:top-12 max-md:translate-x-0 max-md:px-2 max-md:py-1 max-md:text-[9px] max-md:tracking-[0.12em]">
         {hud.diff !== "normal" && (
           <>
-            <span className={hud.diff === "cursed" ? "text-[#a78bfa]" : "text-[#e0563f]"}>
+            <span className={hud.diff === "cursed" ? "text-ink" : "text-danger"}>
               {hud.diff}
             </span>
             <span className="mx-2 text-ink-dim">·</span>
           </>
         )}
-        <span className={lowTime ? "animate-pulse text-[#ff4d4d]" : "text-cyan"}>⏱ {clock}</span>
+        <span className={lowTime ? "text-danger-bright font-bold" : "text-cyan"}>⏱ {clock}</span>
         <span className="mx-2 text-ink-dim">·</span>
         <span className="text-gold">block {hud.block}</span>
         <span className="mx-2 text-ink-dim">·</span>lv {hud.level}
@@ -107,7 +106,7 @@ export default function GameHUD() {
           {hud.captured}/{TOTAL_SITES} sites
         </span>
         {hud.finalBoss && (
-          <span className="animate-pulse text-[#ff4d4d]">
+          <span className="text-danger-bright font-bold">
             <span className="mx-2 text-ink-dim">·</span>⚔ slay the final boss
           </span>
         )}
@@ -137,11 +136,11 @@ export default function GameHUD() {
           canvas so phone players don't scroll to the side panel mid-fight */}
       {mode === "play" && onboarded && (
         <div className="pointer-events-none absolute inset-x-2 top-[70px] z-30 hidden rounded-lg border border-white/10 bg-[rgba(9,13,28,0.82)] px-2.5 py-1.5 backdrop-blur max-md:block">
-          <div className="flex items-center justify-between font-mono text-[8px] font-bold uppercase tracking-[0.14em]">
+          <div className="flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-[0.14em]">
             <span className="text-cyan">
               ⚔ {hud.captured}/{TOTAL_SITES} captured
             </span>
-            {hud.finalBoss && <span className="animate-pulse text-[#ff4d4d]">slay the boss</span>}
+            {hud.finalBoss && <span className="text-danger-bright">slay the boss</span>}
           </div>
           <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
             <div
@@ -156,7 +155,7 @@ export default function GameHUD() {
               return (
                 <span
                   key={id}
-                  className="truncate rounded px-1 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.1em]"
+                  className="truncate rounded px-1 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]"
                   style={{ color: r.accent, background: `${r.accent}1a` }}
                 >
                   ▸ {r.name}
@@ -179,13 +178,13 @@ export default function GameHUD() {
             className="pointer-events-none absolute inset-x-0 top-24 z-40 grid place-items-center max-md:top-32"
           >
             <div
-              className="rounded-xl border-2 border-[#ff4d4d]/70 bg-[rgba(28,8,10,0.88)] px-6 py-2.5 text-center backdrop-blur"
-              style={{ boxShadow: "0 0 40px rgba(255,77,77,0.35)" }}
+              className="rounded-xl border border-danger-bright/70 bg-[rgba(28,8,10,0.88)] px-6 py-2.5 text-center backdrop-blur"
+              style={{ boxShadow: "0 0 22px rgba(255, 122, 98, 0.22)" }}
             >
-              <p className="font-mono text-[9px] uppercase tracking-[0.34em] text-[#ff8a8a]">
-                ⚠ boss detected
+              <p className="font-mono text-[9px] uppercase tracking-[0.34em] text-danger-bright">
+                boss detected
               </p>
-              <p className="mt-1 text-xl font-black tracking-[0.06em] text-[#ff4d4d] max-md:text-base">
+              <p className="mt-1 text-xl font-black tracking-[0.06em] text-danger-bright max-md:text-base">
                 {bossCard}
               </p>
             </div>
@@ -197,9 +196,9 @@ export default function GameHUD() {
       {mode === "play" && hud.maxHp > 0 && hud.hp / hud.maxHp < 0.25 && (
         <motion.div
           className="pointer-events-none absolute inset-0 z-30"
-          animate={{ opacity: [0.35, 0.8, 0.35] }}
+          animate={{ opacity: [0.3, 0.55, 0.3] }}
           transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
-          style={{ boxShadow: "inset 0 0 140px 30px rgba(224,60,50,0.45)" }}
+          style={{ boxShadow: "inset 0 0 140px 30px rgba(224,86,63,0.45)" }}
         />
       )}
 
