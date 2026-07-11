@@ -905,7 +905,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           w.rotateX(Math.PI / 2);
           w.scale.setScalar(0.2 - 0.09 * k);
           (w.material as THREE.MeshBasicMaterial).opacity =
-            0.3 + 0.4 * k + Math.sin(run.t * 22) * 0.12;
+            0.28 + 0.32 * k + Math.sin(run.t * 8) * 0.08;
         }
       }
       // floating damage numbers (crits + bosses only)
@@ -1962,7 +1962,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             <meshBasicMaterial
               color="#fffbe8"
               transparent
-              opacity={0.9}
+              opacity={0.65}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               toneMapped={false}
@@ -1990,7 +1990,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <meshBasicMaterial
             color="#ff4d4d"
             transparent
-            opacity={0.5}
+            opacity={0.45}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -2094,7 +2094,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       {Array.from({ length: 3 }).map((_, i) => (
         <mesh key={`ar${i}`} ref={(el) => { arrowRefs.current[i] = el; }} visible={false}>
           <coneGeometry args={[0.05, 0.12, 4]} />
-          <meshStandardMaterial emissiveIntensity={1.8} toneMapped={false} />
+          <meshStandardMaterial emissiveIntensity={1.4} toneMapped={false} />
           <mesh position={[0, -0.11, 0]}>
             <boxGeometry args={[0.035, 0.12, 0.018]} />
             <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={1.2} toneMapped={false} />
