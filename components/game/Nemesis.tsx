@@ -32,13 +32,14 @@ export default function Nemesis({ scale = 1 }: { scale?: number }) {
         <sphereGeometry args={[0.165, 24, 8, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.14]} />
         <meshStandardMaterial color={MASK} roughness={0.6} />
       </mesh>
+      {/* burning eyes — intensity trimmed from 3 so bloom stops white-clipping */}
       <mesh position={[0.05, 0.648, 0.158]}>
         <sphereGeometry args={[0.02, 10, 10]} />
-        <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={3} />
+        <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={1.8} />
       </mesh>
       <mesh position={[-0.05, 0.648, 0.158]}>
         <sphereGeometry args={[0.02, 10, 10]} />
-        <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={3} />
+        <meshStandardMaterial color={EYES} emissive={EYES} emissiveIntensity={1.8} />
       </mesh>
 
       {/* tattered scarf */}

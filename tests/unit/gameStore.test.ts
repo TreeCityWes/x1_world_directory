@@ -11,8 +11,8 @@ import {
 } from "@/lib/gameStore";
 
 /**
- * The score formula and roll rules ARE the game's anti-cheat + fairness
- * design — these tests pin them so a balance tweak can't silently reopen
+ * The score formula and roll rules define the game's fairness design. These
+ * tests pin them so a balance tweak can't silently reopen
  * the "farm forever" hole or break evolution gating.
  */
 

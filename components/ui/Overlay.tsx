@@ -20,6 +20,9 @@ export default function Overlay() {
   const nearId = useWorld((s) => s.nearId);
   const selectedId = useWorld((s) => s.selectedId);
   const mutedUi = useSyncExternalStore(subscribeMute, isMuted, () => false);
+  // active run (playing or mid level-up) — mobile top chrome collapses to a
+  // single row here; the pause menu is the exit, so the mode tabs step aside
+  const inRun = mode === "play" || mode === "levelup";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -50,17 +53,21 @@ export default function Overlay() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
-      {/* mode tabs — big, bright, unmissable */}
-      <div className="pointer-events-auto absolute left-4 top-3 flex gap-2">
+      {/* mode tabs — big, bright, unmissable. Mobile hides these during an
+          active run: the top chrome is one compact row, and leaving a run
+          goes through pause (esc/tap pause -> abandon run), not this tab. */}
+      <div
+        className={`pointer-events-auto absolute left-4 top-3 flex gap-2 ${inRun ? "max-md:hidden" : ""}`}
+      >
         <button
           onClick={() => mode === "explore" && openMenu()}
-          className={`rounded-xl border-2 px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
+          className={`rounded-xl border px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
             mode !== "explore"
-              ? "border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] text-space shadow-[0_0_24px_rgba(240,199,94,0.6)]"
-              : "animate-pulse border-gold/60 bg-space/70 text-gold shadow-[0_0_16px_rgba(240,199,94,0.25)] hover:animate-none hover:border-gold hover:shadow-[0_0_24px_rgba(240,199,94,0.5)]"
+              ? "border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] text-space"
+              : "animate-pulse border-gold/60 bg-space/70 text-gold hover:animate-none hover:border-gold"
           }`}
         >
-          🥷 game
+          ⚔ game
         </button>
         <button
           onClick={() => {
@@ -70,25 +77,25 @@ export default function Overlay() {
             if (g.mode === "play") g.pause();
             else if (g.mode !== "explore") g.quit();
           }}
-          className={`rounded-xl border-2 px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
+          className={`rounded-xl border px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
             mode === "explore"
-              ? "border-cyan bg-gradient-to-b from-[#39c7f5] to-[#1e6fff] text-white shadow-[0_0_24px_rgba(57,199,245,0.55)]"
+              ? "border-cyan bg-gradient-to-b from-[#39c7f5] to-[#1e6fff] text-white"
               : "border-white/20 bg-space/70 text-ink-dim hover:border-cyan/70 hover:text-cyan"
           }`}
         >
-          🌐 explore
+          ◉ explore
         </button>
       </div>
 
       {/* controls hint — below the tabs (explore only; the run HUD covers play) */}
       {mode === "explore" && (
         <>
-          <p className="absolute left-4 top-14 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim max-md:hidden">
+          <p className="absolute left-4 top-14 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim max-md:hidden">
             keyboard:{" "}
             <span className="rounded border border-gold/60 px-1 py-0.5 text-gold">wasd</span> run the
             world
           </p>
-          <p className="absolute left-4 top-14 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim md:hidden">
+          <p className="absolute left-4 top-14 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim md:hidden">
             drag to spin · pad to run
           </p>
         </>
@@ -100,7 +107,7 @@ export default function Overlay() {
           href="https://x1.ninja"
           target="_blank"
           rel="noopener noreferrer"
-          className="pointer-events-auto absolute bottom-4 right-5 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim transition-colors hover:text-gold max-md:hidden"
+          className="pointer-events-auto absolute bottom-4 right-5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim transition-colors hover:text-gold max-md:hidden"
         >
           watch <span className="text-gold">x1 ninja</span> run the world —{" "}
           <span className="text-cyan underline decoration-dotted underline-offset-2">x1.ninja</span>{" "}
@@ -115,25 +122,37 @@ export default function Overlay() {
       >
         x1<span className="text-gold">.world</span>
       </h1>
-      <p className="absolute bottom-1.5 left-5 font-mono text-[8px] uppercase tracking-[0.22em] text-ink-dim/50 max-md:hidden">
+      <p className="absolute bottom-1.5 left-5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim/50 max-md:hidden">
         unofficial fan project · not affiliated with the x1 foundation
       </p>
 
       {/* discoverability: the E lock is invisible without this */}
       {mode === "explore" && nearId && !selectedId && (
-        <p className="absolute bottom-24 left-1/2 -translate-x-1/2 rounded-md border border-cyan/40 bg-space/80 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-cyan backdrop-blur max-md:hidden">
+        <p className="absolute bottom-24 left-1/2 -translate-x-1/2 rounded-md border border-cyan/40 bg-space/80 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-cyan backdrop-blur max-md:hidden">
           press <span className="rounded border border-cyan/60 px-1 text-cyan">e</span> to lock
           focus
         </p>
       )}
 
-      {/* sound toggle */}
+      {/* sound toggle — during an active run on mobile this folds into the
+          consolidated top row (icon-only) instead of hiding, since the pause
+          screen has no mute control of its own */}
       <button
         onClick={() => toggleMute()}
         aria-label={mutedUi ? "unmute" : "mute"}
-        className="pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 rounded-md border border-white/15 bg-space/70 px-2.5 py-1.5 text-sm backdrop-blur transition-colors hover:border-gold/60 max-md:bottom-auto max-md:right-2 max-md:top-14 max-md:translate-x-0 max-md:px-2 max-md:py-1 max-md:text-xs"
+        title={mutedUi ? "unmute" : "mute"}
+        className={`pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 rounded-md border border-white/15 bg-space/70 px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] backdrop-blur transition-colors hover:border-gold/60 ${
+          inRun
+            ? "max-md:bottom-auto max-md:right-20 max-md:top-3 max-md:grid max-md:h-11 max-md:w-11 max-md:translate-x-0 max-md:place-items-center max-md:p-0 max-md:text-base"
+            : "max-md:bottom-auto max-md:right-2 max-md:top-14 max-md:translate-x-0 max-md:px-2 max-md:py-1"
+        } ${mutedUi ? "text-ink-dim" : "text-gold"}`}
       >
-        {mutedUi ? "🔇" : "🔊"}
+        <span className={inRun ? "max-md:hidden" : ""}>{mutedUi ? "sfx off" : "sfx on"}</span>
+        {inRun && (
+          <span className="hidden max-md:inline" aria-hidden="true">
+            {mutedUi ? "✕" : "♪"}
+          </span>
+        )}
       </button>
 
       {mode === "explore" && <FocusHeader />}

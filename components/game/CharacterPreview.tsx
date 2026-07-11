@@ -6,7 +6,7 @@ import * as THREE from "three";
 import CharacterBody from "@/components/three/CharacterBody";
 import { CHARACTERS, type CharacterId } from "@/lib/characters";
 
-const N_MOTES = 16;
+const N_MOTES = 10;
 
 /** Slow accent motes orbiting and rising around the podium — alive, not
  *  static, without reading as a shape (the flat halo disc read as slop). */
@@ -51,7 +51,7 @@ function Motes({ color }: { color: string }) {
         size={0.02}
         sizeAttenuation
         transparent
-        opacity={0.75}
+        opacity={0.45}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />
@@ -107,8 +107,8 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
           white rim from behind-above, and the accent wash from the side */}
       <ambientLight intensity={0.9} />
       <directionalLight position={[2, 3, 2]} intensity={2.6} color="#dbe6ff" />
-      <directionalLight position={[0, 2.4, -3]} intensity={3} color="#ffffff" />
-      <pointLight position={[-2, 1, -1.5]} intensity={16} color={pal.band} />
+      <directionalLight position={[0, 2.4, -3]} intensity={2.2} color="#ffffff" />
+      <pointLight position={[-2, 1, -1.5]} intensity={9} color={pal.band} />
       <pointLight position={[0, -0.5, 2]} intensity={6} color="#dbe6ff" />
       <Suspense fallback={null}>
         <Turntable charId={charId} yFeet={yFeet} scale={f.s} />
@@ -120,18 +120,7 @@ export default function CharacterPreview({ charId }: { charId: CharacterId }) {
         <meshBasicMaterial
           color={pal.band}
           transparent
-          opacity={0.7}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, yFeet - 0.012, 0]}>
-        <circleGeometry args={[0.3, 48]} />
-        <meshBasicMaterial
-          color={pal.band}
-          transparent
-          opacity={0.06}
+          opacity={0.5}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}

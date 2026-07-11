@@ -19,6 +19,14 @@ type InjectedProvider = {
     msg: Uint8Array,
     encoding?: string,
   ) => Promise<{ signature: Uint8Array } | Uint8Array>;
+  on?: (
+    event: "accountChanged" | "disconnect",
+    handler: (key?: { toString(): string } | null) => void,
+  ) => void;
+  off?: (
+    event: "accountChanged" | "disconnect",
+    handler: (key?: { toString(): string } | null) => void,
+  ) => void;
 };
 
 /** The raw injected provider — for transaction flows (inscribe). */
@@ -113,6 +121,25 @@ export const useProfile = create<ProfileState>()(
     },
   ),
 );
+
+/** Keep the displayed account aligned with wallet-side changes. */
+export function watchWalletProvider() {
+  const p = getProvider();
+  if (!p?.on) return () => undefined;
+  const accountChanged = (key?: { toString(): string } | null) => {
+    useProfile.setState({ wallet: key?.toString() ?? "", walletError: "" });
+  };
+  const disconnected = () => {
+    useProfile.setState({ wallet: "", walletError: "" });
+  };
+  p.on("accountChanged", accountChanged);
+  p.on("disconnect", disconnected);
+  if (p.publicKey) accountChanged(p.publicKey);
+  return () => {
+    p.off?.("accountChanged", accountChanged);
+    p.off?.("disconnect", disconnected);
+  };
+}
 
 /** Lazy device ID — minted on first use, persisted with the profile. */
 export function getDeviceId(): string {

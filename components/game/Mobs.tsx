@@ -115,14 +115,14 @@ export function BugMob() {
         <sphereGeometry args={[0.14, 10, 10]} />
         <meshStandardMaterial color="#171004" roughness={0.45} />
       </mesh>
-      {/* BIG compound eyes */}
+      {/* BIG compound eyes — intensity trimmed from 2.8 so bloom stops white-clipping */}
       <mesh position={[0.1, 0.08, 0.44]}>
         <sphereGeometry args={[0.085, 8, 8]} />
-        <meshStandardMaterial color="#ff4d4d" emissive="#ff4d4d" emissiveIntensity={2.8} toneMapped={false} />
+        <meshStandardMaterial color="#ff4d4d" emissive="#ff4d4d" emissiveIntensity={1.8} toneMapped={false} />
       </mesh>
       <mesh position={[-0.1, 0.08, 0.44]}>
         <sphereGeometry args={[0.085, 8, 8]} />
-        <meshStandardMaterial color="#ff4d4d" emissive="#ff4d4d" emissiveIntensity={2.8} toneMapped={false} />
+        <meshStandardMaterial color="#ff4d4d" emissive="#ff4d4d" emissiveIntensity={1.8} toneMapped={false} />
       </mesh>
       {/* mandibles — pincers curving inward */}
       {[-1, 1].map((s) => (
@@ -197,36 +197,38 @@ export function GasWisp() {
   });
   return (
     <group ref={root} position={[0, 0.34, 0]}>
-      {/* rising smoke puffs */}
+      {/* rising smoke puffs — was pure-orange #ff9a3d, shifted into the amber-gold family */}
       {Array.from({ length: 4 }).map((_, i) => (
         <mesh key={`s${i}`} ref={(el) => { smoke.current[i] = el; }}>
           <sphereGeometry args={[1, 8, 8]} />
-          <meshBasicMaterial color="#ff9a3d" transparent opacity={0} depthWrite={false} />
+          <meshBasicMaterial color="#f5a94b" transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}
-      {/* smooth ghost dome — nothing on top, just a clean rounded head */}
+      {/* smooth ghost dome — nothing on top, just a clean rounded head.
+          was color #ff9a3d / emissive #ff7a1f, shifted into amber-gold */}
       <mesh position={[0, 0.04, 0]} scale={[0.3, 0.36, 0.3]}>
         <sphereGeometry args={[1, 14, 14]} />
         <meshStandardMaterial
-          color="#ff9a3d"
-          emissive="#ff7a1f"
+          color="#f5a94b"
+          emissive="#d97706"
           emissiveIntensity={1.5}
           transparent
           opacity={0.92}
           roughness={0.3}
         />
       </mesh>
-      {/* wavy ghost skirt — three lobes poking below */}
+      {/* wavy ghost skirt — three lobes poking below.
+          was color #ff8a2d / emissive #ff6a15, shifted into amber-gold */}
       {[-0.16, 0, 0.16].map((x, i) => (
         <mesh key={x} position={[x, -0.32 + (i === 1 ? -0.06 : 0), 0]} scale={[0.11, 0.14, 0.11]}>
           <sphereGeometry args={[1, 8, 8]} />
-          <meshStandardMaterial color="#ff8a2d" emissive="#ff6a15" emissiveIntensity={1.2} transparent opacity={0.85} />
+          <meshStandardMaterial color="#f5a94b" emissive="#d97706" emissiveIntensity={1.2} transparent opacity={0.85} />
         </mesh>
       ))}
-      {/* white-hot core */}
+      {/* white-hot core — intensity trimmed from 3.2 so bloom stops white-clipping */}
       <mesh position={[0, -0.04, 0.08]} scale={[0.16, 0.22, 0.16]}>
         <sphereGeometry args={[1, 10, 10]} />
-        <meshStandardMaterial color="#fff3c4" emissive="#ffe08a" emissiveIntensity={3.2} toneMapped={false} />
+        <meshStandardMaterial color="#fff3c4" emissive="#ffe08a" emissiveIntensity={2.0} toneMapped={false} />
       </mesh>
       {/* angry slanted eyes */}
       <mesh position={[0.1, 0.08, 0.26]} rotation={[0, 0, -0.5]} scale={[0.06, 0.035, 0.03]}>
@@ -282,14 +284,14 @@ export function RugMob() {
         <boxGeometry args={[0.26, 0.02, 0.26]} />
         <meshStandardMaterial color={TRIM} metalness={0.55} roughness={0.35} emissive="#c9921e" emissiveIntensity={0.35} />
       </mesh>
-      {/* eyes on the leading edge, glaring ahead */}
+      {/* eyes on the leading edge, glaring ahead — intensity trimmed from 3 so bloom stops white-clipping */}
       <mesh position={[0.15, 0.08, 0.68]}>
         <sphereGeometry args={[0.055, 8, 8]} />
-        <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={3} toneMapped={false} />
+        <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={2.2} toneMapped={false} />
       </mesh>
       <mesh position={[-0.15, 0.08, 0.68]}>
         <sphereGeometry args={[0.055, 8, 8]} />
-        <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={3} toneMapped={false} />
+        <meshStandardMaterial color="#ffd23d" emissive="#ffd23d" emissiveIntensity={2.2} toneMapped={false} />
       </mesh>
       {/* fringe tassels, flat on both ends */}
       {[-0.3, -0.15, 0, 0.15, 0.3].map((x) => (

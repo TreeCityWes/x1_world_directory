@@ -1,413 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { POWER_LABEL, regions } from "@/lib/regions";
-import { DIFFICULTIES, RUN_SECONDS, UPGRADES, run, upgradeView, useGame, type DifficultyId } from "@/lib/gameStore";
-import { CHARACTERS, CHARACTER_ORDER, type WeaponKind } from "@/lib/characters";
-import CharacterPreview from "@/components/game/CharacterPreview";
-import { useProfile } from "@/lib/profile";
-import { explorerTx, inscribeRun } from "@/lib/inscribe";
-import { sfx } from "@/lib/sound";
-
-// weapon glyph per kind — the roster card's emblem
-const WEAPON_GLYPH: Record<WeaponKind, string> = {
-  shuriken: "✦",
-  xcoin: "◎",
-  pulse: "⌁",
-  slash: "⚔",
-};
+import { regions } from "@/lib/regions";
+import { RUN_SECONDS, useGame } from "@/lib/gameStore";
+import { CaptureFlash, CaptureToast } from "@/components/game/hud/CaptureFX";
+import { MenuScreen } from "@/components/game/hud/MenuScreen";
+import { LevelUpScreen } from "@/components/game/hud/LevelUpScreen";
+import { DeathScreen, PauseScreen, TimeUpScreen, VictoryScreen } from "@/components/game/hud/EndScreens";
 
 const TOTAL_SITES = regions.length;
 
-// what actually got you — crypto death certificates
-const DEATH_FLAVOR: Record<string, string> = {
-  goblin: "exploited by a bug",
-  gremlin: "burned alive by gas fees",
-  rug: "it was a rug pull all along",
-  "boss:whale": "swallowed whole by THE WHALE",
-  "boss:nemesis": "slain by your own shadow",
-};
 const ONBOARD_KEY = "x1world_onboarded";
-
-// dingbat glyphs (not emoji) so upgrade cards read at a glance
-const UPGRADE_ICON: Record<string, string> = {
-  damage: "✦",
-  firerate: "≫",
-  multishot: "⁂",
-  speed: "➤",
-  magnet: "◎",
-  vitality: "✚",
-  katana: "⚔",
-  arcnode: "↯",
-  halo: "◉",
-  armor: "⛨",
-  lifesteal: "❖",
-  regen: "↻",
-  crit: "◈",
-  bladestorm: "❂",
-  tempest: "✺",
-  whirlwind: "❋",
-  chainreaction: "⌁",
-  meltdown: "♨",
-};
-
-/** One labeled stat bar in the character dossier. */
-function StatBar({ label, v, accent }: { label: string; v: number; accent: string }) {
-  const pct = Math.round(Math.min(1, v / 1.6) * 100);
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-14 shrink-0 text-right font-mono text-[8px] uppercase tracking-[0.14em] text-ink-dim">
-        {label}
-      </span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${pct}%`, background: accent }}
-        />
-      </div>
-      <span className="w-8 shrink-0 font-mono text-[8px] tabular-nums text-ink-dim">
-        {Math.round(v * 100)}%
-      </span>
-    </div>
-  );
-}
-
-/** Fighting-game style select: roster row + live 3D turntable + full dossier. */
-function CharacterSelect() {
-  const selected = useGame((s) => s.character);
-  const setCharacter = useGame((s) => s.setCharacter);
-  const ch = CHARACTERS[selected];
-  const accent = ch.colors.band;
-
-  return (
-    <div className="mx-auto mt-3 w-full max-w-3xl px-4 text-left">
-      {/* roster: CHARACTERS, not tabs — tall cards with the class fantasy
-          readable in two seconds (archetype + hook + best-for) */}
-      <div className="grid grid-cols-5 gap-2 max-md:grid-cols-2">
-        {CHARACTER_ORDER.map((id) => {
-          const c = CHARACTERS[id];
-          const sel = id === selected;
-          return (
-            <motion.button
-              key={id}
-              whileHover={c.unlocked ? { y: -4 } : undefined}
-              whileTap={c.unlocked ? { scale: 0.94 } : undefined}
-              onClick={() => {
-                if (!c.unlocked || sel) return;
-                sfx.ui();
-                setCharacter(id);
-              }}
-              disabled={!c.unlocked}
-              className={`flex flex-col rounded-xl border-2 px-2.5 pb-2.5 pt-2 text-left backdrop-blur-md transition-colors ${
-                sel
-                  ? ""
-                  : c.unlocked
-                    ? "border-white/15 bg-space/80 hover:border-white/40"
-                    : "border-white/10 bg-space/60 opacity-40"
-              }`}
-              style={
-                sel
-                  ? {
-                      borderColor: c.colors.band,
-                      boxShadow: `0 0 26px ${c.colors.band}55`,
-                      background: `linear-gradient(160deg, ${c.colors.band}2e, rgba(9,13,28,0.92))`,
-                    }
-                  : undefined
-              }
-            >
-              {/* emblem: weapon glyph in the identity color */}
-              <span
-                className="grid h-10 w-full place-items-center rounded-lg text-2xl leading-none"
-                style={{
-                  color: c.unlocked ? c.colors.band : "#4b5563",
-                  background: `radial-gradient(ellipse 80% 90% at 50% 50%, ${
-                    c.unlocked ? c.colors.band : "#4b5563"
-                  }22, transparent 75%)`,
-                  textShadow: c.unlocked ? `0 0 12px ${c.colors.band}88` : undefined,
-                }}
-              >
-                {c.unlocked ? WEAPON_GLYPH[c.weapon.kind] : "🔒"}
-              </span>
-              <p className="mt-1.5 truncate text-sm font-bold leading-tight">{c.name}</p>
-              <p
-                className="truncate font-mono text-[8px] uppercase tracking-[0.12em]"
-                style={{ color: c.unlocked ? c.colors.band : "#6b7280" }}
-              >
-                {c.unlocked ? c.archetype : "coming soon"}
-              </p>
-              <p className="mt-1 text-[10px] leading-snug text-ink-dim">{c.hook}</p>
-              <p className="mt-auto pt-1 font-mono text-[8px] uppercase tracking-[0.1em] text-ink-dim/70">
-                {sel ? (
-                  <span style={{ color: c.colors.band }}>▸ selected</span>
-                ) : (
-                  <>best for: {c.bestFor}</>
-                )}
-              </p>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* dossier: live 3D preview + stats + weapon + signature */}
-      <div className="mt-2 grid grid-cols-[240px_1fr] gap-2 max-md:grid-cols-1">
-        <div
-          className="relative overflow-hidden rounded-2xl border-2 backdrop-blur-md"
-          style={{
-            borderColor: `${accent}66`,
-            // dark suits vanish on flat near-black — an accent-lit well,
-            // OVERSIZED past the card edges so it reads as stage lighting
-            // instead of a printed circle
-            background: `radial-gradient(ellipse 150% 110% at 50% 28%, ${accent}42 0%, ${accent}1c 48%, rgba(14,20,40,0.9) 90%)`,
-          }}
-        >
-          <div className="h-56 max-md:h-44">
-            <CharacterPreview charId={selected} />
-          </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(5,8,18,0.92)] to-transparent px-3 pb-2.5 pt-8">
-            <p className="text-lg font-bold leading-none">{ch.name}</p>
-            <p
-              className="mt-1 font-mono text-[9px] uppercase tracking-[0.2em]"
-              style={{ color: accent }}
-            >
-              {ch.title}
-            </p>
-          </div>
-        </div>
-        <div className="rounded-2xl border-2 border-white/10 bg-space/85 px-4 py-3 backdrop-blur-md">
-          {/* hierarchy: the REASON to pick them first — stats last */}
-          <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-ink-dim/70">
-            ability
-          </p>
-          <p className="mt-0.5 text-sm font-bold leading-tight" style={{ color: accent }}>
-            ⚔ {ch.weapon.name}
-          </p>
-          <p className="mt-0.5 text-xs text-ink-dim">{ch.weapon.desc}</p>
-          <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.2em] text-ink-dim/70">
-            passive
-          </p>
-          <p className="mt-0.5 text-xs font-semibold" style={{ color: accent }}>
-            ★ {ch.passive}
-          </p>
-          <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.2em] text-ink-dim/70">
-            stats
-          </p>
-          <div className="mt-1 space-y-1">
-            <StatBar label="vitality" v={ch.hp} accent="#4ade80" />
-            <StatBar label="damage" v={ch.dmg} accent="#ff8c6b" />
-            <StatBar label="speed" v={ch.speed} accent="#7dd3fc" />
-            <StatBar label="fire rate" v={Math.max(0.2, 2 - ch.cooldown)} accent="#f0c75e" />
-            <StatBar label="fortune" v={ch.luck} accent="#c084fc" />
-          </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-ink-dim/80">{ch.playstyle}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Lower-right flash when a site is captured: screenshot + name + power.
- *  Desktop-only (max-md:hidden): the card ate half a phone screen, and the
- *  center flash + quest ribbon already announce the capture there. */
-function CaptureToast() {
-  const capturedIds = useGame((s) => s.capturedIds);
-  const [toast, setToast] = useState<(typeof regions)[number] | null>(null);
-  const seen = useRef(0);
-
-  useEffect(() => {
-    if (capturedIds.length > seen.current) {
-      const r = regions.find((x) => x.id === capturedIds[capturedIds.length - 1]);
-      if (r) {
-        const show = setTimeout(() => setToast(r), 0);
-        const hide = setTimeout(() => setToast(null), 3400);
-        seen.current = capturedIds.length;
-        return () => {
-          clearTimeout(show);
-          clearTimeout(hide);
-        };
-      }
-    }
-    seen.current = capturedIds.length;
-  }, [capturedIds]);
-
-  return (
-    <AnimatePresence>
-      {toast && (
-        <motion.div
-          key={toast.id}
-          initial={{ opacity: 0, x: 40, scale: 0.9 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 14 }}
-          transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="pointer-events-none absolute bottom-4 right-4 z-40 w-48 overflow-hidden rounded-xl border-2 bg-[rgba(9,13,28,0.94)] backdrop-blur max-md:hidden"
-          style={{ borderColor: toast.accent, boxShadow: `0 0 24px ${toast.accent}66` }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element -- site capture */}
-          <img
-            src={toast.screenshot}
-            alt={toast.name}
-            className="aspect-[8/5] w-full object-cover object-top"
-          />
-          <div className="px-3 py-2">
-            <p className="font-mono text-[8px] font-bold uppercase tracking-[0.24em] text-gold">
-              ⚡ captured!
-            </p>
-            <p className="truncate text-sm font-bold leading-tight">{toast.name}</p>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-/** Center-screen reward beat when a site is captured: big project name +
- *  the bonus it grants, in bold display type. Pairs with the corner toast. */
-function CaptureFlash() {
-  const capturedIds = useGame((s) => s.capturedIds);
-  const [flash, setFlash] = useState<{ id: string; name: string; power: string; accent: string } | null>(
-    null,
-  );
-  const seen = useRef(0);
-
-  useEffect(() => {
-    if (capturedIds.length > seen.current) {
-      const r = regions.find((x) => x.id === capturedIds[capturedIds.length - 1]);
-      seen.current = capturedIds.length;
-      if (r) {
-        const power = POWER_LABEL[r.kind] ?? "captured";
-        const show = setTimeout(
-          () => setFlash({ id: r.id, name: r.name, power, accent: r.accent }),
-          0,
-        );
-        const hide = setTimeout(() => setFlash(null), 1900);
-        return () => {
-          clearTimeout(show);
-          clearTimeout(hide);
-        };
-      }
-    }
-    seen.current = capturedIds.length;
-  }, [capturedIds]);
-
-  return (
-    <AnimatePresence>
-      {flash && (
-        <motion.div
-          key={flash.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="pointer-events-none absolute inset-x-0 top-[15%] z-40 flex flex-col items-center text-center max-md:top-[20%]"
-        >
-          <motion.p
-            initial={{ scale: 0.6, y: 18, letterSpacing: "0.4em" }}
-            animate={{ scale: 1, y: 0, letterSpacing: "0.02em" }}
-            transition={{ type: "spring", stiffness: 240, damping: 16 }}
-            className="font-mono text-[10px] font-bold uppercase tracking-[0.4em] text-gold"
-          >
-            ⚡ site captured
-          </motion.p>
-          <motion.h2
-            initial={{ scale: 1.3, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.04 }}
-            className="mt-1 text-2xl font-black italic tracking-tight max-md:text-lg"
-            style={{
-              color: "#fff",
-              textShadow: `0 0 12px ${flash.accent}, 0 0 28px ${flash.accent}88, 0 2px 4px rgba(0,0,0,0.6)`,
-            }}
-          >
-            {flash.name}
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.18 }}
-            className="mt-1.5 rounded-full border px-3 py-0.5 font-mono text-xs font-bold uppercase tracking-[0.18em] backdrop-blur max-md:text-[10px]"
-            style={{
-              color: flash.accent,
-              borderColor: `${flash.accent}aa`,
-              background: `${flash.accent}1a`,
-              boxShadow: `0 0 24px ${flash.accent}55`,
-            }}
-          >
-            {flash.power}
-          </motion.p>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-/** Inscribe-on-X1 + view-leaderboard row for the end-of-run screens. */
-function InscribeRow({ score }: { score: number }) {
-  const wallet = useProfile((s) => s.wallet);
-  const name = useProfile((s) => s.name);
-  const [st, setSt] = useState<{ k: "idle" | "busy" | "done"; sig?: string; err?: string }>({
-    k: "idle",
-  });
-
-  const doInscribe = async () => {
-    if (st.k !== "idle") return;
-    setSt({ k: "busy" });
-    const r = await inscribeRun({
-      name,
-      score,
-      diff: run.difficulty,
-      captured: run.captured,
-      total: TOTAL_SITES,
-    });
-    setSt(r.sig ? { k: "done", sig: r.sig } : { k: "idle", err: r.error });
-  };
-
-  const viewBoard = () => {
-    useGame.getState().openMenu();
-    document.getElementById("x1-leaderboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
-  return (
-    <div className="mt-4">
-      <div className="flex flex-wrap justify-center gap-2">
-        {st.k === "done" && st.sig ? (
-          <a
-            href={explorerTx(st.sig)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-md border border-[#4ade80]/50 bg-[#4ade80]/10 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.15em] text-[#4ade80] transition-colors hover:border-[#4ade80]"
-          >
-            ⛓ inscribed on x1 — view transaction ↗
-          </a>
-        ) : (
-          <button
-            onClick={() => void doInscribe()}
-            disabled={st.k === "busy" || !wallet}
-            title={wallet ? "write this score to X1 mainnet forever" : "connect your wallet first"}
-            className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-gold transition-all hover:-translate-y-px hover:border-gold hover:shadow-[0_0_16px_rgba(240,199,94,0.35)] disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:shadow-none"
-          >
-            {st.k === "busy" ? "inscribing…" : "⛓ inscribe score on x1"}
-          </button>
-        )}
-        <button
-          onClick={viewBoard}
-          className="rounded-md border border-cyan/40 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.15em] text-cyan transition-colors hover:border-cyan"
-        >
-          🏆 view leaderboard
-        </button>
-      </div>
-      {!wallet && st.k === "idle" && !st.err && (
-        <p className="mt-1.5 font-mono text-[8px] uppercase tracking-[0.12em] text-ink-dim/60">
-          connect your wallet to inscribe your score on x1 mainnet
-        </p>
-      )}
-      {st.err && (
-        <p className="mt-1.5 font-mono text-[8px] uppercase tracking-[0.12em] text-[#ff8c6b]">
-          {st.err}
-        </p>
-      )}
-    </div>
-  );
-}
 
 /**
  * DOM HUD for survival runs: HP/XP bars, run stats, level-up cards, death
@@ -417,19 +21,8 @@ export default function GameHUD() {
   const mode = useGame((s) => s.mode);
   const hud = useGame((s) => s.hud);
   const activeSites = useGame((s) => s.activeSites);
-  const choices = useGame((s) => s.choices);
-  const pick = useGame((s) => s.pick);
-  const start = useGame((s) => s.start);
-  const quit = useGame((s) => s.quit);
-  const best = useGame((s) => s.best);
-  const finalScore = useGame((s) => s.finalScore);
-  const deathCause = useGame((s) => s.deathCause);
   const bossCard = useGame((s) => s.bossCard);
   const bossCardAt = useGame((s) => s.bossCardAt);
-  const character = useGame((s) => s.character);
-  // difficulty is a SELECTION now, committed by the big start button
-  const [diff, setDiff] = useState<DifficultyId>("normal");
-  const scoreSubmit = useGame((s) => s.scoreSubmit);
   const [bossCardVisible, setBossCardVisible] = useState(false);
   useEffect(() => {
     if (!bossCardAt) return;
@@ -463,11 +56,10 @@ export default function GameHUD() {
           <motion.div
             key="hit"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
+            animate={{ opacity: 1, transition: { duration: 0.08 } }}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }}
             className="pointer-events-none absolute inset-0 z-40"
-            style={{ boxShadow: "inset 0 0 90px 30px rgba(224, 60, 47, 0.55)" }}
+            style={{ boxShadow: "inset 0 0 70px 22px rgba(224, 86, 63, 0.32)" }}
           />
         )}
       </AnimatePresence>
@@ -476,7 +68,7 @@ export default function GameHUD() {
       <div className="pointer-events-none absolute bottom-16 left-1/2 w-[min(300px,60%)] -translate-x-1/2 space-y-1.5 max-md:bottom-4 max-md:left-3 max-md:w-[42%] max-md:translate-x-0">
         <div className="h-2 overflow-hidden rounded-full border border-white/15 bg-space/70">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-[#e0563f] to-[#ff8c6b] transition-[width] duration-200"
+            className="h-full rounded-full bg-gradient-to-r from-[#e0563f] to-[#ff7a62] transition-[width] duration-200"
             style={{ width: `${(hud.hp / hud.maxHp) * 100}%` }}
           />
         </div>
@@ -494,35 +86,40 @@ export default function GameHUD() {
       </div>
       )}
 
-      {/* run stats — under the focus-header slot */}
-      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md max-md:left-2 max-md:top-12 max-md:translate-x-0 max-md:px-2 max-md:py-1 max-md:text-[8px] max-md:tracking-[0.12em]">
+      {/* run stats — under the focus-header slot. Mobile: pinned into the
+          consolidated top row (pause + sfx sit to its right), trimmed to
+          the essentials — timer, level, kills, sites — everything else
+          (difficulty, block count, boss banner) is desktop-only chrome. */}
+      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 truncate rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md max-md:left-2 max-md:right-36 max-md:top-3 max-md:translate-x-0 max-md:px-2 max-md:py-1.5 max-md:text-[9px] max-md:tracking-[0.1em]">
         {hud.diff !== "normal" && (
-          <>
-            <span className={hud.diff === "cursed" ? "text-[#a78bfa]" : "text-[#e0563f]"}>
+          <span className="max-md:hidden">
+            <span className={hud.diff === "cursed" ? "text-ink" : "text-danger"}>
               {hud.diff}
             </span>
             <span className="mx-2 text-ink-dim">·</span>
-          </>
+          </span>
         )}
-        <span className={lowTime ? "animate-pulse text-[#ff4d4d]" : "text-cyan"}>⏱ {clock}</span>
-        <span className="mx-2 text-ink-dim">·</span>
-        <span className="text-gold">block {hud.block}</span>
-        <span className="mx-2 text-ink-dim">·</span>lv {hud.level}
-        <span className="mx-2 text-ink-dim">·</span>{hud.kills} kills
-        <span className="mx-2 text-ink-dim">·</span>
+        <span className={lowTime ? "text-danger-bright font-bold" : "text-cyan"}>⏱ {clock}</span>
+        <span className="mx-2 text-ink-dim max-md:mx-1">·</span>
+        <span className="text-gold max-md:hidden">block {hud.block}</span>
+        <span className="mx-2 text-ink-dim max-md:hidden">·</span>lv {hud.level}
+        <span className="mx-2 text-ink-dim max-md:mx-1">·</span>{hud.kills} kills
+        <span className="mx-2 text-ink-dim max-md:mx-1">·</span>
         <span className="text-cyan">
           {hud.captured}/{TOTAL_SITES} sites
         </span>
         {hud.finalBoss && (
-          <span className="animate-pulse text-[#ff4d4d]">
+          <span className="text-danger-bright font-bold max-md:hidden">
             <span className="mx-2 text-ink-dim">·</span>⚔ slay the final boss
           </span>
         )}
       </div>
 
-      {/* first-run onboarding — one line, dismiss once, never again */}
+      {/* first-run onboarding — one line, dismiss once, never again. Mobile:
+          sits in the same row-2 slot the quest ribbon takes over once
+          dismissed, so the top chrome never stacks more than two rows deep. */}
       {mode === "play" && !onboarded && (
-        <div className="pointer-events-auto absolute left-1/2 top-14 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-gold/40 bg-[rgba(9,13,28,0.9)] px-4 py-2 backdrop-blur max-md:top-24 max-md:w-[92%] max-md:justify-between max-md:gap-2 max-md:px-3">
+        <div className="pointer-events-auto absolute left-1/2 top-14 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-gold/40 bg-[rgba(9,13,28,0.9)] px-4 py-2 backdrop-blur max-md:top-16 max-md:w-[92%] max-md:justify-between max-md:gap-2 max-md:px-2.5 max-md:py-1.5">
           <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.15em] text-gold max-md:text-[9px]">
             capture all {TOTAL_SITES} glowing sites to win — follow the arrows · grab coins to
             level up
@@ -543,12 +140,12 @@ export default function GameHUD() {
       {/* MOBILE quest ribbon — capture progress + live targets pinned over the
           canvas so phone players don't scroll to the side panel mid-fight */}
       {mode === "play" && onboarded && (
-        <div className="pointer-events-none absolute inset-x-2 top-[70px] z-30 hidden rounded-lg border border-white/10 bg-[rgba(9,13,28,0.82)] px-2.5 py-1.5 backdrop-blur max-md:block">
-          <div className="flex items-center justify-between font-mono text-[8px] font-bold uppercase tracking-[0.14em]">
+        <div className="pointer-events-none absolute inset-x-2 top-16 z-30 hidden rounded-lg border border-white/10 bg-[rgba(9,13,28,0.82)] px-2.5 py-1.5 backdrop-blur max-md:block">
+          <div className="flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-[0.14em]">
             <span className="text-cyan">
               ⚔ {hud.captured}/{TOTAL_SITES} captured
             </span>
-            {hud.finalBoss && <span className="animate-pulse text-[#ff4d4d]">slay the boss</span>}
+            {hud.finalBoss && <span className="text-danger-bright">slay the boss</span>}
           </div>
           <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
             <div
@@ -563,7 +160,7 @@ export default function GameHUD() {
               return (
                 <span
                   key={id}
-                  className="truncate rounded px-1 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.1em]"
+                  className="truncate rounded px-1 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]"
                   style={{ color: r.accent, background: `${r.accent}1a` }}
                 >
                   ▸ {r.name}
@@ -586,13 +183,13 @@ export default function GameHUD() {
             className="pointer-events-none absolute inset-x-0 top-24 z-40 grid place-items-center max-md:top-32"
           >
             <div
-              className="rounded-xl border-2 border-[#ff4d4d]/70 bg-[rgba(28,8,10,0.88)] px-6 py-2.5 text-center backdrop-blur"
-              style={{ boxShadow: "0 0 40px rgba(255,77,77,0.35)" }}
+              className="rounded-xl border border-danger-bright/70 bg-[rgba(28,8,10,0.88)] px-6 py-2.5 text-center backdrop-blur"
+              style={{ boxShadow: "0 0 22px rgba(255, 122, 98, 0.22)" }}
             >
-              <p className="font-mono text-[9px] uppercase tracking-[0.34em] text-[#ff8a8a]">
-                ⚠ boss detected
+              <p className="font-mono text-[9px] uppercase tracking-[0.34em] text-danger-bright">
+                boss detected
               </p>
-              <p className="mt-1 text-xl font-black tracking-[0.06em] text-[#ff4d4d] max-md:text-base">
+              <p className="mt-1 text-xl font-black tracking-[0.06em] text-danger-bright max-md:text-base">
                 {bossCard}
               </p>
             </div>
@@ -604,9 +201,9 @@ export default function GameHUD() {
       {mode === "play" && hud.maxHp > 0 && hud.hp / hud.maxHp < 0.25 && (
         <motion.div
           className="pointer-events-none absolute inset-0 z-30"
-          animate={{ opacity: [0.35, 0.8, 0.35] }}
+          animate={{ opacity: [0.3, 0.55, 0.3] }}
           transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
-          style={{ boxShadow: "inset 0 0 140px 30px rgba(224,60,50,0.45)" }}
+          style={{ boxShadow: "inset 0 0 140px 30px rgba(224,86,63,0.45)" }}
         />
       )}
 
@@ -614,385 +211,33 @@ export default function GameHUD() {
       {mode === "play" && (
         <button
           onClick={() => useGame.getState().pause()}
-          className="pointer-events-auto absolute right-4 top-3 rounded-md border border-white/15 bg-space/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-dim backdrop-blur transition-colors hover:border-gold/60 hover:text-gold"
+          aria-label="pause"
+          title="pause"
+          className="pointer-events-auto absolute right-4 top-3 rounded-md border border-white/15 bg-space/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-dim backdrop-blur transition-colors hover:border-gold/60 hover:text-gold max-md:grid max-md:h-11 max-md:w-11 max-md:place-items-center max-md:p-0 max-md:text-base"
         >
-          esc — pause
+          <span className="max-md:hidden">esc — pause</span>
+          <span className="md:hidden">⏸</span>
         </button>
       )}
 
       {/* pause screen — interruptions never cost the run */}
-      <AnimatePresence>
-        {mode === "paused" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/70 backdrop-blur-sm max-md:fixed"
-          >
-            <div className="text-center">
-              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-gold">
-                ⏸ paused
-              </p>
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
-                block {hud.block} · lv {hud.level} · {hud.kills} kills ·{" "}
-                <span className="text-cyan">
-                  {hud.captured}/{TOTAL_SITES} sites
-                </span>
-              </p>
-              <div className="mt-5 flex items-center justify-center gap-3">
-                <button
-                  onClick={() => useGame.getState().resume()}
-                  className="rounded-xl border-2 border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-6 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.18em] text-space shadow-[0_0_24px_rgba(240,199,94,0.5)] transition-transform hover:-translate-y-0.5"
-                >
-                  ▶ resume
-                </button>
-                <button
-                  onClick={() => useGame.getState().openMenu()}
-                  className="rounded-xl border border-white/20 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.18em] text-ink-dim transition-colors hover:border-[#e0563f]/70 hover:text-[#ff8c6b]"
-                >
-                  abandon run
-                </button>
-              </div>
-              <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-dim/60">
-                esc or p to resume
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{mode === "paused" && <PauseScreen />}</AnimatePresence>
 
       {/* run menu — pick your bet (Normal / Hard / Cursed) */}
-      <AnimatePresence>
-        {mode === "menu" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/60 backdrop-blur-sm max-md:fixed"
-          >
-            <div className="max-h-full overflow-y-auto py-4 text-center">
-              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
-                select your character
-              </p>
-              <CharacterSelect />
-              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
-                choose your run
-              </p>
-              <div className="mt-3 flex flex-wrap items-stretch justify-center gap-3 px-4">
-                {(Object.keys(DIFFICULTIES) as DifficultyId[]).map((id, i) => {
-                  const d = DIFFICULTIES[id];
-                  const selDiff = id === diff;
-                  const tone =
-                    id === "cursed" ? "#a78bfa" : id === "hard" ? "#e0563f" : "#7dd3fc";
-                  return (
-                    <motion.button
-                      key={id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.07 }}
-                      whileHover={{ y: -3 }}
-                      whileTap={{ scale: 0.96 }}
-                      onClick={() => {
-                        if (selDiff) return;
-                        sfx.ui();
-                        setDiff(id);
-                      }}
-                      className={`relative w-44 rounded-xl border-2 p-3.5 text-left backdrop-blur-md transition-colors ${
-                        id === "cursed"
-                          ? "bg-[rgba(20,10,32,0.92)]"
-                          : id === "hard"
-                            ? "bg-[rgba(28,12,10,0.92)]"
-                            : "bg-[rgba(9,13,28,0.92)]"
-                      }`}
-                      style={{
-                        borderColor: selDiff ? tone : `${tone}44`,
-                        boxShadow: selDiff ? `0 0 26px ${tone}55` : undefined,
-                      }}
-                    >
-                      {selDiff && (
-                        <span
-                          className="absolute right-2 top-2 rounded-full border px-1.5 py-0.5 font-mono text-[7px] font-bold uppercase tracking-[0.14em]"
-                          style={{ color: tone, borderColor: `${tone}88`, background: `${tone}1a` }}
-                        >
-                          selected
-                        </span>
-                      )}
-                      <p className="text-lg font-semibold tracking-tight">{d.name}</p>
-                      <p className="mt-1 text-xs leading-relaxed text-ink-dim">{d.desc}</p>
-                      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-gold">
-                        {d.scoreMult}× score
-                      </p>
-                    </motion.button>
-                  );
-                })}
-              </div>
-              {/* the CTA — the screen finally ends in a button, not a shrug */}
-              <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-dim">
-                selected: <span className="text-ink">{CHARACTERS[character].name}</span> ·{" "}
-                <span className="text-ink">{DIFFICULTIES[diff].name}</span>
-              </p>
-              <motion.button
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  sfx.ui();
-                  start(diff);
-                }}
-                className="mt-2 rounded-xl border-2 border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-10 py-3 font-mono text-sm font-bold uppercase tracking-[0.2em] text-space shadow-[0_0_32px_rgba(240,199,94,0.5)]"
-              >
-                ▶ start {DIFFICULTIES[diff].name} run
-              </motion.button>
-              <div>
-                <button
-                  onClick={quit}
-                  className="mt-4 rounded-md border border-white/15 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
-                >
-                  back to explore
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{mode === "menu" && <MenuScreen />}</AnimatePresence>
 
       {/* level-up cards */}
-      <AnimatePresence>
-        {mode === "levelup" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/60 backdrop-blur-sm max-md:fixed"
-          >
-            <div className="max-h-full w-full py-6 text-center [padding-bottom:env(safe-area-inset-bottom)]">
-              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
-                level {hud.level} — choose an upgrade
-              </p>
-              <div className="mt-4 flex flex-wrap items-stretch justify-center gap-3 px-4">
-                {choices.map((id, i) => {
-                  const u = UPGRADES.find((x) => x.id === id)!;
-                  const view = upgradeView(id);
-                  const nextLv = (hud.upgrades[id] ?? 0) + 1;
-                  const isEvo = !!u.requires;
-                  return (
-                    <motion.button
-                      key={id}
-                      initial={{ opacity: 0, y: 20, scale: isEvo ? 0.85 : 1 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ delay: i * 0.07, type: "spring", stiffness: 300, damping: 20 }}
-                      onClick={() => pick(id)}
-                      className={
-                        isEvo
-                          ? "w-44 max-md:w-[84%] animate-pulse rounded-xl border-2 border-gold bg-gradient-to-b from-[rgba(40,30,8,0.95)] to-[rgba(9,13,28,0.95)] p-4 text-left shadow-[0_0_40px_rgba(240,199,94,0.45)] backdrop-blur-md transition-all hover:-translate-y-1 hover:animate-none"
-                          : "w-44 max-md:w-[84%] rounded-xl border border-cyan/30 bg-[rgba(9,13,28,0.92)] p-4 text-left backdrop-blur-md transition-all hover:-translate-y-1 hover:border-gold/70 hover:shadow-[0_0_30px_rgba(240,199,94,0.25)]"
-                      }
-                    >
-                      <div className="flex items-center justify-between">
-                        <p
-                          className={`font-mono text-[9px] uppercase tracking-[0.2em] ${
-                            isEvo ? "text-gold" : "text-cyan"
-                          }`}
-                        >
-                          {isEvo ? "⚡ evolution" : `lv ${nextLv} / ${u.maxLevel}`}
-                        </p>
-                        <span className={`text-xl leading-none ${isEvo ? "text-gold" : "text-cyan"}`}>
-                          {UPGRADE_ICON[id] ?? "✦"}
-                        </span>
-                      </div>
-                      <p
-                        className={`mt-1.5 text-base font-semibold tracking-tight ${isEvo ? "text-gold" : ""}`}
-                      >
-                        {view.name}
-                      </p>
-                      <p className="mt-1 text-xs leading-relaxed text-ink-dim">{view.desc(nextLv)}</p>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{mode === "levelup" && <LevelUpScreen />}</AnimatePresence>
 
       {/* victory screen — every ecosystem project captured */}
-      <AnimatePresence>
-        {mode === "won" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/70 backdrop-blur-sm max-md:fixed"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 16 }}
-              animate={{ scale: 1, y: 0 }}
-              className="rounded-2xl border border-gold/50 bg-[rgba(9,13,28,0.95)] p-8 text-center shadow-[0_0_60px_rgba(240,199,94,0.25)] max-md:mx-3 max-md:my-4 max-md:p-5"
-            >
-              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
-                🥷 ecosystem complete — all {TOTAL_SITES} projects captured
-              </p>
-              <p className="mt-3 text-5xl font-semibold tracking-tight text-gold max-md:text-4xl">{finalScore}</p>
-              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
-                score (incl. 1000 conquest bonus) · best {best}
-              </p>
-              {scoreSubmit === "ok" && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#4ade80]">
-                  ✓ recorded on the global leaderboard
-                </p>
-              )}
-              {scoreSubmit === "fail" && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#ff8c6b]">
-                  ⚠ leaderboard unreachable — score kept locally
-                </p>
-              )}
-              {finalScore > 500000 && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim/70">
-                  board entries cap at 500,000
-                </p>
-              )}
-              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
-                {Math.floor(hud.time / 60)}m {Math.floor(hud.time % 60)}s · {hud.block} blocks ·{" "}
-                {hud.kills} kills
-              </p>
-              <InscribeRow score={finalScore} />
-              <div className="mt-6 flex justify-center gap-3">
-                <button
-                  onClick={() => start()}
-                  className="rounded-md bg-gold px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-space transition-all hover:-translate-y-0.5 hover:bg-[#ffd97a]"
-                >
-                  run it back
-                </button>
-                <button
-                  onClick={quit}
-                  className="rounded-md border border-white/15 px-6 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
-                >
-                  explore
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{mode === "won" && <VictoryScreen />}</AnimatePresence>
 
       {/* death screen */}
-      <AnimatePresence>
-        {mode === "dead" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/70 backdrop-blur-sm max-md:fixed"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 16 }}
-              animate={{ scale: 1, y: 0 }}
-              className="rounded-2xl border border-white/10 bg-[rgba(9,13,28,0.95)] p-8 text-center max-md:mx-3 max-md:my-4 max-md:p-5"
-            >
-              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-[#e0563f]">
-                {DEATH_FLAVOR[deathCause] ?? "the bear market got you"}
-              </p>
-              <p className="mt-3 text-5xl font-semibold tracking-tight max-md:text-4xl">{finalScore}</p>
-              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
-                score · best {best}
-              </p>
-              {scoreSubmit === "ok" && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#4ade80]">
-                  ✓ recorded on the global leaderboard
-                </p>
-              )}
-              {scoreSubmit === "fail" && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#ff8c6b]">
-                  ⚠ leaderboard unreachable — score kept locally
-                </p>
-              )}
-              {finalScore > 500000 && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim/70">
-                  board entries cap at 500,000
-                </p>
-              )}
-              <div className="mt-4 space-y-1 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
-                <p>{hud.block} blocks survived · {hud.kills} kills · {hud.captured} sites</p>
-              </div>
-              <InscribeRow score={finalScore} />
-              <div className="mt-6 flex justify-center gap-3">
-                <button
-                  onClick={() => start()}
-                  className="rounded-md bg-gold px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-space transition-all hover:-translate-y-0.5 hover:bg-[#ffd97a]"
-                >
-                  run it back
-                </button>
-                <button
-                  onClick={quit}
-                  className="rounded-md border border-white/15 px-6 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
-                >
-                  explore
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{mode === "dead" && <DeathScreen />}</AnimatePresence>
 
       {/* time-attack bell — the clock ran out. The EXPECTED end for most runs,
           so it's a neutral score bank, not a death card. */}
-      <AnimatePresence>
-        {mode === "timeup" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/70 backdrop-blur-sm max-md:fixed"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 16 }}
-              animate={{ scale: 1, y: 0 }}
-              className="rounded-2xl border border-cyan/40 bg-[rgba(9,13,28,0.95)] p-8 text-center shadow-[0_0_50px_rgba(57,199,245,0.2)] max-md:mx-3 max-md:my-4 max-md:p-5"
-            >
-              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-cyan">
-                ⏱ time&apos;s up — the bell rings
-              </p>
-              <p className="mt-3 text-5xl font-semibold tracking-tight max-md:text-4xl">{finalScore}</p>
-              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
-                score · best {best}
-              </p>
-              {scoreSubmit === "ok" && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#4ade80]">
-                  ✓ recorded on the global leaderboard
-                </p>
-              )}
-              {scoreSubmit === "fail" && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-[#ff8c6b]">
-                  ⚠ leaderboard unreachable — score kept locally
-                </p>
-              )}
-              {finalScore > 500000 && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim/70">
-                  board entries cap at 500,000
-                </p>
-              )}
-              <div className="mt-4 space-y-1 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim">
-                <p>{hud.block} blocks · {hud.kills} kills · {hud.captured}/{TOTAL_SITES} sites</p>
-                <p className="text-ink-dim/70">capture every site + slay the boss before the bell for +1000</p>
-              </div>
-              <InscribeRow score={finalScore} />
-              <div className="mt-6 flex justify-center gap-3">
-                <button
-                  onClick={() => start()}
-                  className="rounded-md bg-gold px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-space transition-all hover:-translate-y-0.5 hover:bg-[#ffd97a]"
-                >
-                  run it back
-                </button>
-                <button
-                  onClick={quit}
-                  className="rounded-md border border-white/15 px-6 py-2.5 font-mono text-xs uppercase tracking-[0.15em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
-                >
-                  explore
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{mode === "timeup" && <TimeUpScreen />}</AnimatePresence>
     </>
   );
 }

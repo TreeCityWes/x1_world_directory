@@ -96,16 +96,42 @@ page.on("console", (m) => {
 try {
   await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 30_000 });
 
-  // menu is the landing experience
-  const start = page.locator("button", { hasText: /start .* run/i }).first();
-  await start.waitFor({ timeout: 30_000 });
+  // DOM-dispatched clicks: Playwright's actionability check fights the
+  // framer-motion roster cards (whileHover keeps them animating under the
+  // pointer), and text-locators are brittle here ("Balanced Starter …
+  // your first run" matches /start .* run/ when the ninja card is
+  // unselected). Element.click() sidesteps both.
+  const clickButton = (pattern) =>
+    page.evaluate((src) => {
+      const rx = new RegExp(src, "i");
+      const b = [...document.querySelectorAll("button")].find((el) => rx.test(el.textContent));
+      if (b) b.click();
+      return !!b;
+    }, pattern);
+
+  // menu is the landing experience — the big CTA starts with ▶
+  await page.waitForFunction(
+    () => [...document.querySelectorAll("button")].some((b) => /▶\s*start/i.test(b.textContent)),
+    undefined,
+    { timeout: 30_000 },
+  );
   pass("landing menu rendered");
 
   // the canvas debug hook mounts with the 3D bundle
   await page.waitForFunction(() => !!window.__x1dbg, undefined, { timeout: 30_000 });
   pass("3D scene mounted (__x1dbg)");
 
-  await start.click();
+  // play as JACK — he's the RIGGED hero, which makes the gait probe below a
+  // required assertion instead of a skip (a fresh browser defaults to the
+  // procedural ninja, whose limbs three can't probe by bone name)
+  const jackSelected = await clickButton("Jack Levin");
+  if (!jackSelected) note("Jack roster card not found — running default character");
+
+  if (!(await clickButton("start\\s+(normal|hard|cursed)\\s+run"))) {
+    // dump state — a missing asset 404 escalates to Next's error page here
+    const body = await page.evaluate(() => document.body.innerText.slice(0, 200));
+    throw new Error(`start button vanished; body: ${body}; errors: ${JSON.stringify(pageErrors)}`);
+  }
 
   // countdown: grab mm:ss twice — it must tick DOWN (time attack is live)
   const clock = async () => {
@@ -201,10 +227,121 @@ try {
     }
     return { skinned: true, spread: Math.max(...samples) - Math.min(...samples) };
   });
-  if (!gait.skinned) note("no rigged hero in scene — gait probe skipped (procedural cast)");
-  else if (gait.spread < 0.05) fail(`rigged hero legs frozen while running (spread ${gait.spread})`);
+  if (!gait.skinned) {
+    // selecting Jack means a skinned rig MUST be in the scene — its absence
+    // is itself a regression (model failed to load / branch removed the rig)
+    if (jackSelected) fail("Jack selected but no skinned rig in scene");
+    else note("no rigged hero in scene — gait probe skipped");
+  } else if (gait.spread < 0.05)
+    fail(`rigged hero legs frozen while running (spread ${gait.spread})`);
   else pass(`rigged gait animates (bone spread ${gait.spread.toFixed(2)} rad)`);
   await page.keyboard.up("w");
+
+  // Mobile contract: the primary action is visible immediately, the default
+  // Ninja does not fetch other heroes, and active play owns the full viewport.
+  const mobile = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const mobileErrors = [];
+  mobile.on("pageerror", (e) => mobileErrors.push(String(e)));
+  mobile.on("console", (m) => {
+    if (m.type() === "error") mobileErrors.push(m.text());
+  });
+  await mobile.goto(URL, { waitUntil: "networkidle", timeout: 30_000 });
+  const mobileMenu = await mobile.evaluate(() => {
+    const start = [...document.querySelectorAll("button")].find(
+      (b) => /start normal run/i.test(b.textContent) && b.getBoundingClientRect().height > 0,
+    );
+    const rect = start?.getBoundingClientRect();
+    const resources = performance.getEntriesByType("resource");
+    return {
+      startBottom: rect?.bottom ?? Infinity,
+      viewport: window.innerHeight,
+      bytes: resources.reduce((sum, r) => sum + r.transferSize, 0),
+      models: resources.filter((r) => r.name.endsWith(".glb")).map((r) => r.name),
+      fullProjectImages: resources.filter((r) => /\/projects\/[^/]+\.(png|svg)$/.test(r.name))
+        .length,
+    };
+  });
+  if (mobileMenu.startBottom > mobileMenu.viewport)
+    fail(`mobile start action is below the fold (${mobileMenu.startBottom}px)`);
+  else pass("mobile start action is visible");
+  const unusedHero = mobileMenu.models.find((url) =>
+    /\/(capybara|cryptobro|jack_anim)\.glb$/.test(url),
+  );
+  if (unusedHero) fail(`default Ninja fetched an unused hero model (${unusedHero})`);
+  else pass("mobile loads only selected-character assets");
+  if (mobileMenu.fullProjectImages > 0)
+    fail(`mobile fetched ${mobileMenu.fullProjectImages} full project screenshots`);
+  else pass("mobile directory uses thumbnails");
+  if (mobileMenu.bytes > 2 * 1024 * 1024)
+    fail(`mobile startup transfer exceeds 2 MiB (${(mobileMenu.bytes / 1024 / 1024).toFixed(2)} MiB)`);
+  else pass(`mobile startup transfer ${(mobileMenu.bytes / 1024 / 1024).toFixed(2)} MiB`);
+
+  const mobileStarted = await mobile.evaluate(() => {
+    const start = [...document.querySelectorAll("button")].find(
+      (b) => /start normal run/i.test(b.textContent) && b.getBoundingClientRect().height > 0,
+    );
+    start?.click();
+    return !!start;
+  });
+  if (!mobileStarted) fail("mobile start action could not be activated");
+  await mobile.waitForTimeout(1200);
+  const mobilePlay = await mobile.evaluate(() => {
+    const canvas = document.querySelector("canvas")?.getBoundingClientRect();
+    const pause = document.querySelector('button[aria-label="pause"]')?.getBoundingClientRect();
+    const sidePanel = document.querySelector("aside");
+    return {
+      canvasHeight: canvas?.height ?? 0,
+      viewport: window.innerHeight,
+      overflowLocked:
+        document.documentElement.style.overflow === "hidden" &&
+        document.body.style.overflow === "hidden",
+      pauseSize: Math.min(pause?.width ?? 0, pause?.height ?? 0),
+      sidePanelVisible: !!sidePanel?.getClientRects().length,
+    };
+  });
+  if (mobilePlay.canvasHeight < mobilePlay.viewport * 0.95)
+    fail(`mobile canvas is not full-height (${mobilePlay.canvasHeight}/${mobilePlay.viewport}px)`);
+  else pass("mobile play is full-height");
+  if (!mobilePlay.overflowLocked) fail("mobile page scrolling remains enabled during play");
+  else pass("mobile page scrolling locks during play");
+  if (mobilePlay.pauseSize < 44) fail(`mobile pause target is only ${mobilePlay.pauseSize}px`);
+  else pass("mobile pause target is 44px");
+  if (mobilePlay.sidePanelVisible) fail("desktop side panel remains visible during mobile play");
+  else pass("mobile play hides the below-game side panel");
+  if (mobileErrors.length) fail(`mobile page errors:\n    ${mobileErrors.slice(0, 5).join("\n    ")}`);
+  else pass("zero mobile page errors");
+  await mobile.close();
+
+  // CAPY's GLB embeds its skin as a blob-backed texture. CSP must allow the
+  // ImageBitmapLoader blob fetch or the character silently renders white.
+  const capyPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const capyErrors = [];
+  capyPage.on("pageerror", (e) => capyErrors.push(String(e)));
+  capyPage.on("console", (m) => {
+    if (m.type() === "error") capyErrors.push(m.text());
+  });
+  await capyPage.goto(URL, { waitUntil: "networkidle", timeout: 30_000 });
+  const capySelected = await capyPage.evaluate(() => {
+    const card = [...document.querySelectorAll("button")].find((b) =>
+      /CAPY\s*Tank Validator/i.test(b.textContent),
+    );
+    card?.click();
+    return !!card;
+  });
+  if (!capySelected) fail("CAPY roster card not found");
+  await capyPage.waitForTimeout(1200);
+  const capyLoaded = await capyPage.evaluate(() =>
+    performance.getEntriesByType("resource").some((r) => r.name.endsWith("/models/capybara.glb")),
+  );
+  if (!capyLoaded) fail("CAPY model was not requested after selection");
+  else pass("CAPY model loads on selection");
+  if (capyErrors.length) fail(`CAPY texture errors:\n    ${capyErrors.slice(0, 5).join("\n    ")}`);
+  else pass("CAPY embedded texture loads without errors");
+  await capyPage.close();
 
   // page errors are always fatal
   if (pageErrors.length) fail(`page errors:\n    ${pageErrors.slice(0, 5).join("\n    ")}`);

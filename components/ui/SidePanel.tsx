@@ -22,9 +22,9 @@ function GamePanel() {
   return (
     <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-md:h-auto max-md:w-full max-md:border-l-0 max-md:border-t">
       <header className="flex shrink-0 items-center gap-2.5 border-b border-white/10 px-5 py-3">
-        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#e0563f] shadow-[0_0_10px_rgba(224,86,63,0.8)]" />
-        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-ink">survival run</p>
-        <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-danger" />
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink">survival run</p>
+        <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
           best {best}
         </p>
       </header>
@@ -33,11 +33,11 @@ function GamePanel() {
         <ProfileCard />
 
         {/* the quest: capture every ecosystem project */}
-        <div className="relative mt-3 overflow-hidden rounded-xl border-2 border-gold/40 bg-gradient-to-br from-[#1c1608] to-[#0b1122] px-4 py-3.5">
+        <div className="relative mt-3 overflow-hidden rounded-xl border border-gold/40 bg-gradient-to-br from-[#1c1608] to-[#0b1122] px-4 py-3.5">
           <div className="shimmer-line pointer-events-none absolute inset-x-0 top-0 h-px" />
           <div className="flex items-center justify-between gap-3">
             <span className="text-[15px] font-bold tracking-tight text-gold">
-              ⚔️ Capture the Ecosystem
+              ⚔ Capture the Ecosystem
             </span>
             <span className="font-mono text-xl font-bold tabular-nums text-gold">
               {hud.captured}
@@ -46,14 +46,14 @@ function GamePanel() {
           </div>
           <div className="mt-2.5 h-3 overflow-hidden rounded-full border border-gold/25 bg-space/80">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-gold-deep via-gold to-[#ffe08a] shadow-[0_0_12px_rgba(240,199,94,0.7)] transition-[width] duration-500"
+              className="h-full rounded-full bg-gradient-to-r from-gold-deep via-gold to-[#ffe08a] transition-[width] duration-500"
               style={{ width: `${Math.max(2, (hud.captured / total) * 100)}%` }}
             />
           </div>
         </div>
 
         {sites.length > 0 && (
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-gold">
             current targets
           </p>
         )}
@@ -71,17 +71,20 @@ function GamePanel() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- site captures */}
                 <img
-                  src={r.screenshot}
+                  src={r.screenshot.replace("/projects/", "/projects/thumbs/").replace(/\.(png|svg)$/, ".jpg")}
                   alt={r.name}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = r.screenshot;
+                  }}
                   className="aspect-[8/5] w-20 shrink-0 rounded border border-white/10 object-cover object-top"
                 />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{r.name}</p>
                   <p
-                    className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.15em]"
+                    className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.14em]"
                     style={{ color: r.accent }}
                   >
-                    ⚡ {POWER_LABEL[r.kind] ?? r.category}
+                    ↯ {POWER_LABEL[r.kind] ?? r.category}
                   </p>
                 </div>
               </motion.div>
@@ -89,7 +92,7 @@ function GamePanel() {
           </AnimatePresence>
         </div>
 
-        <div className="mt-4 grid grid-cols-4 gap-2 font-mono text-[11px] uppercase tracking-[0.15em] max-sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-4 gap-2 font-mono text-[11px] uppercase tracking-[0.14em] max-sm:grid-cols-2">
           {[
             ["score", scoreOf().toLocaleString()],
             ["block", hud.block],
@@ -99,9 +102,7 @@ function GamePanel() {
             <div
               key={label}
               className={`rounded-lg border px-3 py-2 ${
-                i === 0
-                  ? "border-gold/40 bg-gold/5 shadow-[inset_0_0_18px_rgba(240,199,94,0.06)]"
-                  : "border-white/10 bg-space-2/40"
+                i === 0 ? "border-gold/40 bg-gold/5" : "border-white/10 bg-space-2/40"
               }`}
             >
               <p className="text-ink-dim/70">{label}</p>
@@ -112,7 +113,7 @@ function GamePanel() {
           ))}
         </div>
 
-        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-gold">upgrades</p>
+        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-gold">upgrades</p>
         <div className="mt-2 space-y-1.5">
           {owned.length === 0 && (
             <p className="text-xs text-ink-dim">collect XN coins to level up</p>
@@ -126,7 +127,7 @@ function GamePanel() {
                 className="flex items-baseline justify-between rounded-md border border-white/8 bg-space-2/30 px-3 py-1.5 text-sm"
               >
                 <span>{upgradeView(id).name}</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-cyan">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-cyan">
                   lv {lv}
                 </span>
               </div>
@@ -141,10 +142,10 @@ function GamePanel() {
         {/* the conquest board: every project as an LED — dim until captured */}
         <div className="mt-auto pt-5">
           <div className="flex items-baseline justify-between">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-gold">
               ecosystem grid
             </p>
-            <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim/60">
+            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim/60">
               {hud.captured} lit · {total - hud.captured} dark
             </span>
           </div>
@@ -160,7 +161,7 @@ function GamePanel() {
                   className="relative aspect-[8/5] overflow-hidden rounded-[4px] transition-shadow duration-300"
                   style={
                     lit
-                      ? { border: `1px solid ${r.accent}`, boxShadow: `0 0 10px ${r.accent}88` }
+                      ? { border: `1px solid ${r.accent}` }
                       : { border: "1px solid rgba(255,255,255,0.08)" }
                   }
                 >
@@ -180,7 +181,7 @@ function GamePanel() {
               );
             })}
           </div>
-          <p className="mt-4 font-mono text-[9px] uppercase leading-relaxed tracking-[0.15em] text-ink-dim/70">
+          <p className="mt-4 font-mono text-[9px] uppercase leading-relaxed tracking-[0.14em] text-ink-dim/70">
             capture all {total} projects to win · glowing sites grant powers · your weapon aims
             where you run
           </p>
@@ -213,11 +214,11 @@ export default function SidePanel() {
     <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-md:h-auto max-md:w-full max-md:border-l-0 max-md:border-t">
       {/* console header */}
       <header className="flex shrink-0 items-center gap-2.5 border-b border-white/10 px-5 py-3">
-        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-gold shadow-[0_0_10px_rgba(240,199,94,0.8)]" />
-        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-ink">
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-gold" />
+        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink">
           x1 ecosystem console
         </p>
-        <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+        <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
           {regions.length} nodes online
         </p>
       </header>
@@ -253,16 +254,16 @@ export default function SidePanel() {
             <div className="flex items-center gap-2">
               <span
                 className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: region.accent, boxShadow: `0 0 8px ${region.accent}` }}
+                style={{ background: region.accent }}
               />
               <p
-                className="font-mono text-[11px] uppercase tracking-[0.2em]"
+                className="font-mono text-[11px] uppercase tracking-[0.14em]"
                 style={{ color: region.accent }}
               >
                 {region.category}
               </p>
               {isApproaching && (
-                <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim">
+                <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
                   nearest — walk closer
                 </p>
               )}
@@ -284,7 +285,7 @@ export default function SidePanel() {
                     href={region.twitter}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md border border-white/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
+                    className="rounded-md border border-white/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
                   >
                     𝕏 twitter
                   </a>
@@ -294,16 +295,16 @@ export default function SidePanel() {
                     href={region.telegram}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md border border-white/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
+                    className="rounded-md border border-white/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
                   >
-                    ✈ telegram
+                    ✦ telegram
                   </a>
                 )}
               </div>
             )}
 
             {/* metadata rows */}
-            <div className="mt-4 space-y-1.5 border-t border-white/10 pt-4 font-mono text-[11px] uppercase tracking-[0.15em]">
+            <div className="mt-4 space-y-1.5 border-t border-white/10 pt-4 font-mono text-[11px] uppercase tracking-[0.14em]">
               <div className="flex justify-between gap-3">
                 <span className="text-ink-dim/70">builder</span>
                 <span className="text-ink">{region.builder}</span>
@@ -316,7 +317,7 @@ export default function SidePanel() {
               </div>
               <div className="flex justify-between gap-3">
                 <span className="text-ink-dim/70">status</span>
-                <span className="text-[#4ade80]">online</span>
+                <span className="text-success">online</span>
               </div>
             </div>
 
@@ -325,11 +326,11 @@ export default function SidePanel() {
               href={region.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block self-start rounded-md bg-gold px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-space transition-all hover:-translate-y-0.5 hover:bg-[#ffd97a] hover:shadow-[0_0_24px_rgba(240,199,94,0.45)]"
+              className="inline-block self-start rounded-md bg-gold px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.14em] text-space transition-all hover:-translate-y-0.5 hover:bg-[#ffd97a]"
             >
               open site ↗
             </a>
-            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-dim/70">
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim/70">
               wasd — walk · drag — spin · e — lock · esc — release
             </p>
           </div>
