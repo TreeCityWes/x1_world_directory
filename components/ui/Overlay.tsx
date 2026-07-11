@@ -20,6 +20,9 @@ export default function Overlay() {
   const nearId = useWorld((s) => s.nearId);
   const selectedId = useWorld((s) => s.selectedId);
   const mutedUi = useSyncExternalStore(subscribeMute, isMuted, () => false);
+  // active run (playing or mid level-up) — mobile top chrome collapses to a
+  // single row here; the pause menu is the exit, so the mode tabs step aside
+  const inRun = mode === "play" || mode === "levelup";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -50,8 +53,12 @@ export default function Overlay() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
-      {/* mode tabs — big, bright, unmissable */}
-      <div className="pointer-events-auto absolute left-4 top-3 flex gap-2">
+      {/* mode tabs — big, bright, unmissable. Mobile hides these during an
+          active run: the top chrome is one compact row, and leaving a run
+          goes through pause (esc/tap pause -> abandon run), not this tab. */}
+      <div
+        className={`pointer-events-auto absolute left-4 top-3 flex gap-2 ${inRun ? "max-md:hidden" : ""}`}
+      >
         <button
           onClick={() => mode === "explore" && openMenu()}
           className={`rounded-xl border px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
@@ -127,15 +134,25 @@ export default function Overlay() {
         </p>
       )}
 
-      {/* sound toggle */}
+      {/* sound toggle — during an active run on mobile this folds into the
+          consolidated top row (icon-only) instead of hiding, since the pause
+          screen has no mute control of its own */}
       <button
         onClick={() => toggleMute()}
         aria-label={mutedUi ? "unmute" : "mute"}
-        className={`pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 rounded-md border border-white/15 bg-space/70 px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] backdrop-blur transition-colors hover:border-gold/60 max-md:bottom-auto max-md:right-2 max-md:top-14 max-md:translate-x-0 max-md:px-2 max-md:py-1 ${
-          mutedUi ? "text-ink-dim" : "text-gold"
-        }`}
+        title={mutedUi ? "unmute" : "mute"}
+        className={`pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 rounded-md border border-white/15 bg-space/70 px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] backdrop-blur transition-colors hover:border-gold/60 ${
+          inRun
+            ? "max-md:bottom-auto max-md:right-20 max-md:top-3 max-md:grid max-md:h-11 max-md:w-11 max-md:translate-x-0 max-md:place-items-center max-md:p-0 max-md:text-base"
+            : "max-md:bottom-auto max-md:right-2 max-md:top-14 max-md:translate-x-0 max-md:px-2 max-md:py-1"
+        } ${mutedUi ? "text-ink-dim" : "text-gold"}`}
       >
-        {mutedUi ? "sfx off" : "sfx on"}
+        <span className={inRun ? "max-md:hidden" : ""}>{mutedUi ? "sfx off" : "sfx on"}</span>
+        {inRun && (
+          <span className="hidden max-md:inline" aria-hidden="true">
+            {mutedUi ? "✕" : "♪"}
+          </span>
+        )}
       </button>
 
       {mode === "explore" && <FocusHeader />}

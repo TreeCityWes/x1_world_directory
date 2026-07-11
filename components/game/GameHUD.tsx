@@ -86,35 +86,40 @@ export default function GameHUD() {
       </div>
       )}
 
-      {/* run stats — under the focus-header slot */}
-      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md max-md:left-2 max-md:top-12 max-md:translate-x-0 max-md:px-2 max-md:py-1 max-md:text-[9px] max-md:tracking-[0.12em]">
+      {/* run stats — under the focus-header slot. Mobile: pinned into the
+          consolidated top row (pause + sfx sit to its right), trimmed to
+          the essentials — timer, level, kills, sites — everything else
+          (difficulty, block count, boss banner) is desktop-only chrome. */}
+      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 truncate rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md max-md:left-2 max-md:right-36 max-md:top-3 max-md:translate-x-0 max-md:px-2 max-md:py-1.5 max-md:text-[9px] max-md:tracking-[0.1em]">
         {hud.diff !== "normal" && (
-          <>
+          <span className="max-md:hidden">
             <span className={hud.diff === "cursed" ? "text-ink" : "text-danger"}>
               {hud.diff}
             </span>
             <span className="mx-2 text-ink-dim">·</span>
-          </>
+          </span>
         )}
         <span className={lowTime ? "text-danger-bright font-bold" : "text-cyan"}>⏱ {clock}</span>
-        <span className="mx-2 text-ink-dim">·</span>
-        <span className="text-gold">block {hud.block}</span>
-        <span className="mx-2 text-ink-dim">·</span>lv {hud.level}
-        <span className="mx-2 text-ink-dim">·</span>{hud.kills} kills
-        <span className="mx-2 text-ink-dim">·</span>
+        <span className="mx-2 text-ink-dim max-md:mx-1">·</span>
+        <span className="text-gold max-md:hidden">block {hud.block}</span>
+        <span className="mx-2 text-ink-dim max-md:hidden">·</span>lv {hud.level}
+        <span className="mx-2 text-ink-dim max-md:mx-1">·</span>{hud.kills} kills
+        <span className="mx-2 text-ink-dim max-md:mx-1">·</span>
         <span className="text-cyan">
           {hud.captured}/{TOTAL_SITES} sites
         </span>
         {hud.finalBoss && (
-          <span className="text-danger-bright font-bold">
+          <span className="text-danger-bright font-bold max-md:hidden">
             <span className="mx-2 text-ink-dim">·</span>⚔ slay the final boss
           </span>
         )}
       </div>
 
-      {/* first-run onboarding — one line, dismiss once, never again */}
+      {/* first-run onboarding — one line, dismiss once, never again. Mobile:
+          sits in the same row-2 slot the quest ribbon takes over once
+          dismissed, so the top chrome never stacks more than two rows deep. */}
       {mode === "play" && !onboarded && (
-        <div className="pointer-events-auto absolute left-1/2 top-14 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-gold/40 bg-[rgba(9,13,28,0.9)] px-4 py-2 backdrop-blur max-md:top-24 max-md:w-[92%] max-md:justify-between max-md:gap-2 max-md:px-3">
+        <div className="pointer-events-auto absolute left-1/2 top-14 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-gold/40 bg-[rgba(9,13,28,0.9)] px-4 py-2 backdrop-blur max-md:top-16 max-md:w-[92%] max-md:justify-between max-md:gap-2 max-md:px-2.5 max-md:py-1.5">
           <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.15em] text-gold max-md:text-[9px]">
             capture all {TOTAL_SITES} glowing sites to win — follow the arrows · grab coins to
             level up
@@ -135,7 +140,7 @@ export default function GameHUD() {
       {/* MOBILE quest ribbon — capture progress + live targets pinned over the
           canvas so phone players don't scroll to the side panel mid-fight */}
       {mode === "play" && onboarded && (
-        <div className="pointer-events-none absolute inset-x-2 top-[70px] z-30 hidden rounded-lg border border-white/10 bg-[rgba(9,13,28,0.82)] px-2.5 py-1.5 backdrop-blur max-md:block">
+        <div className="pointer-events-none absolute inset-x-2 top-16 z-30 hidden rounded-lg border border-white/10 bg-[rgba(9,13,28,0.82)] px-2.5 py-1.5 backdrop-blur max-md:block">
           <div className="flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-[0.14em]">
             <span className="text-cyan">
               ⚔ {hud.captured}/{TOTAL_SITES} captured
