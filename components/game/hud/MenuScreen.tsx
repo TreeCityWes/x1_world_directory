@@ -35,7 +35,7 @@ export function MenuScreen() {
             const d = DIFFICULTIES[id];
             const selDiff = id === diff;
             const tone =
-              id === "cursed" ? "#a78bfa" : id === "hard" ? "#e0563f" : "#7dd3fc";
+              id === "cursed" ? "#e8eefc" : id === "hard" ? "#e0563f" : "#7dd3fc";
             return (
               <motion.button
                 key={id}
@@ -49,26 +49,12 @@ export function MenuScreen() {
                   sfx.ui();
                   setDiff(id);
                 }}
-                className={`relative w-44 rounded-xl border-2 p-3.5 text-left backdrop-blur-md transition-colors ${
-                  id === "cursed"
-                    ? "bg-[rgba(20,10,32,0.92)]"
-                    : id === "hard"
-                      ? "bg-[rgba(28,12,10,0.92)]"
-                      : "bg-[rgba(9,13,28,0.92)]"
-                }`}
+                className="relative w-44 rounded-xl border bg-space-2/90 p-3.5 text-left transition-colors"
                 style={{
                   borderColor: selDiff ? tone : `${tone}44`,
-                  boxShadow: selDiff ? `0 0 26px ${tone}55` : undefined,
+                  background: selDiff ? `${tone}14` : undefined,
                 }}
               >
-                {selDiff && (
-                  <span
-                    className="absolute right-2 top-2 rounded-full border px-1.5 py-0.5 font-mono text-[7px] font-bold uppercase tracking-[0.14em]"
-                    style={{ color: tone, borderColor: `${tone}88`, background: `${tone}1a` }}
-                  >
-                    selected
-                  </span>
-                )}
                 <p className="text-lg font-semibold tracking-tight">{d.name}</p>
                 <p className="mt-1 text-xs leading-relaxed text-ink-dim">{d.desc}</p>
                 <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-gold">
@@ -90,7 +76,7 @@ export function MenuScreen() {
             sfx.ui();
             start(diff);
           }}
-          className="mt-2 rounded-xl border-2 border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-10 py-3 font-mono text-sm font-bold uppercase tracking-[0.2em] text-space shadow-[0_0_32px_rgba(240,199,94,0.5)] max-md:hidden"
+          className="mt-2 rounded-xl border border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-10 py-3 font-mono text-sm font-bold uppercase tracking-[0.2em] text-space shadow-[0_0_20px_rgba(240,199,94,0.35)] max-md:hidden"
         >
           ▶ start {DIFFICULTIES[diff].name} run
         </motion.button>
@@ -110,6 +96,7 @@ export function MenuScreen() {
         <div className="grid grid-cols-3 overflow-hidden rounded-md border border-white/15">
           {(Object.keys(DIFFICULTIES) as DifficultyId[]).map((id) => {
             const selectedDiff = id === diff;
+            const tone = id === "cursed" ? "#e8eefc" : id === "hard" ? "#e0563f" : "#7dd3fc";
             return (
               <button
                 key={id}
@@ -120,9 +107,12 @@ export function MenuScreen() {
                   setDiff(id);
                 }}
                 aria-pressed={selectedDiff}
-                className={`h-9 border-r border-white/10 font-mono text-[9px] font-bold uppercase tracking-[0.12em] last:border-r-0 ${
-                  selectedDiff ? "bg-gold text-space" : "bg-space-2/80 text-ink-dim"
-                }`}
+                className="h-9 border-r border-white/10 bg-space-2/80 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-dim last:border-r-0"
+                style={
+                  selectedDiff
+                    ? { color: tone, background: `${tone}1f`, boxShadow: `inset 0 0 0 1px ${tone}` }
+                    : undefined
+                }
               >
                 {DIFFICULTIES[id].name}
               </button>
@@ -145,7 +135,7 @@ export function MenuScreen() {
               sfx.ui();
               start(diff);
             }}
-            className="h-12 min-w-0 flex-1 rounded-md border-2 border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-space shadow-[0_0_24px_rgba(240,199,94,0.45)]"
+            className="h-12 min-w-0 flex-1 rounded-md border border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-space shadow-[0_0_20px_rgba(240,199,94,0.35)]"
           >
             ▶ start {DIFFICULTIES[diff].name} run
           </button>
