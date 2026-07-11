@@ -19,7 +19,7 @@ function StatBar({ label, v, accent }: { label: string; v: number; accent: strin
   const pct = Math.round(Math.min(1, v / 1.6) * 100);
   return (
     <div className="flex items-center gap-2">
-      <span className="w-14 shrink-0 text-right font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim">
+      <span className="w-16 shrink-0 whitespace-nowrap text-right font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim">
         {label}
       </span>
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">

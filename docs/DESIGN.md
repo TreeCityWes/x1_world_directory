@@ -79,3 +79,39 @@ Type scale (fluid, `clamp()`): 12 · 14 · 16 · 20 · 28 · 40 · 64 · 96.
 - Mostly full-bleed canvas with **floating UI islands** (headline, stat card,
   CTA) that fade in per region. Minimal chrome. No traditional top nav during
   the journey — a small persistent logo + a "skip tour / read docs" affordance.
+
+## HUD/game UI contract (design-softening pass)
+
+Rules established while de-glowing and de-cluttering the game HUD. Follow
+these on every new screen; they're load-bearing, not style suggestions.
+
+- **Glow budget: one per screen.** A single glowing element is allowed — the
+  primary CTA in menus, or the earned capture/evolution celebration mid-run.
+  Everything else is flat: plain borders, no `shadow-[0_0_...]` box-shadows.
+  Glow is a reward signal, not decoration; spend it once or it means nothing.
+- **Selection state = 2 signals, no more.** An accent-color border plus a
+  ~10% tinted fill (e.g. `background: ${accent}1a`). No glow, no gradient
+  wash, no "selected" text badge stacked on top. If a card needs a third
+  signal to read as selected, the first two aren't doing their job.
+- **Icon language: dingbats only.** ⚔ ★ ✦ ◉ ↯ ⛨ ✓ and friends — zero emoji
+  anywhere in game/HUD chrome. Leaderboard medals are mono rank numerals
+  (`01` `02` `03`), not 🥇🥈🥉.
+- **Tokens, not one-off colors.** All semantic reds/greens route through
+  `--danger` / `--danger-bright` / `--success`. Violet is retired — "cursed"
+  styling is void/ink, not violet (see Palette above). Gold is the only warm
+  UI accent; don't introduce a second warm color for emphasis.
+- **Type floor.** Nothing renders under 9px. Letter-spacing (`tracking-*`)
+  tops out at `0.14em` — beyond that it hurts legibility more than it helps
+  hierarchy. Borders are 1px (`border`, not `border-2`). `backdrop-blur` only
+  on the outermost overlay layer — stacking it on nested panels is expensive
+  and reads muddy.
+- **Meaning never rides on CSS animation alone.** `prefers-reduced-motion`
+  zeroes CSS animations (`animate-pulse` etc.) on this owner's own machine, so
+  anything that only *pulses* to communicate state is invisible to him. Encode
+  the state in static color/weight/border too; Framer Motion (JS-driven) is
+  fine for decoration since it isn't blanket-disabled the same way.
+- **Rendering budget.** Bloom `0.45` / threshold `0.82`. Film grain `0.2`. No
+  `toneMapped={false}` white emissives pushed above ~1.4 intensity — that's
+  what blows out into the "everything glows" look this pass undid. No
+  strobe-rate opacity pulses (roughly >8 Hz) — they read as a rendering bug,
+  not a game feel choice.
