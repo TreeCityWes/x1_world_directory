@@ -12,6 +12,9 @@
   --cyan: #7dd3fc;
   --gold: #f0c75e;
   --gold-deep: #c9a13b;
+  --danger: #e0563f;
+  --danger-bright: #ff7a62;
+  --success: #4ade80;
 
   --background: var(--space);
   --foreground: var(--ink);
@@ -27,6 +30,9 @@
   --color-cyan: var(--cyan);
   --color-gold: var(--gold);
   --color-gold-deep: var(--gold-deep);
+  --color-danger: var(--danger);
+  --color-danger-bright: var(--danger-bright);
+  --color-success: var(--success);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

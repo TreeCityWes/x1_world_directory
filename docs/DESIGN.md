@@ -18,11 +18,16 @@ The world is blue. Space is deep. Accents glow. **Source of truth: `app/globals.
 | `--gold-deep` | `#c9a13b` | Gold gradients |
 | `--ink` | `#e8eefc` | Primary text on dark |
 | `--ink-dim` | `#8ea3c4` | Secondary text |
+| `--danger` | `#e0563f` | Enemy hits, damage, warnings |
+| `--danger-bright` | `#ff7a62` | Danger emphasis (flashes, crit hits) |
+| `--success` | `#4ade80` | Confirmations, healing/vitality, positive state |
 
 Guidance: keep ~90% of the frame in blues/space. **Gold is the CTA color**
 (open-site buttons, the "game" tab, captures, score). Cyan is the network/glow
-color (links, nodes, the rivers between them). No violet accent in the build —
-that was an early candidate, since retired.
+color (links, nodes, the rivers between them). Danger (and its brighter variant)
+marks enemies, damage, and warnings; success marks confirmations and vitality.
+No violet accent in the build — that was an early candidate, since retired:
+"cursed" difficulty styling is void/ink (white-on-black), not violet.
 
 ## Typography
 
