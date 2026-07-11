@@ -38,8 +38,8 @@ export function CaptureToast() {
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, y: 14 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="pointer-events-none absolute bottom-4 right-4 z-40 w-48 overflow-hidden rounded-xl border-2 bg-[rgba(9,13,28,0.94)] backdrop-blur max-md:hidden"
-          style={{ borderColor: toast.accent, boxShadow: `0 0 24px ${toast.accent}66` }}
+          className="pointer-events-none absolute bottom-4 right-4 z-40 w-48 overflow-hidden rounded-xl border bg-[rgba(9,13,28,0.94)] backdrop-blur max-md:hidden"
+          style={{ borderColor: toast.accent }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- site capture */}
           <img
@@ -48,8 +48,8 @@ export function CaptureToast() {
             className="aspect-[8/5] w-full object-cover object-top"
           />
           <div className="px-3 py-2">
-            <p className="font-mono text-[8px] font-bold uppercase tracking-[0.24em] text-gold">
-              ⚡ captured!
+            <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-gold">
+              ↯ captured!
             </p>
             <p className="truncate text-sm font-bold leading-tight">{toast.name}</p>
           </div>
@@ -103,9 +103,9 @@ export function CaptureFlash() {
             initial={{ scale: 0.6, y: 18, letterSpacing: "0.4em" }}
             animate={{ scale: 1, y: 0, letterSpacing: "0.02em" }}
             transition={{ type: "spring", stiffness: 240, damping: 16 }}
-            className="font-mono text-[10px] font-bold uppercase tracking-[0.4em] text-gold"
+            className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-gold"
           >
-            ⚡ site captured
+            ↯ site captured
           </motion.p>
           <motion.h2
             initial={{ scale: 1.3, opacity: 0 }}
@@ -114,7 +114,8 @@ export function CaptureFlash() {
             className="mt-1 text-2xl font-black italic tracking-tight max-md:text-lg"
             style={{
               color: "#fff",
-              textShadow: `0 0 12px ${flash.accent}, 0 0 28px ${flash.accent}88, 0 2px 4px rgba(0,0,0,0.6)`,
+              // the one earned glow in this decluttered UI: mid-run capture celebration — halved intensity
+              textShadow: `0 0 6px ${flash.accent}, 0 0 14px ${flash.accent}88, 0 2px 4px rgba(0,0,0,0.6)`,
             }}
           >
             {flash.name}
@@ -123,12 +124,11 @@ export function CaptureFlash() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18 }}
-            className="mt-1.5 rounded-full border px-3 py-0.5 font-mono text-xs font-bold uppercase tracking-[0.18em] backdrop-blur max-md:text-[10px]"
+            className="mt-1.5 rounded-full border px-3 py-0.5 font-mono text-xs font-bold uppercase tracking-[0.14em] backdrop-blur max-md:text-[10px]"
             style={{
               color: flash.accent,
               borderColor: `${flash.accent}aa`,
               background: `${flash.accent}1a`,
-              boxShadow: `0 0 24px ${flash.accent}55`,
             }}
           >
             {flash.power}

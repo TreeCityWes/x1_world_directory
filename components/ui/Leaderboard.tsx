@@ -7,15 +7,19 @@ import { shortAddr, useProfile } from "@/lib/profile";
 import { useGame } from "@/lib/gameStore";
 
 const RANK_STYLE: Record<number, string> = {
-  1: "border-gold/50 bg-gold/10 shadow-[0_0_18px_rgba(240,199,94,0.15)]",
+  1: "border-gold/50 bg-gold/10",
   2: "border-white/25 bg-white/5",
   3: "border-[#cd7f32]/40 bg-[#cd7f32]/10",
 };
-const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+const RANK_NUM_COLOR: Record<number, string> = {
+  1: "var(--gold)",
+  2: "#c0c7d4",
+  3: "#c9926b",
+};
 const DIFF_COLOR: Record<string, string> = {
-  normal: "#7dd3fc",
-  hard: "#ff8c6b",
-  cursed: "#c4b5fd",
+  normal: "var(--cyan)",
+  hard: "var(--danger-bright)",
+  cursed: "var(--ink)",
 };
 
 /** Global top-25, refreshed when runs end (scores submit on death/win). */
@@ -49,10 +53,10 @@ export default function Leaderboard() {
   return (
     <div id="x1-leaderboard">
       <div className="flex items-baseline justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-          🏆 global leaderboard
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-gold">
+          ★ global leaderboard
         </p>
-        <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-ink-dim/60">
+        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim/60">
           top 25 · best run counts
         </span>
       </div>
@@ -83,8 +87,13 @@ export default function Leaderboard() {
                 RANK_STYLE[e.rank] ?? "border-white/8 bg-space-2/30"
               } ${mine ? "ring-1 ring-cyan/60" : ""}`}
             >
-              <span className="w-6 shrink-0 text-center font-mono text-[11px] text-ink-dim">
-                {MEDAL[e.rank] ?? e.rank}
+              <span
+                className={`w-6 shrink-0 text-center font-mono text-[11px] ${
+                  RANK_NUM_COLOR[e.rank] ? "" : "text-ink-dim"
+                }`}
+                style={RANK_NUM_COLOR[e.rank] ? { color: RANK_NUM_COLOR[e.rank] } : undefined}
+              >
+                {String(e.rank).padStart(2, "0")}
               </span>
               <span className="min-w-0 flex-1 truncate">
                 {e.name}
@@ -95,13 +104,13 @@ export default function Leaderboard() {
                   className="shrink-0 font-mono text-[9px] text-ink-dim/60"
                   title={e.verified ? "wallet ownership proven by signature" : "unverified wallet"}
                 >
-                  {e.verified && <span className="mr-0.5 text-[#4ade80]">✓</span>}
+                  {e.verified && <span className="mr-0.5 text-success">✓</span>}
                   {shortAddr(e.wallet)}
                 </span>
               )}
               <span
                 className="shrink-0 font-mono text-[9px] uppercase"
-                style={{ color: DIFF_COLOR[e.diff] ?? "#7dd3fc" }}
+                style={{ color: DIFF_COLOR[e.diff] ?? "var(--cyan)" }}
               >
                 {e.diff}
               </span>
@@ -112,7 +121,7 @@ export default function Leaderboard() {
           );
         })}
       </div>
-      <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.12em] text-ink-dim/40">
+      <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/40">
         ranked entries require wallet proof — remove yourself anytime from your profile
       </p>
     </div>
