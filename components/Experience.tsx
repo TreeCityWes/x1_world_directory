@@ -24,7 +24,7 @@ import { useGame } from "@/lib/gameStore";
 // Chromatic aberration: radial, so the center stays razor sharp and only the
 // frame's rim picks up a whisper of lens fringing. The offset is TINY on
 // purpose — at 2× this it reads as a broken monitor, not a lens.
-const CA_OFFSET = new THREE.Vector2(0.0005, 0.0012);
+const CA_OFFSET = new THREE.Vector2(0.0004, 0.0008);
 
 /**
  * Console layout: LEFT screen is the world (its own canvas pane, globe fully
@@ -124,16 +124,18 @@ export default function Experience() {
               desktop only (two extra full-screen passes phones don't need).
               Bloom threshold sits BELOW the mid-range emissives (landmark
               beacons 0.4–0.9, blade glints 0.8) — at the old 0.9 only eyes
-              and coins glowed and the whole world read matte. */}
+              and coins glowed and the whole world read matte. Dialed back
+              from an earlier harsher pass so the stack reads as a soft
+              premium glow rather than a heavy filter (DESIGN.md). */}
           <EffectComposer multisampling={LOW_GPU ? 0 : 8}>
             <Bloom
-              intensity={0.65}
-              luminanceThreshold={0.78}
-              luminanceSmoothing={0.7}
-              radius={0.75}
+              intensity={0.45}
+              luminanceThreshold={0.82}
+              luminanceSmoothing={0.75}
+              radius={0.85}
               mipmapBlur
             />
-            <Vignette offset={0.3} darkness={0.6} />
+            <Vignette offset={0.3} darkness={0.5} />
             {LOW_GPU ? (
               <></>
             ) : (
@@ -142,7 +144,7 @@ export default function Experience() {
                     (premultiplied screen = grain rides the LIT pixels; pure
                     black space stays pure black, no gray haze) + radial
                     chromatic fringing pinned to the frame's rim */}
-                <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={0.4} />
+                <Noise premultiply blendFunction={BlendFunction.SCREEN} opacity={0.2} />
                 <ChromaticAberration
                   offset={CA_OFFSET}
                   radialModulation
