@@ -285,11 +285,16 @@ type GameStore = {
   character: CharacterId;
   setCharacter: (c: CharacterId) => void;
   finalScore: number;
+  /** difficulty of the run finalScore came from — survives openMenu/resetRun */
+  finalDiff: DifficultyId;
   /** boss entrance nameplate — set by the game loop, shown ~3s by the HUD */
   bossCard: string;
   bossCardAt: number;
   /** leaderboard submit status for the end screens */
   scoreSubmit: "" | "sending" | "ok" | "fail";
+  /** late ranked submission — a run that ended before name+wallet were set
+   *  can still post until the next run starts */
+  retrySubmit: () => void;
   start: (diff?: DifficultyId) => void;
   openMenu: () => void;
   pause: () => void;
@@ -341,6 +346,7 @@ export const useGame = create<GameStore>((set, get) => ({
   capturedIds: [],
   best: 0,
   finalScore: 0,
+  finalDiff: "normal",
   bossCard: "",
   bossCardAt: 0,
   scoreSubmit: "",
@@ -358,7 +364,17 @@ export const useGame = create<GameStore>((set, get) => ({
     });
     const best =
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
-    set({ mode: "play", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best });
+    // a new run supersedes the previous unposted score — retrySubmit ends here
+    set({
+      mode: "play",
+      hud: emptyHud(),
+      choices: [],
+      activeSites: [],
+      capturedIds: [],
+      best,
+      finalScore: 0,
+      scoreSubmit: "",
+    });
   },
   openMenu: () => {
     resetRun();
@@ -391,6 +407,7 @@ export const useGame = create<GameStore>((set, get) => ({
     set({
       mode: "dead",
       finalScore: score,
+      finalDiff: run.difficulty,
       best,
       deathCause: run.killedBy,
       scoreSubmit: ranked ? "sending" : "",
@@ -418,6 +435,7 @@ export const useGame = create<GameStore>((set, get) => ({
     set({
       mode: "timeup",
       finalScore: score,
+      finalDiff: run.difficulty,
       best,
       scoreSubmit: ranked ? "sending" : "",
       hud: emptyHud(),
@@ -438,7 +456,24 @@ export const useGame = create<GameStore>((set, get) => ({
         (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
       );
     }
-    set({ mode: "won", finalScore: score, best, scoreSubmit: ranked ? "sending" : "", hud: emptyHud() });
+    set({
+      mode: "won",
+      finalScore: score,
+      finalDiff: run.difficulty,
+      best,
+      scoreSubmit: ranked ? "sending" : "",
+      hud: emptyHud(),
+    });
+  },
+  retrySubmit: () => {
+    const { finalScore, finalDiff, scoreSubmit } = get();
+    if (finalScore <= 0 || scoreSubmit === "ok" || scoreSubmit === "sending") return;
+    const p = useProfile.getState();
+    if (!p.name.trim() || !p.wallet) return;
+    set({ scoreSubmit: "sending" });
+    void submitScore({ name: p.name, wallet: p.wallet, score: finalScore, diff: finalDiff }).then(
+      (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
+    );
   },
   syncHud: () => set({ hud: emptyHud() }),
   offerLevelUp: (choices) => set({ mode: "levelup", choices, hud: emptyHud() }),

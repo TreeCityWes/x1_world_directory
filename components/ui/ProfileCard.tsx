@@ -50,6 +50,7 @@ export default function ProfileCard() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onBlur={() => useGame.getState().retrySubmit()}
           placeholder="enter ninja name_"
           maxLength={20}
           className="min-w-0 flex-1 border-b-2 border-gold/25 bg-transparent pb-1 text-lg font-bold tracking-tight text-ink outline-none transition-colors placeholder:font-semibold placeholder:text-ink-dim/40 focus:border-gold"
@@ -64,7 +65,7 @@ export default function ProfileCard() {
           </button>
         ) : (
           <button
-            onClick={() => void connect()}
+            onClick={() => void connect().then(() => useGame.getState().retrySubmit())}
             disabled={connecting}
             className="shrink-0 rounded-lg bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-3.5 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-space shadow-[0_2px_0_#8a6414] transition-all hover:-translate-y-px hover:shadow-[0_3px_0_#8a6414] active:translate-y-0.5 active:shadow-none disabled:opacity-60"
           >

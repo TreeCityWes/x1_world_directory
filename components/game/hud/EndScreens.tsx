@@ -112,6 +112,8 @@ function EndButtonRow({ onRunItBack }: { onRunItBack: () => void }) {
 function InscribeRow({ score }: { score: number }) {
   const wallet = useProfile((s) => s.wallet);
   const name = useProfile((s) => s.name);
+  const connecting = useProfile((s) => s.connecting);
+  const walletError = useProfile((s) => s.walletError);
   const [st, setSt] = useState<{ k: "idle" | "busy" | "done"; sig?: string; err?: string }>({
     k: "idle",
   });
@@ -129,8 +131,19 @@ function InscribeRow({ score }: { score: number }) {
     setSt(r.sig ? { k: "done", sig: r.sig } : { k: "idle", err: r.error });
   };
 
+  // Connecting here must also rescue the leaderboard entry: the score was
+  // skipped at run end if no wallet was set (see gameStore.retrySubmit).
+  const doConnect = async () => {
+    await useProfile.getState().connect();
+    useGame.getState().retrySubmit();
+  };
+
   const viewBoard = () => {
-    useGame.getState().openMenu();
+    // Mobile: the end screen is a fixed full-viewport overlay, so the board is
+    // only reachable via the menu. Desktop: the side panel is already on
+    // screen — scroll to it WITHOUT dismissing the summary (dismissing it used
+    // to strand un-inscribed scores).
+    if (!window.matchMedia("(min-width: 768px)").matches) useGame.getState().openMenu();
     document.getElementById("x1-leaderboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
@@ -146,11 +159,20 @@ function InscribeRow({ score }: { score: number }) {
           >
             inscribed on x1 — view transaction ↗
           </a>
+        ) : !wallet ? (
+          <button
+            onClick={() => void doConnect()}
+            disabled={connecting}
+            title="connect to inscribe on x1 and post your score to the board"
+            className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
+          >
+            {connecting ? "connecting…" : "↯ connect wallet"}
+          </button>
         ) : (
           <button
             onClick={() => void doInscribe()}
-            disabled={st.k === "busy" || !wallet}
-            title={wallet ? "write this score to X1 mainnet forever" : "connect your wallet first"}
+            disabled={st.k === "busy"}
+            title="write this score to X1 mainnet forever"
             className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
           >
             {st.k === "busy" ? "inscribing…" : "inscribe score on x1"}
@@ -163,9 +185,19 @@ function InscribeRow({ score }: { score: number }) {
           ★ view leaderboard
         </button>
       </div>
-      {!wallet && st.k === "idle" && !st.err && (
+      {!wallet && st.k === "idle" && !st.err && !walletError && (
         <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
-          connect your wallet to inscribe your score on x1 mainnet
+          connect to inscribe on x1 mainnet and rank on the global board
+        </p>
+      )}
+      {wallet && !name.trim() && (
+        <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
+          set a ninja name in the console to post this score to the board
+        </p>
+      )}
+      {walletError && !wallet && (
+        <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">
+          {walletError}
         </p>
       )}
       {st.err && (
