@@ -13,6 +13,23 @@ import { PLANET_RADIUS } from "./Planet";
 const Y = new THREE.Vector3(0, 1, 0);
 const _target = new THREE.Quaternion();
 
+let shadowTex: THREE.CanvasTexture | null = null;
+function getShadowTexture() {
+  if (shadowTex) return shadowTex;
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(64, 64, 10, 64, 64, 60);
+  g.addColorStop(0, "rgba(0,0,0,0.55)");
+  g.addColorStop(0.55, "rgba(0,0,0,0.18)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  shadowTex = new THREE.CanvasTexture(c);
+  return shadowTex;
+}
+
 /**
  * The playable character. It stays at the top of the planet — the world
  * rotates underneath it — but it turns to face its direction of travel, bobs,
@@ -32,6 +49,7 @@ export default function Character() {
   const legL = useRef<THREE.Group>(null);
   const legR = useRef<THREE.Group>(null);
   const scarf = useRef<THREE.Group>(null);
+  const auraRing = useRef<THREE.Mesh>(null);
   const phase = useRef(0);
 
   useFrame((state, dt) => {
@@ -43,6 +61,13 @@ export default function Character() {
     // NEVER accumulate into position.y: a += here once leaked (reduced-motion
     // skipped the reset) and characters drifted off the planet.
     const hover = charId === "theo" ? 0.03 + Math.sin(t * 2.2) * 0.02 : 0;
+
+    // pulse the identity ring so the aura breathes, not sits like a sticker
+    if (auraRing.current) {
+      const pulse = 1 + Math.sin(t * 3) * 0.05;
+      auraRing.current.scale.setScalar(pulse);
+      (auraRing.current.material as THREE.MeshBasicMaterial).opacity = 0.35 + Math.sin(t * 3) * 0.1;
+    }
 
     // face the direction of travel (smoothed, no flips)
     if (yaw.current && moveState.speed > 0.08) {
@@ -114,12 +139,18 @@ export default function Character() {
           (white + aura-colored) painted big green/blue pools on the ground
           that followed the runner — read as a glitch, not a glow. */}
       <pointLight position={[0.4, 0.8, 0.55]} intensity={1.1} distance={1.4} color="#dbe6ff" />
-      {/* GROUNDING (LEG-ISSUE.md): a dark contact shadow PLANTED on the
+      {/* GROUNDING (LEG-ISSUE.md): a soft contact shadow feathered into the
           surface — it never bobs with the body, which is what sells feet
           touching ground instead of a hover pad */}
       <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.19, 24]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.38} depthWrite={false} />
+        <planeGeometry args={[0.42, 0.42]} />
+        <meshBasicMaterial
+          map={getShadowTexture()}
+          transparent
+          opacity={0.85}
+          depthWrite={false}
+          toneMapped={false}
+        />
       </mesh>
       {/* identity glow + ring, softened — additive discs read as hover FX */}
       <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -132,7 +163,7 @@ export default function Character() {
           depthWrite={false}
         />
       </mesh>
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh ref={auraRing} position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.17, 0.011, 8, 32]} />
         <meshBasicMaterial
           color={aura}

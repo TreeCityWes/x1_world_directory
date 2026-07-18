@@ -208,6 +208,35 @@ function getSiteLabel(name: string) {
   siteLabelCache.set(name, tex);
   return tex;
 }
+
+// vertical flame sprite: white-hot core → amber → red tip, feathered alpha
+let flameTex: THREE.CanvasTexture | null = null;
+function getFlameTexture() {
+  if (flameTex) return flameTex;
+  const c = document.createElement("canvas");
+  c.width = 64;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createLinearGradient(32, 128, 32, 0);
+  g.addColorStop(0, "rgba(255,60,40,0)");
+  g.addColorStop(0.25, "rgba(255,90,40,0.35)");
+  g.addColorStop(0.5, "rgba(255,160,60,0.7)");
+  g.addColorStop(0.75, "rgba(255,220,120,0.85)");
+  g.addColorStop(1, "rgba(255,255,255,0.95)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 128);
+  // horizontal feather so the edges are soft
+  const rg = ctx.createRadialGradient(32, 64, 8, 32, 64, 54);
+  rg.addColorStop(0, "rgba(255,255,255,1)");
+  rg.addColorStop(0.6, "rgba(255,255,255,0.6)");
+  rg.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.fillStyle = rg;
+  ctx.fillRect(0, 0, 64, 128);
+  ctx.globalCompositeOperation = "source-over";
+  flameTex = new THREE.CanvasTexture(c);
+  return flameTex;
+}
 const _t = new THREE.Vector3();
 const _f0 = new THREE.Vector3();
 
@@ -474,7 +503,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const haloRef = useRef<THREE.Mesh | null>(null);
   const haloFillRef = useRef<THREE.Mesh | null>(null);
   const magnetRef = useRef<THREE.Mesh | null>(null);
-  const flameRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const flameRefs = useRef<(THREE.Sprite | null)[]>([]);
   const slashRef = useRef<THREE.Mesh | null>(null);
   const swordRef = useRef<THREE.Group | null>(null);
   const scanRef = useRef<THREE.Mesh | null>(null);
@@ -1177,24 +1206,27 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       mesh.visible = f.alive;
       if (f.alive) {
         const age = 1 - f.life / f.maxLife; // 0 → 1
-        const m = mesh.material as THREE.MeshBasicMaterial;
+        const m = mesh.material as THREE.SpriteMaterial;
         if (f.smoke) {
           // minimalist smoke: faint dark puff drifting up above the flames
           mesh.position.copy(f.dir).multiplyScalar(R + 0.06 + age * 0.16);
-          mesh.quaternion.setFromUnitVectors(UP, f.dir);
-          mesh.scale.setScalar(0.018 + age * 0.05);
+          const sc = 0.04 + age * 0.07;
+          mesh.scale.set(sc, sc, 1);
           m.blending = THREE.NormalBlending;
           m.color.set(THEME.smoke);
-          m.opacity = 0.15 * (1 - age);
+          m.opacity = 0.18 * (1 - age);
+          m.rotation = run.t * 0.5 + i;
         } else {
           mesh.position.copy(f.dir).multiplyScalar(R + 0.02 + age * 0.09);
-          mesh.quaternion.setFromUnitVectors(UP, f.dir);
-          mesh.scale.setScalar(0.028 * (1 - age * 0.7));
+          const w = 0.045 * (1 - age * 0.7);
+          const h = 0.09 * (1 - age * 0.7);
+          mesh.scale.set(w, h, 1);
           m.blending = THREE.AdditiveBlending;
           if (age < 0.5) _col.lerpColors(FLAME_A, FLAME_B, age * 2);
           else _col.lerpColors(FLAME_B, FLAME_C, (age - 0.5) * 2);
           m.color.copy(_col);
           m.opacity = 0.85 * (1 - age * age);
+          m.rotation = run.t * (2 + i * 0.15) + i;
         }
       }
     }
@@ -2327,17 +2359,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           side={THREE.DoubleSide}
         />
       </mesh>
-      {/* Ion Halo flames */}
+      {/* Ion Halo flames — soft vertical sprites instead of low-poly cones */}
       {Array.from({ length: MAX_FLAMES }).map((_, i) => (
-        <mesh key={`f${i}`} ref={(el) => { flameRefs.current[i] = el; }} visible={false}>
-          <coneGeometry args={[0.55, 1.6, 5]} />
-          <meshBasicMaterial
+        <sprite key={`f${i}`} ref={(el) => { flameRefs.current[i] = el; }} visible={false}>
+          <spriteMaterial
+            map={getFlameTexture()}
             transparent
             opacity={0.8}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
+            toneMapped={false}
           />
-        </mesh>
+        </sprite>
       ))}
       {/* CAPY — Bad Block Slash sweep: a STEEL flash, not a green wash —
           the sword-ness is the identity (green stays on his shield/aura) */}
