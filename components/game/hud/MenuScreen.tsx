@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { DIFFICULTIES, useGame, type DifficultyId } from "@/lib/gameStore";
+import { DIFFICULTIES, useGame, getPb, activeMutator, type DifficultyId } from "@/lib/gameStore";
 import { CHARACTERS } from "@/lib/characters";
 import { sfx } from "@/lib/sound";
 import { CharacterSelect } from "@/components/game/hud/CharacterSelect";
@@ -12,8 +12,15 @@ export function MenuScreen() {
   const character = useGame((s) => s.character);
   const start = useGame((s) => s.start);
   const quit = useGame((s) => s.quit);
+  const storePb = useGame((s) => s.pb);
+  const mutator = activeMutator();
   // difficulty is a SELECTION now, committed by the big start button
   const [diff, setDiff] = useState<DifficultyId>("normal");
+
+  // keep the store's per-character/difficulty PB in sync with the menu selection
+  useEffect(() => {
+    useGame.setState({ pb: getPb(character, diff) });
+  }, [character, diff]);
 
   return (
     <motion.div
@@ -64,10 +71,23 @@ export function MenuScreen() {
             );
           })}
         </div>
+        {/* weekly mutator chip — the current ISO-week twist */}
+        {mutator.id !== "none" && (
+          <div className="mt-3 hidden rounded-lg border border-cyan/20 bg-cyan/5 px-4 py-2 md:block">
+            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-cyan">
+              weekly mutator
+            </p>
+            <p className="text-sm font-semibold tracking-tight text-ink">{mutator.name}</p>
+            <p className="text-[11px] text-ink-dim">{mutator.desc}</p>
+          </div>
+        )}
         {/* the CTA — the screen finally ends in a button, not a shrug */}
         <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-dim max-md:hidden">
           selected: <span className="text-ink">{CHARACTERS[character].name}</span> ·{" "}
           <span className="text-ink">{DIFFICULTIES[diff].name}</span>
+          {storePb > 0 && (
+            <span className="ml-2 text-gold">★ pb {storePb.toLocaleString()}</span>
+          )}
         </p>
         <motion.button
           whileHover={{ y: -2 }}
@@ -119,6 +139,13 @@ export function MenuScreen() {
             );
           })}
         </div>
+        {mutator.id !== "none" && (
+          <div className="mt-2 rounded-md border border-cyan/20 bg-cyan/5 px-3 py-1.5 md:hidden">
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-cyan">weekly mutator</p>
+            <p className="text-xs font-semibold text-ink">{mutator.name}</p>
+            <p className="text-[10px] text-ink-dim">{mutator.desc}</p>
+          </div>
+        )}
         <div className="mt-2 flex gap-2">
           <button
             type="button"
@@ -129,16 +156,23 @@ export function MenuScreen() {
           >
             ←
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              sfx.ui();
-              start(diff);
-            }}
-            className="h-12 min-w-0 flex-1 rounded-md border border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-space shadow-[0_0_20px_rgba(240,199,94,0.35)]"
-          >
-            ▶ start {DIFFICULTIES[diff].name} run
-          </button>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <button
+              type="button"
+              onClick={() => {
+                sfx.ui();
+                start(diff);
+              }}
+              className="h-12 min-w-0 flex-1 rounded-md border border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] px-3 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-space shadow-[0_0_20px_rgba(240,199,94,0.35)]"
+            >
+              ▶ start {DIFFICULTIES[diff].name} run
+            </button>
+            {storePb > 0 && (
+              <p className="mt-0.5 text-center font-mono text-[9px] uppercase tracking-[0.12em] text-gold">
+                ★ pb {storePb.toLocaleString()}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>

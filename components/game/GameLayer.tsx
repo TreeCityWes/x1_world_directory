@@ -1,5 +1,11 @@
 "use client";
 
+import { HEX, THEME, rgba } from "@/lib/theme";
+
+/* eslint-disable react-hooks/immutability, react-hooks/purity */
+// This file is the 60fps game simulation hot path. It deliberately mutates
+// module-scope pooled objects (world, run) inside useFrame, not during render.
+
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
@@ -7,7 +13,7 @@ import { mergeVertices } from "three-stdlib";
 import * as THREE from "three";
 import { regions } from "@/lib/regions";
 import { monoFont } from "@/lib/canvasFont";
-import { sfx } from "@/lib/sound";
+import { sfx, duckMusic } from "@/lib/sound";
 import Nemesis from "@/components/game/Nemesis";
 import { BugMob, GasWisp, RugMob } from "@/components/game/Mobs";
 import { moveState } from "@/lib/gameState";
@@ -18,6 +24,7 @@ import {
   armorMult,
   critChance,
   currentSpeedMult,
+  effectiveRunSeconds,
   fireCooldown,
   haloAngle,
   lifestealPct,
@@ -25,7 +32,6 @@ import {
   regenRate,
   rollChoices,
   run,
-  RUN_SECONDS,
   shurikenDamage,
   useGame,
   xpMult,
@@ -49,7 +55,7 @@ const MAX_SHURIKENS = 40;
 const MAX_GEMS = 90;
 const MAX_KATANAS = 4;
 const MAX_WAKE = 16;
-const MAX_PARTS = 48;
+const MAX_PARTS = 96;
 const MAX_FLAMES = 64;
 
 const CONTACT_BASE = 0.055; // player's angular "radius"
@@ -74,14 +80,15 @@ type Enemy = {
   t: number;
   biteAt: number; // next time this enemy may bite (discrete attacks, not dps)
   recoilUntil: number; // after a bite it backs off briefly
+  hitFlashUntil: number; // white emissive flash when struck
   bossKind: "whale" | "nemesis";
   markedUntil: number; // THEO scan mark: +50% damage taken, +50% xp
   lungeAt: number; // bosses: next telegraphed charge
   windupUntil: number; // bosses: rearing back before the charge
 };
-type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string; pierce: number; evo: boolean };
+type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string; pierce: number; evo: boolean; trailAt: number };
 type PendingSpawn = { active: boolean; type: EnemyTypeId; dir: THREE.Vector3; at: number };
-type DmgNum = { alive: boolean; dir: THREE.Vector3; t0: number; val: number; crit: boolean };
+type DmgNum = { alive: boolean; dir: THREE.Vector3; t0: number; val: number; crit: boolean; kill: boolean };
 type CaptureFx = { active: boolean; dir: THREE.Vector3; t0: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
 type Wake = { alive: boolean; dir: THREE.Vector3; life: number };
@@ -114,7 +121,7 @@ function getXCoinTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
   const ctx = c.getContext("2d")!;
-  ctx.strokeStyle = "#ffffff";
+  ctx.strokeStyle = HEX.white;
   ctx.lineWidth = 22;
   ctx.lineCap = "round";
   ctx.beginPath();
@@ -129,8 +136,8 @@ function getXCoinTexture() {
 
 // floating damage numbers — only crits and boss hits, so chaos stays readable
 const dmgTexCache = new Map<string, THREE.CanvasTexture>();
-function getDmgTexture(text: string, crit: boolean) {
-  const key = `${text}|${crit}`;
+function getDmgTexture(text: string, crit: boolean, kill: boolean) {
+  const key = `${text}|${crit}|${kill}`;
   const hit = dmgTexCache.get(key);
   if (hit) return hit;
   if (dmgTexCache.size > 80) {
@@ -142,13 +149,14 @@ function getDmgTexture(text: string, crit: boolean) {
   c.width = 128;
   c.height = 64;
   const ctx = c.getContext("2d")!;
-  ctx.font = monoFont(900, crit ? 44 : 34);
+  const size = crit ? 44 : kill ? 38 : 34;
+  ctx.font = monoFont(900, size);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.lineWidth = 7;
-  ctx.strokeStyle = "#0b0e18";
+  ctx.strokeStyle = HEX.dmgOutline;
   ctx.strokeText(text, 64, 32);
-  ctx.fillStyle = crit ? "#ffd23d" : "#f5f7ff";
+  ctx.fillStyle = crit ? HEX.coin : kill ? HEX.dmgKill : HEX.inkLight;
   ctx.fillText(text, 64, 32);
   const tex = new THREE.CanvasTexture(c);
   dmgTexCache.set(key, tex);
@@ -180,9 +188,9 @@ function getSiteLabel(name: string) {
   ctx.textBaseline = "middle";
   ctx.lineWidth = 10;
   ctx.lineJoin = "round";
-  ctx.strokeStyle = "rgba(5, 8, 20, 0.95)";
+  ctx.strokeStyle = rgba(HEX.labelOutline, 0.95);
   ctx.strokeText(name, 256, 64);
-  ctx.fillStyle = "#ffd97a";
+  ctx.fillStyle = HEX.siteLabel;
   ctx.fillText(name, 256, 64);
   const tex = new THREE.CanvasTexture(c);
   siteLabelCache.set(name, tex);
@@ -246,15 +254,15 @@ function randomDirNear(center: THREE.Vector3, minAng: number, maxAng: number) {
 const world = {
       enemies: Array.from({ length: MAX_ENEMIES }, (): Enemy => ({
         alive: false, type: "goblin", dir: new THREE.Vector3(), hp: 0, maxHp: 0,
-        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0, bossKind: "whale", markedUntil: 0, lungeAt: 0, windupUntil: 0,
+        speed: 0, radius: 0, dmg: 0, xp: 0, gemSplit: 1, t: 0, biteAt: 0, recoilUntil: 0, hitFlashUntil: 0, bossKind: "whale", markedUntil: 0, lungeAt: 0, windupUntil: 0,
       })),
       shurikens: Array.from({ length: MAX_SHURIKENS }, (): Shuriken => ({
-        alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0, kind: "shuriken", pierce: 1, evo: false,
+        alive: false, pos: new THREE.Vector3(), axis: new THREE.Vector3(), ttl: 0, dmg: 0, spin: 0, kind: "shuriken", pierce: 1, evo: false, trailAt: 0,
       })),
       // sized to outrun the densest burst (1+floor(block/3)) across the ~3
       // spawn ticks that can be in flight at once → spawns stay telegraphed
       pending: Array.from({ length: 40 }, (): PendingSpawn => ({ active: false, type: "goblin", dir: new THREE.Vector3(), at: 0 })),
-      dmgNums: Array.from({ length: 10 }, (): DmgNum => ({ alive: false, dir: new THREE.Vector3(), t0: 0, val: 0, crit: false })),
+      dmgNums: Array.from({ length: 10 }, (): DmgNum => ({ alive: false, dir: new THREE.Vector3(), t0: 0, val: 0, crit: false, kill: false })),
       captureFx: Array.from({ length: 3 }, (): CaptureFx => ({ active: false, dir: new THREE.Vector3(), t0: 0 })),
       gems: Array.from({ length: MAX_GEMS }, (): Gem => ({
         alive: false, dir: new THREE.Vector3(), xp: 0, t: 0,
@@ -293,21 +301,21 @@ const world = {
   wake: Array.from({ length: MAX_WAKE }, (): Wake => ({ alive: false, dir: new THREE.Vector3(), life: 0 })),
   parts: Array.from(
     { length: MAX_PARTS },
-    (): Part => ({ alive: false, dir: new THREE.Vector3(), axis: new THREE.Vector3(), speed: 0, life: 0, color: "#fff" }),
+    (): Part => ({ alive: false, dir: new THREE.Vector3(), axis: new THREE.Vector3(), speed: 0, life: 0, color: HEX.white }),
   ),
       started: false,
 };
 
 // halo flame gradient: white-hot base -> ember -> red tip
-const FLAME_A = new THREE.Color("#ffe89e");
-const FLAME_B = new THREE.Color("#ff8c3d");
-const FLAME_C = new THREE.Color("#ff3d3d");
+const FLAME_A = THEME.flameA;
+const FLAME_B = THEME.flameB;
+const FLAME_C = THEME.flameC;
 const _col = new THREE.Color();
 
 // arc lightning: a jagged bright core tube inside a soft glow tube — a real
 // BOLT, not a hairline (GL line width is ignored on most Windows GPUs)
 const ARC_MAT_CORE = new THREE.MeshBasicMaterial({
-  color: "#f2fbff",
+  color: THEME.arcCore,
   transparent: true,
   opacity: 1,
   toneMapped: false,
@@ -315,7 +323,7 @@ const ARC_MAT_CORE = new THREE.MeshBasicMaterial({
   depthWrite: false,
 });
 const ARC_MAT_GLOW = new THREE.MeshBasicMaterial({
-  color: "#4f9dff",
+  color: THEME.arcGlow,
   transparent: true,
   opacity: 0.4,
   toneMapped: false,
@@ -381,7 +389,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           }
           const m = (mesh.material as THREE.MeshStandardMaterial).clone();
           m.color?.multiplyScalar(0.72);
-          m.emissive?.set("#8b1020");
+          m.emissive?.set(THEME.bossMenace);
           m.emissiveIntensity = 0.4;
           m.flatShading = false;
           m.needsUpdate = true;
@@ -393,10 +401,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       // "whale (investor)" (GLM design review; ninja_game/ASSETS.md agrees).
       // Whale local space after centering: y ±0.164, z ±0.525, nose +z.
       const gold = new THREE.MeshStandardMaterial({
-        color: "#f0c75e",
+        color: THEME.gold,
         metalness: 0.8,
         roughness: 0.3,
-        emissive: "#c9921e",
+        emissive: THEME.goldEmissive,
         emissiveIntensity: 0.35,
       });
       const hat = whaleHatGltf.scene.clone(true);
@@ -405,8 +413,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         if (!mesh.isMesh || !mesh.material) return;
         const m = (mesh.material as THREE.MeshStandardMaterial).clone();
         if (m.name === "F44336" || m.name === "FFCC88") {
-          m.color?.set("#f0c75e");
-          m.emissive?.set("#c9921e");
+          m.color?.set(THEME.gold);
+          m.emissive?.set(THEME.goldEmissive);
           m.emissiveIntensity = 0.35;
         }
         mesh.material = m;
@@ -508,6 +516,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     e.t = Math.random() * 10;
     e.biteAt = 0;
     e.recoilUntil = 0;
+    e.hitFlashUntil = 0;
     e.markedUntil = 0; // pool slot reuse must not inherit THEO's scan mark
     e.lungeAt =
       type === "boss"
@@ -516,6 +525,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           ? run.t + 2.5 + Math.random() * 2 // rugs pull on a staggered clock
           : Number.POSITIVE_INFINITY;
     e.windupUntil = 0;
+    // spawn impact: a small dust/ember burst at the hatch point
+    const impactColor =
+      type === "boss" ? HEX.crimson : type === "rug" ? HEX.amber : type === "gremlin" ? HEX.cyanHot : HEX.success;
+    spawnBurst(dir ?? world.pLocal, impactColor, type === "boss" ? 10 : 6);
     // boss ladder: THE WHALE first, then your dark mirror — alternating after
     if (type === "boss") e.bossKind = world.bossCount++ % 2 === 0 ? "whale" : "nemesis";
     return e;
@@ -524,7 +537,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   // Jack Levin: the X coin detonates — area damage around the blast point
   const explodeXCoin = (at: THREE.Vector3, dmg: number) => {
     sfx.kill();
-    spawnBurst(at, "#f0c75e", 6);
+    spawnBurst(at, HEX.gold, 6);
     // the detonation is the show: expanding gold shock ring + white core
     const b = world.booms.find((x) => !x.alive) ?? world.booms[0];
     b.alive = true;
@@ -556,11 +569,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     const dmg = base * (crit ? 2 : 1);
     const applied = Math.max(0, Math.min(e.hp, dmg));
     e.hp -= dmg;
+    const killed = e.hp <= 0;
+    e.hitFlashUntil = run.t + (e.type === "boss" ? 0.14 : 0.09);
+    if (e.type !== "boss") e.recoilUntil = Math.max(e.recoilUntil, run.t + 0.1);
     run.damage += applied;
     const steal = lifestealPct();
     if (steal > 0 && applied > 0) run.hp = Math.min(run.maxHp, run.hp + applied * steal);
-    // damage numbers only where they matter: crits and boss hits
-    if ((crit || e.type === "boss") && applied > 0) {
+    // damage numbers: crits, boss hits, and killing blows — capped by pool size
+    if ((crit || e.type === "boss" || killed) && applied > 0) {
       const d = world.dmgNums.find((x) => !x.alive);
       if (d) {
         d.alive = true;
@@ -568,6 +584,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         d.t0 = run.t;
         d.val = Math.round(dmg);
         d.crit = crit;
+        d.kill = killed;
       }
     }
     return dmg;
@@ -587,6 +604,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     }
   };
 
+  const spawnTrail = (at: THREE.Vector3, color: string) => {
+    const p = world.parts.find((x) => !x.alive);
+    if (!p) return;
+    p.alive = true;
+    p.dir.copy(at);
+    _v2.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
+    p.axis.crossVectors(at, _v2).normalize();
+    p.speed = 0.08 + Math.random() * 0.14;
+    p.life = 0.22 + Math.random() * 0.16;
+    p.color = color;
+  };
+
   const pickSites = (count: number, exclude: string[]) => {
     // never spawn a powerup under the ninja's feet (free instant capture)
     const pool = regions.filter(
@@ -596,8 +625,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         _v.set(...r.dir).angleTo(world.pLocal) > CAPTURE_ANGLE + 0.2,
     );
     const out: string[] = [];
+    const rng = run.rng ?? Math.random;
     while (out.length < count && pool.length > 0) {
-      const i = Math.floor(Math.random() * pool.length);
+      const i = Math.floor(rng() * pool.length);
       out.push(pool[i].id);
       pool.splice(i, 1);
     }
@@ -607,20 +637,39 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const applySitePower = (id: string) => {
     const region = regions.find((r) => r.id === id);
     if (!region) return;
+    const rng = run.rng ?? Math.random;
+    const count = (run.kindCaptures[region.kind] ?? 0) + 1;
+    run.kindCaptures[region.kind] = count;
+    const dim = Math.pow(0.82, count - 1);
     switch (region.kind) {
-      case "validatorTower": run.perm.speed++; break;
-      case "chartBeacon": run.perm.rate++; break;
-      case "dexGate": run.perm.dmg++; break;
+      case "validatorTower":
+        run.perm.speed++;
+        run.permAdd.speed += (0.045 + rng() * 0.015) * dim;
+        break;
+      case "chartBeacon":
+        run.perm.rate++;
+        run.permAdd.rate += (0.04 + rng() * 0.02) * dim;
+        break;
+      case "dexGate":
+        run.perm.dmg++;
+        run.permAdd.dmg += (0.09 + rng() * 0.03) * dim;
+        break;
       case "explorerFort":
         run.maxHp += 15;
         run.hp = Math.min(run.maxHp, run.hp + 15);
         // never SHORTEN an active shield (CAPY's cycle shares this slot)
         run.fx.shield = Math.max(run.fx.shield, run.t + 8);
         break;
-      case "socialBeacon": run.hp = Math.min(run.maxHp, run.hp + 35); break;
-      case "gameArcade": run.perm.xp++; break;
+      case "socialBeacon":
+        run.hp = Math.min(run.maxHp, run.hp + 35);
+        break;
+      case "gameArcade":
+        run.perm.xp++;
+        run.permAdd.xp += (0.09 + rng() * 0.03) * dim;
+        break;
       case "oracleShrine":
         run.perm.magnet++;
+        run.permAdd.magnet += (0.06 + rng() * 0.04) * dim;
         for (const g of world.gems) if (g.alive) g.t = -1; // flag: full magnet
         break;
       case "bridgePortal":
@@ -630,6 +679,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           }
         }
         break;
+    }
+    // weekly mutator: every site capture also clears the screen like a bridge portal
+    if (run.mutator.bridgeSurge && region.kind !== "bridgePortal") {
+      for (const e of world.enemies) {
+        if (e.alive && e.dir.angleTo(world.pLocal) < 0.55 && e.type !== "boss") {
+          e.hp = 0;
+        }
+      }
     }
   };
 
@@ -682,16 +739,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       m.rotateX(Math.PI / 2);
       m.scale.setScalar(1 + Math.sin(run.t * 5 + i * 2.1) * 0.18);
       // head AND shaft wear the destination pillar's accent, breathing gently
+      const flashId = useGame.getState().flashSiteId;
+      const flashing = flashId === id;
+      const accent = flashing ? HEX.gold : reg.accent;
+      const pulse = flashing ? 3.2 : 1.6;
+      m.scale.setScalar((flashing ? 1.35 : 1) + Math.sin(run.t * 5 + i * 2.1) * 0.18);
       const mat = m.material as THREE.MeshStandardMaterial;
-      mat.color.set(reg.accent);
-      mat.emissive.set(reg.accent);
-      mat.emissiveIntensity = 1.6 + Math.sin(run.t * 5 + i * 2.1) * 0.6;
+      mat.color.set(accent);
+      mat.emissive.set(accent);
+      mat.emissiveIntensity = pulse + Math.sin(run.t * 5 + i * 2.1) * 0.6;
       const shaft = m.children[0] as THREE.Mesh | undefined;
       if (shaft) {
         const sm = shaft.material as THREE.MeshStandardMaterial;
-        sm.color.set(reg.accent);
-        sm.emissive.set(reg.accent);
-        sm.emissiveIntensity = 1.1 + Math.sin(run.t * 5 + i * 2.1) * 0.4;
+        sm.color.set(accent);
+        sm.emissive.set(accent);
+        sm.emissiveIntensity = (flashing ? 2.2 : 1.1) + Math.sin(run.t * 5 + i * 2.1) * 0.4;
       }
     }
     for (let i = 0; i < MAX_ENEMIES; i++) {
@@ -740,7 +802,30 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         const windup = (e.type === "boss" || e.type === "rug") && run.t < e.windupUntil;
         const wob = 1 + Math.sin(e.t * 9) * 0.04;
         const shake = windup ? 1 + Math.sin(run.t * 30) * 0.07 : 1;
-        grp.scale.set(shake, wob * (windup ? 1.1 : 1), shake);
+        const recoil = e.type !== "boss" && e.recoilUntil > run.t ? 0.82 : 1;
+        grp.scale.set(shake * recoil, wob * (windup ? 1.1 : 1) * recoil, shake * recoil);
+        // hit flash: brief white/amber emissive pop across the whole body
+        const flashing = e.hitFlashUntil > run.t;
+        if (flashing || grp.userData.hitState) {
+          grp.userData.hitState = flashing;
+          const flashColor = e.type === "boss" ? THEME.bossFlash : THEME.white;
+          grp.traverse((o) => {
+            const mesh = o as THREE.Mesh;
+            if (!mesh.isMesh) return;
+            const mat = mesh.material as THREE.MeshStandardMaterial | undefined;
+            if (!mat || !mat.emissive) return;
+            if (!mesh.userData.hitBase) {
+              mesh.userData.hitBase = { emissive: mat.emissive.clone(), intensity: mat.emissiveIntensity };
+            }
+            if (flashing) {
+              mat.emissive.set(flashColor);
+              mat.emissiveIntensity = e.type === "boss" ? 3.2 : 4;
+            } else {
+              mat.emissive.copy(mesh.userData.hitBase.emissive);
+              mat.emissiveIntensity = mesh.userData.hitBase.intensity;
+            }
+          });
+        }
         // THEO's scan mark — the ground ring breathes via opacity only
         // (its transform is baked by the pool freeze; no matrix writes)
         const halo = markRefs.current[i];
@@ -899,13 +984,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         if (!w) continue;
         w.visible = p.active && world.started;
         if (w.visible) {
-          const k = 1 - Math.max(0, p.at - run.t) / 0.7; // 0 → 1 as it hatches
+          const remain = Math.max(0, p.at - run.t);
+          const k = 1 - remain / 0.7; // 0 → 1 as it hatches
+          const late = remain < 0.2;
           w.position.copy(p.dir).multiplyScalar(R + 0.02);
           w.quaternion.setFromUnitVectors(UP, p.dir);
           w.rotateX(Math.PI / 2);
           w.scale.setScalar(0.2 - 0.09 * k);
-          (w.material as THREE.MeshBasicMaterial).opacity =
-            0.28 + 0.32 * k + Math.sin(run.t * 8) * 0.08;
+          const mat = w.material as THREE.MeshBasicMaterial;
+          mat.color.set(late ? THEME.warnLate : THEME.warnEarly);
+          mat.opacity = 0.28 + 0.32 * k + Math.sin(run.t * 8) * 0.08;
         }
       }
       // floating damage numbers (crits + bosses only)
@@ -920,14 +1008,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           const k = age / 0.7;
           spr.position.copy(d.dir).multiplyScalar(R + 0.3 + k * 0.22);
           const mat = spr.material as THREE.SpriteMaterial;
-          const key = `${d.val}|${d.crit}`;
+          const key = `${d.val}|${d.crit}|${d.kill}`;
           if (spr.userData.k !== key) {
             spr.userData.k = key;
-            mat.map = getDmgTexture(String(d.val), d.crit);
+            mat.map = getDmgTexture(String(d.val), d.crit, d.kill);
             mat.needsUpdate = true;
           }
           mat.opacity = 1 - k * k;
-          const s = d.crit ? 0.42 : 0.32;
+          const s = d.crit ? 0.46 : d.kill ? 0.4 : 0.32;
           spr.scale.set(s, s / 2, 1);
         }
       }
@@ -1083,7 +1171,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           mesh.quaternion.setFromUnitVectors(UP, f.dir);
           mesh.scale.setScalar(0.018 + age * 0.05);
           m.blending = THREE.NormalBlending;
-          m.color.set("#39404f");
+          m.color.set(THEME.smoke);
           m.opacity = 0.15 * (1 - age);
         } else {
           mesh.position.copy(f.dir).multiplyScalar(R + 0.02 + age * 0.09);
@@ -1266,6 +1354,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         p.type = type;
         p.dir.copy(randomDirNear(world.pLocal, 0.9, 1.8));
         p.at = run.t + 0.7;
+        sfx.telegraph();
       }
     }
     // telegraphed spawns hatch — keep the telegraph alive until a pool slot
@@ -1303,14 +1392,17 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         // without being a random-death tax.
         const power =
           run.level * 0.09 +
-          run.perm.dmg * 0.1 +
+          run.permAdd.dmg +
           (run.upgrades.damage ?? 0) * 0.12 +
           (run.upgrades.multishot ?? 0) * 0.2 +
-          (run.upgrades.firerate ?? 0) * 0.08;
+          (run.upgrades.firerate ?? 0) * 0.08 +
+          (DIFFICULTIES[run.difficulty].enemyMult - 1) * 0.5;
         const hpMult = 1.8 + Math.min(3.8, power); // ~3.2× weak → ~5.6× godlike
         fb.maxHp = fb.hp = Math.round(fb.maxHp * hpMult);
-        fb.dmg = Math.round(fb.dmg * 1.3);
-        fb.speed *= 1.15;
+        // damage and speed scale gently with power so the fight is always
+        // threatening but never a random one-shot check
+        fb.dmg = Math.round(fb.dmg * (1.2 + Math.min(0.35, power * 0.1)));
+        fb.speed *= 1.1 + Math.min(0.2, power * 0.05);
         world.finalIdx = world.enemies.indexOf(fb);
         world.finalSpawned = true;
         run.finalBossAlive = true;
@@ -1343,7 +1435,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         if (run.t >= e.lungeAt) {
           e.windupUntil = run.t + (rug ? 0.35 : 0.8);
           e.lungeAt = run.t + (rug ? 4.5 : 6.5) + Math.random() * 2;
-          if (!rug) spawnBurst(e.dir, "#ff4d4d", 6);
+          if (!rug) spawnBurst(e.dir, HEX.crimson, 6);
         }
         if (run.t < e.windupUntil) bossMult = rug ? 0.05 : 0.12;
         else if (run.t < e.windupUntil + (rug ? 0.45 : 1.1)) bossMult = rug ? 3.2 : 2.5;
@@ -1460,10 +1552,16 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           if (t2 && t2.dot(world.slashDir) < -0.2 - 0.25 * ms) continue;
           dealDamage(e, shurikenDamage() * 2.2);
           e.recoilUntil = Math.max(e.recoilUntil, run.t + 0.25);
-          spawnBurst(e.dir, "#4ade80", 4);
+          spawnBurst(e.dir, HEX.success, 4);
         }
       }
       const count = weaponKind === "slash" ? 0 : 1 + (run.upgrades.multishot ?? 0);
+      // launch flash at the player — one quick burst per salvo
+      if (count > 0) {
+        const launchColor =
+          weaponKind === "xcoin" ? HEX.gold : weaponKind === "pulse" ? HEX.cyanHot : HEX.shuriken;
+        spawnBurst(world.pLocal, launchColor, weaponKind === "xcoin" ? 5 : 4);
+      }
       for (let i = 0; i < count; i++) {
         const s = world.shurikens.find((x) => !x.alive);
         if (!s) break;
@@ -1478,6 +1576,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         s.kind = weaponKind;
         s.pierce = charDef().weapon.pierce ?? 1;
         s.evo = false;
+        s.trailAt = run.t + 0.02 + i * 0.01;
       }
     }
     for (const s of world.shurikens) {
@@ -1493,6 +1592,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       }
       const speed = s.kind === "xcoin" ? 1.15 : s.kind === "pulse" ? 2.2 : SHURIKEN_SPEED;
       s.pos.applyQuaternion(_q.setFromAxisAngle(s.axis, speed * dt)).normalize();
+      // projectile trail: staggered so multishot salvos don't drain the pool instantly
+      if (run.t >= s.trailAt) {
+        const tcolor = s.kind === "xcoin" ? HEX.gold : s.kind === "pulse" ? HEX.cyanHot : HEX.shuriken;
+        spawnTrail(s.pos, tcolor);
+        s.trailAt = run.t + 0.045;
+      }
       for (const e of world.enemies) {
         if (!e.alive) continue;
         if (s.pos.angleTo(e.dir) < (e.radius + 0.05) / R + 0.02) {
@@ -1503,9 +1608,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           }
           dealDamage(e, s.dmg);
           // per-weapon hit language: blue cuts / cyan pixels (coins boom gold)
-          if (s.kind === "shuriken") spawnBurst(e.dir, "#7db2ff", 2);
+          if (s.kind === "shuriken") spawnBurst(e.dir, HEX.shuriken, 2);
           if (s.kind === "pulse") {
-            spawnBurst(e.dir, "#67e8f9", 2);
+            spawnBurst(e.dir, HEX.cyanHot, 2);
             e.recoilUntil = run.t + 0.7; // debugged: glitches backwards
             // AI chaining — the pulse forks to the nearest other enemy
             let chained: Enemy | null = null;
@@ -1521,7 +1626,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             if (chained) {
               dealDamage(chained, s.dmg * 0.5);
               chained.recoilUntil = run.t + 0.4;
-              spawnBurst(chained.dir, "#67e8f9", 3);
+              spawnBurst(chained.dir, HEX.cyanHot, 3);
             }
           }
           s.pierce -= 1;
@@ -1547,7 +1652,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       for (const e of world.enemies) {
         if (!e.alive || e.dir.angleTo(world.pLocal) > 1.2) continue;
         e.markedUntil = run.t + 3;
-        spawnBurst(e.dir, "#67e8f9", 2);
+        spawnBurst(e.dir, HEX.cyanHot, 2);
         found++;
       }
       if (found > 0) sfx.capture();
@@ -1586,7 +1691,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         ];
         for (const e of hit) {
           dealDamage(e, 16 + 7 * arcLv, chainReaction);
-          spawnBurst(e.dir, "#7dd3fc", 3);
+          spawnBurst(e.dir, HEX.cyan, 3);
         }
       }
     }
@@ -1606,7 +1711,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           if (world.pLocal.angleTo(e.dir) > 0.42) continue;
           dealDamage(e, shurikenDamage() * 2.2);
           e.recoilUntil = Math.max(e.recoilUntil, run.t + 0.35);
-          spawnBurst(e.dir, "#4ade80", 4);
+          spawnBurst(e.dir, HEX.success, 4);
         }
       } else {
         _v2.set(1, 0, 0);
@@ -1721,7 +1826,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       mesh.rotateY(phi * 2);
       // the BLADE carries the burn (children[0]); guard/grip stay physical
       const km = (mesh.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
-      km.emissive.set(hasTempest ? "#ff4d3d" : "#f0c75e");
+      km.emissive.set(hasTempest ? THEME.tempest : THEME.gold);
       km.emissiveIntensity = hasTempest ? 1.6 : 0.8;
       const kdps = hasTempest ? 150 : 70;
       for (const e of world.enemies) {
@@ -1776,7 +1881,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       } else {
         // everything maxed — the level still pays out (heal + burst of glory)
         run.hp = Math.min(run.maxHp, run.hp + 30);
-        spawnBurst(world.pLocal, "#ffd23d", 10);
+        spawnBurst(world.pLocal, HEX.coin, 10);
         store.syncHud();
       }
     }
@@ -1794,11 +1899,13 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         cfx.active = true;
         cfx.dir.copy(_v);
         cfx.t0 = run.t;
-        spawnBurst(_v, "#ffd97a", 14);
-        spawnBurst(_v, "#7dd3fc", 7);
+        spawnBurst(_v, HEX.siteLabel, 14);
+        spawnBurst(_v, HEX.cyan, 7);
         world.captured.add(id);
         useGame.setState((s) => ({ capturedIds: [...s.capturedIds, id] }));
         run.captured = world.captured.size;
+        // tutorial: first capture triggers the celebration step
+        if (store.tutorialPhase === "move") store.setTutorialPhase("capture");
         // request the FINAL BOSS at 5 sites left; the actual spawn (with
         // retry on a full pool) happens in the main loop so it can NEVER be
         // skipped, and victory is gated on it having spawned
@@ -1820,9 +1927,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     }
 
     // ---- end-of-run: clock, death, HUD sync ----
+    // duck the ambient music when the screen is crowded or a boss is alive
+    let activeEnemies = 0;
+    let bossAlive = false;
+    for (const e of world.enemies) {
+      if (!e.alive) continue;
+      activeEnemies++;
+      if (e.type === "boss") bossAlive = true;
+    }
+    const density = activeEnemies / MAX_ENEMIES;
+    const duck = bossAlive ? 0.2 : density > 0.45 ? 0.45 : 1 - density * 0.5;
+    duckMusic(duck);
+
     // the run is a time attack — when the clock runs out, bank the score. (win()
     // fires earlier in the capture handler if you complete the map first.)
-    if (run.t >= RUN_SECONDS) {
+    if (run.t >= effectiveRunSeconds()) {
       store.timeUp();
     } else if (run.hp <= 0) {
       run.hp = 0;
@@ -1849,7 +1968,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             {kind === "boss" ? (
               <>
                 <primitive object={enemyClones[i]!} />
-                <Nemesis scale={1.05} />
+                <Nemesis scale={1.05} charId={run.character} />
               </>
             ) : kind === "goblin" ? (
               <group scale={0.2}>
@@ -1876,7 +1995,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             >
               <ringGeometry args={[0.26, 0.3, 26]} />
               <meshBasicMaterial
-                color="#67e8f9"
+                color={HEX.cyanHot}
                 transparent
                 opacity={0.7}
                 blending={THREE.AdditiveBlending}
@@ -1896,7 +2015,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           geometry={shurikenGeo ?? undefined}
         >
           {!shurikenGeo && <boxGeometry args={[0.05, 0.008, 0.05]} />}
-          <meshStandardMaterial color="#c7d0e2" emissive="#4f7dff" emissiveIntensity={0.8} metalness={0.85} roughness={0.2} />
+          <meshStandardMaterial color={HEX.steel} emissive={HEX.theoEye} emissiveIntensity={0.8} metalness={0.85} roughness={0.2} />
         </mesh>
       ))}
       {/* Jack's XEN coins — black disc, bold white X on both faces */}
@@ -1905,10 +2024,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <mesh>
             <cylinderGeometry args={[0.055, 0.055, 0.016, 22]} />
             <meshStandardMaterial
-              color="#0b0b0d"
+              color={HEX.coinDisc}
               metalness={0.7}
               roughness={0.3}
-              emissive="#23232e"
+              emissive={HEX.coinRim}
               emissiveIntensity={0.5}
             />
           </mesh>
@@ -1927,12 +2046,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         <group key={`pp${i}`} ref={(el) => { pulseRefs.current[i] = el; }} visible={false}>
           <mesh rotation={[0, 0, Math.PI / 2]}>
             <capsuleGeometry args={[0.011, 0.15, 3, 8]} />
-            <meshBasicMaterial color="#eafeff" toneMapped={false} />
+            <meshBasicMaterial color={HEX.pulseCore} toneMapped={false} />
           </mesh>
           <mesh rotation={[0, 0, Math.PI / 2]}>
             <capsuleGeometry args={[0.028, 0.16, 3, 10]} />
             <meshBasicMaterial
-              color="#22d3ee"
+              color={HEX.pulseGlow}
               transparent
               opacity={0.4}
               blending={THREE.AdditiveBlending}
@@ -1948,7 +2067,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <mesh>
             <ringGeometry args={[0.86, 1, 40]} />
             <meshBasicMaterial
-              color="#f0c75e"
+              color={HEX.gold}
               transparent
               opacity={0.8}
               blending={THREE.AdditiveBlending}
@@ -1960,7 +2079,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <mesh>
             <sphereGeometry args={[1, 12, 12]} />
             <meshBasicMaterial
-              color="#fffbe8"
+              color={HEX.boomCore}
               transparent
               opacity={0.65}
               blending={THREE.AdditiveBlending}
@@ -1974,7 +2093,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       <mesh ref={shieldRef} visible={false}>
         <ringGeometry args={[0.82, 1, 6]} />
         <meshBasicMaterial
-          color="#4ade80"
+          color={HEX.success}
           transparent
           opacity={0.4}
           blending={THREE.AdditiveBlending}
@@ -1988,7 +2107,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         <mesh key={`wr${i}`} ref={(el) => { warnRefs.current[i] = el; }} visible={false}>
           <ringGeometry args={[0.78, 1, 28]} />
           <meshBasicMaterial
-            color="#ff4d4d"
+            color={HEX.crimson}
             transparent
             opacity={0.45}
             blending={THREE.AdditiveBlending}
@@ -2011,7 +2130,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <mesh position={[0, 0.65, 0]}>
             <cylinderGeometry args={[0.02, 0.06, 1.3, 12, 1, true]} />
             <meshBasicMaterial
-              color="#ffd97a"
+              color={HEX.siteLabel}
               transparent
               opacity={0.6}
               blending={THREE.AdditiveBlending}
@@ -2023,7 +2142,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
             <ringGeometry args={[0.82, 1, 36]} />
             <meshBasicMaterial
-              color="#ffd23d"
+              color={HEX.coin}
               transparent
               opacity={0.7}
               blending={THREE.AdditiveBlending}
@@ -2035,7 +2154,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.035, 0]}>
             <ringGeometry args={[0.9, 1, 36]} />
             <meshBasicMaterial
-              color="#7dd3fc"
+              color={HEX.cyan}
               transparent
               opacity={0.55}
               blending={THREE.AdditiveBlending}
@@ -2048,7 +2167,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <mesh position={[0, 0.08, 0]}>
             <sphereGeometry args={[1, 16, 16]} />
             <meshBasicMaterial
-              color="#fff6dc"
+              color={HEX.captureCore}
               transparent
               opacity={0.9}
               blending={THREE.AdditiveBlending}
@@ -2060,7 +2179,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <mesh position={[0, 0.65, 0]}>
             <cylinderGeometry args={[0.09, 0.16, 1.3, 12, 1, true]} />
             <meshBasicMaterial
-              color="#f0c75e"
+              color={HEX.gold}
               transparent
               opacity={0.22}
               blending={THREE.AdditiveBlending}
@@ -2076,8 +2195,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         <mesh position={[0.36, 0, 0]}>
           <boxGeometry args={[0.5, 0.014, 0.05]} />
           <meshStandardMaterial
-            color="#e8eef6"
-            emissive="#b9c8dc"
+            color={HEX.bladeSteel}
+            emissive={HEX.bladeEmissive}
             emissiveIntensity={1.1}
             metalness={0.95}
             roughness={0.12}
@@ -2086,7 +2205,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         </mesh>
         <mesh position={[0.09, 0, 0]}>
           <boxGeometry args={[0.05, 0.024, 0.07]} />
-          <meshStandardMaterial color="#f0c75e" metalness={0.8} roughness={0.3} />
+          <meshStandardMaterial color={HEX.gold} metalness={0.8} roughness={0.3} />
         </mesh>
       </group>
       {/* compass arrows to the active capture targets — head + shaft so they
@@ -2097,7 +2216,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <meshStandardMaterial emissiveIntensity={1.4} toneMapped={false} />
           <mesh position={[0, -0.11, 0]}>
             <boxGeometry args={[0.035, 0.12, 0.018]} />
-            <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={1.2} toneMapped={false} />
+            <meshStandardMaterial color={HEX.white} emissive={HEX.white} emissiveIntensity={1.2} toneMapped={false} />
           </mesh>
         </mesh>
       ))}
@@ -2112,8 +2231,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         <mesh key={`g${i}`} ref={(el) => { gemRefs.current[i] = el; }} visible={false}>
           <cylinderGeometry args={[0.04, 0.04, 0.012, 20]} />
           <meshStandardMaterial
-            color="#ffd23d"
-            emissive="#c9921e"
+            color={HEX.coin}
+            emissive={HEX.goldEmissive}
             emissiveIntensity={0.9}
             metalness={0.9}
             roughness={0.18}
@@ -2127,8 +2246,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           <mesh position={[0, 0, 0.055]}>
             <boxGeometry args={[0.013, 0.005, 0.17]} />
             <meshStandardMaterial
-              color="#dbe6f2"
-              emissive="#f0c75e"
+              color={HEX.katanaBlade}
+              emissive={HEX.gold}
               emissiveIntensity={0.8}
               metalness={0.95}
               roughness={0.15}
@@ -2136,15 +2255,15 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           </mesh>
           <mesh position={[0, 0, -0.033]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.022, 0.022, 0.008, 12]} />
-            <meshStandardMaterial color="#f0c75e" metalness={0.85} roughness={0.3} />
+            <meshStandardMaterial color={HEX.gold} metalness={0.85} roughness={0.3} />
           </mesh>
           <mesh position={[0, 0, -0.072]}>
             <boxGeometry args={[0.013, 0.013, 0.068]} />
-            <meshStandardMaterial color="#141c2c" roughness={0.6} />
+            <meshStandardMaterial color={HEX.grip} roughness={0.6} />
           </mesh>
           <mesh position={[0, 0, -0.11]}>
             <sphereGeometry args={[0.011, 8, 8]} />
-            <meshStandardMaterial color="#f0c75e" metalness={0.85} roughness={0.3} />
+            <meshStandardMaterial color={HEX.gold} metalness={0.85} roughness={0.3} />
           </mesh>
         </group>
       ))}
@@ -2152,7 +2271,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         <mesh key={`w${i}`} ref={(el) => { wakeRefs.current[i] = el; }} visible={false}>
           <circleGeometry args={[0.09, 20]} />
           <meshBasicMaterial
-            color="#ffd23d"
+            color={HEX.coin}
             transparent
             opacity={0.4}
             blending={THREE.AdditiveBlending}
@@ -2171,7 +2290,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       <mesh ref={haloRef} visible={false}>
         <torusGeometry args={[1, 0.02, 8, 48]} />
         <meshBasicMaterial
-          color="#ffb02e"
+          color={HEX.halo}
           transparent
           opacity={0.7}
           blending={THREE.AdditiveBlending}
@@ -2181,7 +2300,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       <mesh ref={haloFillRef} visible={false}>
         <circleGeometry args={[1, 40]} />
         <meshBasicMaterial
-          color="#ff7a1a"
+          color={HEX.haloFill}
           transparent
           opacity={0.13}
           blending={THREE.AdditiveBlending}
@@ -2206,7 +2325,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       <mesh ref={slashRef} visible={false}>
         <ringGeometry args={[0.28, 1, 28, 1, -1.15, 2.3]} />
         <meshBasicMaterial
-          color="#cfdcec"
+          color={HEX.slash}
           transparent
           opacity={0.5}
           blending={THREE.AdditiveBlending}
@@ -2218,7 +2337,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       <mesh ref={scanRef} visible={false}>
         <ringGeometry args={[0.9, 1, 48]} />
         <meshBasicMaterial
-          color="#67e8f9"
+          color={HEX.cyanHot}
           transparent
           opacity={0.5}
           blending={THREE.AdditiveBlending}
@@ -2230,7 +2349,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       <mesh ref={reticleRef} visible={false}>
         <torusGeometry args={[1, 0.05, 6, 4]} />
         <meshBasicMaterial
-          color="#67e8f9"
+          color={HEX.cyanHot}
           transparent
           opacity={0.8}
           blending={THREE.AdditiveBlending}
@@ -2241,7 +2360,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       <mesh ref={magnetRef} visible={false}>
         <torusGeometry args={[1, 0.008, 6, 8]} />
         <meshBasicMaterial
-          color="#7dd3fc"
+          color={HEX.cyan}
           transparent
           opacity={0.16}
           blending={THREE.AdditiveBlending}

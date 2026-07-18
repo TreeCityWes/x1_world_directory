@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
-import { RUN_SECONDS, useGame } from "@/lib/gameStore";
+import { effectiveRunSeconds, useGame } from "@/lib/gameStore";
 import { CaptureFlash, CaptureToast } from "@/components/game/hud/CaptureFX";
 import { MenuScreen } from "@/components/game/hud/MenuScreen";
 import { LevelUpScreen } from "@/components/game/hud/LevelUpScreen";
 import { DeathScreen, PauseScreen, TimeUpScreen, VictoryScreen } from "@/components/game/hud/EndScreens";
+import { MobileRunRibbon } from "@/components/game/hud/MobileRunRibbon";
+import { TutorialOverlay } from "@/components/game/hud/TutorialOverlay";
 
 const TOTAL_SITES = regions.length;
-
-const ONBOARD_KEY = "x1world_onboarded";
 
 /**
  * DOM HUD for survival runs: HP/XP bars, run stats, level-up cards, death
@@ -20,7 +20,6 @@ const ONBOARD_KEY = "x1world_onboarded";
 export default function GameHUD() {
   const mode = useGame((s) => s.mode);
   const hud = useGame((s) => s.hud);
-  const activeSites = useGame((s) => s.activeSites);
   const bossCard = useGame((s) => s.bossCard);
   const bossCardAt = useGame((s) => s.bossCardAt);
   const [bossCardVisible, setBossCardVisible] = useState(false);
@@ -33,23 +32,17 @@ export default function GameHUD() {
       clearTimeout(hide);
     };
   }, [bossCardAt]);
-  const [onboarded, setOnboarded] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem(ONBOARD_KEY) === "1",
-  );
 
   if (mode === "explore") return null;
-  const dismissOnboard = () => {
-    setOnboarded(true);
-    localStorage.setItem(ONBOARD_KEY, "1");
-  };
-
-  // time-attack countdown (hud.time refreshes ~4x/s — plenty for mm:ss)
-  const remaining = Math.max(0, RUN_SECONDS - hud.time);
+  const remaining = Math.max(0, effectiveRunSeconds() - hud.time);
   const clock = `${Math.floor(remaining / 60)}:${String(Math.floor(remaining % 60)).padStart(2, "0")}`;
   const lowTime = remaining <= 30;
 
   return (
     <>
+      <TutorialOverlay />
+      <MobileRunRibbon />
+
       {/* damage vignette */}
       <AnimatePresence>
         {hud.hit && mode === "play" && (
@@ -86,11 +79,8 @@ export default function GameHUD() {
       </div>
       )}
 
-      {/* run stats — under the focus-header slot. Mobile: pinned into the
-          consolidated top row (pause + sfx sit to its right), trimmed to
-          the essentials — timer, level, kills, sites — everything else
-          (difficulty, block count, boss banner) is desktop-only chrome. */}
-      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 truncate rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md max-md:left-2 max-md:right-36 max-md:top-3 max-md:translate-x-0 max-md:px-2 max-md:py-1.5 max-md:text-[9px] max-md:tracking-[0.1em]">
+      {/* run stats — desktop only. Mobile uses the consolidated run ribbon. */}
+      <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 truncate rounded-lg border border-white/10 bg-[rgba(9,13,28,0.7)] px-4 py-1.5 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-ink backdrop-blur-md max-md:hidden">
         {hud.diff !== "normal" && (
           <span className="max-md:hidden">
             <span className={hud.diff === "cursed" ? "text-ink" : "text-danger"}>
@@ -115,61 +105,8 @@ export default function GameHUD() {
         )}
       </div>
 
-      {/* first-run onboarding — one line, dismiss once, never again. Mobile:
-          sits in the same row-2 slot the quest ribbon takes over once
-          dismissed, so the top chrome never stacks more than two rows deep. */}
-      {mode === "play" && !onboarded && (
-        <div className="pointer-events-auto absolute left-1/2 top-14 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-gold/40 bg-[rgba(9,13,28,0.9)] px-4 py-2 backdrop-blur max-md:top-16 max-md:w-[92%] max-md:justify-between max-md:gap-2 max-md:px-2.5 max-md:py-1.5">
-          <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.15em] text-gold max-md:text-[9px]">
-            capture all {TOTAL_SITES} glowing sites to win — follow the arrows · grab coins to
-            level up
-          </p>
-          <button
-            onClick={dismissOnboard}
-            aria-label="dismiss"
-            className="shrink-0 text-sm text-ink-dim transition-colors hover:text-gold"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
       {mode === "play" && <CaptureToast />}
       {mode === "play" && <CaptureFlash />}
-
-      {/* MOBILE quest ribbon — capture progress + live targets pinned over the
-          canvas so phone players don't scroll to the side panel mid-fight */}
-      {mode === "play" && onboarded && (
-        <div className="pointer-events-none absolute inset-x-2 top-16 z-30 hidden rounded-lg border border-white/10 bg-[rgba(9,13,28,0.82)] px-2.5 py-1.5 backdrop-blur max-md:block">
-          <div className="flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-[0.14em]">
-            <span className="text-cyan">
-              ⚔ {hud.captured}/{TOTAL_SITES} captured
-            </span>
-            {hud.finalBoss && <span className="text-danger-bright">slay the boss</span>}
-          </div>
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-cyan to-gold transition-all"
-              style={{ width: `${(hud.captured / TOTAL_SITES) * 100}%` }}
-            />
-          </div>
-          <div className="mt-1 flex gap-1.5 overflow-hidden">
-            {activeSites.map((id) => {
-              const r = regions.find((x) => x.id === id);
-              if (!r) return null;
-              return (
-                <span
-                  key={id}
-                  className="truncate rounded px-1 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em]"
-                  style={{ color: r.accent, background: `${r.accent}1a` }}
-                >
-                  ▸ {r.name}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* boss entrance card — brief danger nameplate */}
       <AnimatePresence>
@@ -180,7 +117,7 @@ export default function GameHUD() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="pointer-events-none absolute inset-x-0 top-24 z-40 grid place-items-center max-md:top-32"
+            className="pointer-events-none absolute inset-x-0 top-24 z-40 grid place-items-center"
           >
             <div
               className="rounded-xl border border-danger-bright/70 bg-[rgba(28,8,10,0.88)] px-6 py-2.5 text-center backdrop-blur"
@@ -207,16 +144,15 @@ export default function GameHUD() {
         />
       )}
 
-      {/* pause chip */}
+      {/* pause chip — desktop only. Mobile uses the run ribbon. */}
       {mode === "play" && (
         <button
           onClick={() => useGame.getState().pause()}
           aria-label="pause"
           title="pause"
-          className="pointer-events-auto absolute right-4 top-3 rounded-md border border-white/15 bg-space/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-dim backdrop-blur transition-colors hover:border-gold/60 hover:text-gold max-md:grid max-md:h-11 max-md:w-11 max-md:place-items-center max-md:p-0 max-md:text-base"
+          className="pointer-events-auto absolute right-4 top-3 rounded-md border border-white/15 bg-space/70 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-ink-dim backdrop-blur transition-colors hover:border-gold/60 hover:text-gold max-md:hidden"
         >
-          <span className="max-md:hidden">esc — pause</span>
-          <span className="md:hidden">⏸</span>
+          esc — pause
         </button>
       )}
 

@@ -60,7 +60,7 @@ describe("leaderboard route", () => {
     );
     expect(submitted.status).toBe(200);
 
-    const board = (await (await route.GET()).json()) as {
+    const board = (await (await route.GET(new Request("http://localhost/api/leaderboard"))).json()) as {
       board: { wallet: string; score: number }[];
     };
     expect(board.board).toContainEqual(

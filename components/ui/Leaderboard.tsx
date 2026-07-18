@@ -22,10 +22,14 @@ const DIFF_COLOR: Record<string, string> = {
   cursed: "var(--ink)",
 };
 
+const DIFF_TABS = ["all", "hard", "cursed"] as const;
+type DiffTab = (typeof DIFF_TABS)[number];
+
 /** Global top-25, refreshed when runs end (scores submit on death/win). */
 export default function Leaderboard() {
   const [board, setBoard] = useState<BoardEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [filter, setFilter] = useState<DiffTab>("all");
   const mode = useGame((s) => s.mode);
   const name = useProfile((s) => s.name);
   const wallet = useProfile((s) => s.wallet);
@@ -35,7 +39,7 @@ export default function Leaderboard() {
     // small delay after a run ends so the fresh score lands first
     const t = setTimeout(
       () => {
-        void fetchBoard().then(({ board }) => {
+        void fetchBoard(filter).then(({ board }) => {
           if (!stale) {
             setBoard(board);
             setLoaded(true);
@@ -48,7 +52,7 @@ export default function Leaderboard() {
       stale = true;
       clearTimeout(t);
     };
-  }, [mode]);
+  }, [mode, filter]);
 
   return (
     <div id="x1-leaderboard">
@@ -60,6 +64,23 @@ export default function Leaderboard() {
           top 25 · best run counts
         </span>
       </div>
+
+      <div className="mt-2 flex gap-1">
+        {DIFF_TABS.map((d) => (
+          <button
+            key={d}
+            onClick={() => setFilter(d)}
+            className={`rounded border px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] transition-colors ${
+              filter === d
+                ? "border-gold/70 bg-gold/10 text-gold"
+                : "border-white/10 bg-space/50 text-ink-dim hover:border-white/25 hover:text-ink"
+            }`}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+
       <div className="mt-2 space-y-1.5">
         {!loaded && <p className="text-xs text-ink-dim">loading…</p>}
         {!name.trim() && (

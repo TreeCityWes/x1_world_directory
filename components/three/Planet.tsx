@@ -13,6 +13,7 @@ import { touchStick } from "@/lib/touchInput";
 import { useKeyboard } from "@/lib/useKeyboard";
 import Landmark from "@/components/three/Landmarks";
 import MergeStatic from "@/components/three/MergeStatic";
+import NetworkLinks from "@/components/three/NetworkLinks";
 import GameLayer from "@/components/game/GameLayer";
 import { LOW_GPU } from "@/lib/quality";
 
@@ -38,20 +39,23 @@ const NEAR_ANGLE = 0.28; // rad from the top at which a region counts as "near"
 const SITE_SCALE = 0.44; // 55 landmarks — keep them small so the world breathes
 
 // Classic additive fresnel glow — the planet's atmosphere.
+// View-vector fresnel so the rim follows the camera, not a fixed +Z normal.
 const ATMOSPHERE = new THREE.ShaderMaterial({
   vertexShader: /* glsl */ `
     varying vec3 vNormal;
+    varying vec3 vView;
     void main() {
       vNormal = normalize(normalMatrix * normal);
+      vec4 worldPos = modelMatrix * vec4(position, 1.0);
+      vView = normalize(cameraPosition - worldPos.xyz);
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
   fragmentShader: /* glsl */ `
     varying vec3 vNormal;
+    varying vec3 vView;
     void main() {
-      // same classic halo, but clamped: pow(negative, 3.0) is UNDEFINED in
-      // GLSL and produced NaN fragments that flashed randomly in the sky
-      float f = clamp(0.66 - dot(normalize(vNormal), vec3(0.0, 0.0, 1.0)), 0.0, 1.0);
+      float f = clamp(1.0 - dot(normalize(vNormal), normalize(vView)), 0.0, 1.0);
       gl_FragColor = vec4(0.18, 0.32, 0.68, 1.0) * (f * f * f);
     }
   `,
@@ -379,6 +383,7 @@ export default function Planet() {
           ))}
 
         {/* glowing network traces between ecosystem nodes (explore only) */}
+        <NetworkLinks radius={PLANET_RADIUS} />
 
         {/* X1 Ninja Survivors — enemies, shurikens, coins, katanas */}
         <GameLayer planet={group} />

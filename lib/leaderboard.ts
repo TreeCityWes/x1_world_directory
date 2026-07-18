@@ -11,9 +11,10 @@ export type BoardEntry = {
   verified?: boolean;
 };
 
-export async function fetchBoard(): Promise<{ board: BoardEntry[]; persistent: boolean }> {
+export async function fetchBoard(diff?: string): Promise<{ board: BoardEntry[]; persistent: boolean }> {
   try {
-    const res = await fetch("/api/leaderboard", { cache: "no-store" });
+    const qs = diff && diff !== "all" ? `?diff=${encodeURIComponent(diff)}` : "";
+    const res = await fetch(`/api/leaderboard${qs}`, { cache: "no-store" });
     const j = (await res.json()) as { board: BoardEntry[]; persistent?: boolean };
     return { board: j.board ?? [], persistent: j.persistent ?? false };
   } catch {

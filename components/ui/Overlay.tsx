@@ -3,7 +3,15 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useWorld } from "@/lib/store";
 import { useGame } from "@/lib/gameStore";
-import { isMuted, subscribeMute, toggleMute } from "@/lib/sound";
+import {
+  isMuted,
+  isMusicMuted,
+  startMusic,
+  subscribeMute,
+  subscribeMusicMute,
+  toggleMute,
+  toggleMusicMute,
+} from "@/lib/sound";
 import { isTyping } from "@/lib/useKeyboard";
 import FocusHeader from "@/components/ui/FocusHeader";
 import TouchPad from "@/components/ui/TouchPad";
@@ -20,9 +28,14 @@ export default function Overlay() {
   const nearId = useWorld((s) => s.nearId);
   const selectedId = useWorld((s) => s.selectedId);
   const mutedUi = useSyncExternalStore(subscribeMute, isMuted, () => false);
+  const musicMutedUi = useSyncExternalStore(subscribeMusicMute, isMusicMuted, () => false);
   // active run (playing or mid level-up) — mobile top chrome collapses to a
   // single row here; the pause menu is the exit, so the mode tabs step aside
   const inRun = mode === "play" || mode === "levelup";
+
+  useEffect(() => {
+    if (mode !== "menu") startMusic();
+  }, [mode]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -60,14 +73,17 @@ export default function Overlay() {
         className={`pointer-events-auto absolute left-4 top-3 flex gap-2 ${inRun ? "max-md:hidden" : ""}`}
       >
         <button
-          onClick={() => mode === "explore" && openMenu()}
+          onClick={() => {
+            if (inRun) useGame.getState().pause();
+            else if (mode === "explore") openMenu();
+          }}
           className={`rounded-xl border px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
             mode !== "explore"
               ? "border-gold bg-gradient-to-b from-[#ffd97a] to-[#c9921e] text-space"
               : "animate-pulse border-gold/60 bg-space/70 text-gold hover:animate-none hover:border-gold"
           }`}
         >
-          ⚔ game
+          {inRun ? "⏸ pause" : "⚔ game"}
         </button>
         <button
           onClick={() => {
@@ -134,26 +150,36 @@ export default function Overlay() {
         </p>
       )}
 
-      {/* sound toggle — during an active run on mobile this folds into the
-          consolidated top row (icon-only) instead of hiding, since the pause
-          screen has no mute control of its own */}
-      <button
-        onClick={() => toggleMute()}
-        aria-label={mutedUi ? "unmute" : "mute"}
-        title={mutedUi ? "unmute" : "mute"}
-        className={`pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 rounded-md border border-white/15 bg-space/70 px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] backdrop-blur transition-colors hover:border-gold/60 ${
+      {/* sound toggles — split SFX and music so players can keep one on.
+          During an active run on mobile this folds into the run ribbon. */}
+      <div
+        className={`pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 flex gap-1 rounded-md border border-white/15 bg-space/70 p-1 backdrop-blur transition-colors hover:border-gold/60 ${
           inRun
-            ? "max-md:bottom-auto max-md:right-20 max-md:top-3 max-md:grid max-md:h-11 max-md:w-11 max-md:translate-x-0 max-md:place-items-center max-md:p-0 max-md:text-base"
-            : "max-md:bottom-auto max-md:right-2 max-md:top-14 max-md:translate-x-0 max-md:px-2 max-md:py-1"
-        } ${mutedUi ? "text-ink-dim" : "text-gold"}`}
+            ? "max-md:hidden"
+            : "max-md:bottom-auto max-md:right-2 max-md:top-14 max-md:translate-x-0"
+        }`}
       >
-        <span className={inRun ? "max-md:hidden" : ""}>{mutedUi ? "sfx off" : "sfx on"}</span>
-        {inRun && (
-          <span className="hidden max-md:inline" aria-hidden="true">
-            {mutedUi ? "✕" : "♪"}
-          </span>
-        )}
-      </button>
+        <button
+          onClick={() => toggleMute()}
+          aria-label={mutedUi ? "unmute sfx" : "mute sfx"}
+          title={mutedUi ? "unmute sfx" : "mute sfx"}
+          className={`rounded px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+            mutedUi ? "text-ink-dim" : "text-gold"
+          }`}
+        >
+          {mutedUi ? "sfx off" : "sfx on"}
+        </button>
+        <button
+          onClick={() => toggleMusicMute()}
+          aria-label={musicMutedUi ? "unmute music" : "mute music"}
+          title={musicMutedUi ? "unmute music" : "mute music"}
+          className={`rounded px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+            musicMutedUi ? "text-ink-dim" : "text-cyan"
+          }`}
+        >
+          {musicMutedUi ? "music off" : "music on"}
+        </button>
+      </div>
 
       {mode === "explore" && <FocusHeader />}
       <GameHUD />

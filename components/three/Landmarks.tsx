@@ -1,5 +1,7 @@
 "use client";
 
+import { HEX } from "@/lib/theme";
+
 import type { LandmarkKind } from "@/lib/regions";
 
 /**
@@ -9,14 +11,14 @@ import type { LandmarkKind } from "@/lib/regions";
  * with the category accent as emissive detail.
  */
 
-const HULL = "#2a3a63";
-const HULL_DARK = "#141c33";
+const HULL = HEX.hull;
+const HULL_DARK = HEX.hullDark;
 
 function Base({ r = 0.1 }: { r?: number }) {
   return (
     <mesh position={[0, 0.02, 0]} receiveShadow>
       <cylinderGeometry args={[r, r * 1.25, 0.045, 6]} />
-      <meshStandardMaterial color={HULL_DARK} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.45} metalness={0.6} />
+      <meshStandardMaterial color={HULL_DARK} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.45} metalness={0.6} />
     </mesh>
   );
 }
@@ -31,12 +33,12 @@ function ValidatorTower({ accent }: { accent: string }) {
       <Base />
       <mesh position={[0, 0.2, 0]}>
         <cylinderGeometry args={[0.018, 0.032, 0.32, 6]} />
-        <meshStandardMaterial color={HULL} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.35} metalness={0.7} />
+        <meshStandardMaterial color={HULL} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.35} metalness={0.7} />
       </mesh>
       {[0.14, 0.22, 0.3].map((y, i) => (
         <mesh key={y} position={[0, y, 0]} rotation={[0, (i * Math.PI) / 3, 0]}>
           <boxGeometry args={[0.12 - i * 0.025, 0.012, 0.012]} />
-          <meshStandardMaterial color={HULL} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.4} metalness={0.6} />
+          <meshStandardMaterial color={HULL} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.4} metalness={0.6} />
         </mesh>
       ))}
       <mesh position={[0, 0.39, 0]}>
@@ -54,12 +56,12 @@ function DexGate({ accent }: { accent: string }) {
       {[-0.085, 0.085].map((x) => (
         <mesh key={x} position={[x, 0.16, 0]}>
           <boxGeometry args={[0.045, 0.26, 0.045]} />
-          <meshStandardMaterial color={HULL} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.35} metalness={0.7} />
+          <meshStandardMaterial color={HULL} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.35} metalness={0.7} />
         </mesh>
       ))}
       <mesh position={[0, 0.3, 0]}>
         <boxGeometry args={[0.24, 0.05, 0.055]} />
-        <meshStandardMaterial color={HULL} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.35} metalness={0.7} />
+        <meshStandardMaterial color={HULL} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.35} metalness={0.7} />
       </mesh>
       {/* the shimmering market plane inside the gate */}
       <mesh position={[0, 0.165, 0]}>
@@ -107,7 +109,7 @@ function SocialBeacon({ accent }: { accent: string }) {
       <Base />
       <mesh position={[0, 0.17, 0]}>
         <cylinderGeometry args={[0.016, 0.026, 0.28, 6]} />
-        <meshStandardMaterial color={HULL} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.4} metalness={0.6} />
+        <meshStandardMaterial color={HULL} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.4} metalness={0.6} />
       </mesh>
       {[
         { y: 0.18, r: 0.055, tilt: 0.5 },
@@ -132,7 +134,7 @@ function GameArcade({ accent }: { accent: string }) {
       <Base r={0.12} />
       <mesh position={[0, 0.13, 0]}>
         <boxGeometry args={[0.16, 0.2, 0.12]} />
-        <meshStandardMaterial color={HULL} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.4} metalness={0.5} />
+        <meshStandardMaterial color={HULL} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.4} metalness={0.5} />
       </mesh>
       {/* tilted glowing screen */}
       <mesh position={[0, 0.19, 0.055]} rotation={[-0.35, 0, 0]}>
@@ -177,17 +179,17 @@ function ExplorerFort({ accent }: { accent: string }) {
       <Base r={0.13} />
       <mesh position={[0, 0.12, 0]}>
         <boxGeometry args={[0.17, 0.15, 0.17]} />
-        <meshStandardMaterial color={HULL} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.45} metalness={0.5} />
+        <meshStandardMaterial color={HULL} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.45} metalness={0.5} />
       </mesh>
       <mesh position={[0, 0.24, 0]}>
         <boxGeometry args={[0.1, 0.1, 0.1]} />
-        <meshStandardMaterial color={HULL_DARK} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.45} metalness={0.5} />
+        <meshStandardMaterial color={HULL_DARK} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.45} metalness={0.5} />
       </mesh>
       {[-0.07, 0.07].map((x) =>
         [-0.07, 0.07].map((z) => (
           <mesh key={`${x}${z}`} position={[x, 0.21, z]}>
             <boxGeometry args={[0.035, 0.07, 0.035]} />
-            <meshStandardMaterial color={HULL} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.45} metalness={0.5} />
+            <meshStandardMaterial color={HULL} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.45} metalness={0.5} />
           </mesh>
         )),
       )}
@@ -206,7 +208,7 @@ function OracleShrine({ accent }: { accent: string }) {
       <Base />
       <mesh position={[0, 0.09, 0]}>
         <cylinderGeometry args={[0.035, 0.055, 0.1, 6]} />
-        <meshStandardMaterial color={HULL} emissive="#2a4080" emissiveIntensity={0.4} roughness={0.4} metalness={0.6} />
+        <meshStandardMaterial color={HULL} emissive={HEX.hullEmissive} emissiveIntensity={0.4} roughness={0.4} metalness={0.6} />
       </mesh>
       <mesh position={[0, 0.24, 0]}>
         <octahedronGeometry args={[0.06]} />

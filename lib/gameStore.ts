@@ -14,6 +14,8 @@ import { useProfile } from "@/lib/profile";
 
 export type GameMode = "explore" | "menu" | "play" | "paused" | "levelup" | "dead" | "won" | "timeup";
 
+export type TutorialPhase = "move" | "capture" | "capture-wait" | "levelup" | "done";
+
 // The run is a TIME ATTACK: every player gets the same clock, and the
 // leaderboard is the best score inside it. Beat the map (all sites + final
 // boss) before the bell for the win + conquest bonus; otherwise the bell
@@ -50,6 +52,64 @@ export const DIFFICULTIES = {
   },
 } as const;
 export type DifficultyId = keyof typeof DIFFICULTIES;
+
+// ---- daily seed + weekly mutator (client-side meta) ----
+
+/** Deterministic integer hash for today's UTC date. Everyone on earth sees the
+ *  same site order and upgrade offers on a given day. */
+export function dailySeed(d = new Date()): number {
+  const y = d.getUTCFullYear();
+  const mo = d.getUTCMonth() + 1;
+  const da = d.getUTCDate();
+  return (y * 10000 + mo * 100 + da) ^ 0x9e3779b9;
+}
+
+function isoWeek(d = new Date()): number {
+  const tmp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = tmp.getUTCDay() || 7;
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  return Math.ceil(((+tmp - +yearStart) / 86400000 + 1) / 7);
+}
+
+/** Mulberry32 — tiny, decent seeded PRNG. */
+function mulberry32(seed: number) {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export type Mutator = {
+  id: string;
+  name: string;
+  desc: string;
+  scoreMult: number;
+  timeMult: number;
+  /** extra starting levels granted by the mutator */
+  startLevel?: number;
+  /** every capture also emits a bridge-portal shockwave */
+  bridgeSurge?: boolean;
+};
+
+const MUTATORS: Mutator[] = [
+  { id: "none", name: "Standard Conditions", desc: "No weekly twist. Pure ninja.", scoreMult: 1, timeMult: 1 },
+  { id: "rush", name: "Half Time, 2× Score", desc: "4-minute runs. All scoring doubled.", scoreMult: 2, timeMult: 0.5 },
+  { id: "bridgeSurge", name: "Bridge Surge", desc: "Every site capture clears nearby enemies.", scoreMult: 1, timeMult: 1, bridgeSurge: true },
+  { id: "cursedStart", name: "Cursed Starts +1 Level", desc: "Cursed runs begin at level 2.", scoreMult: 1, timeMult: 1, startLevel: 1 },
+];
+
+/** The single active mutator for the current ISO week (rotates Monday). */
+export function activeMutator(d = new Date()): Mutator {
+  return MUTATORS[isoWeek(d) % MUTATORS.length] ?? MUTATORS[0];
+}
+
+/** Current run clock, including any weekly time mutator. */
+export function effectiveRunSeconds(r = run): number {
+  return RUN_SECONDS * (r.timeMult ?? 1);
+}
 
 // ---- registries (ported from the original X1 Ninja Survivors) ----
 
@@ -164,6 +224,10 @@ export const run = {
   fx: { shield: 0 },
   // PERMANENT stacks from captured sites — the ninja grows all run
   perm: { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 },
+  // additive fractional bonuses from sites (e.g. 0.05 = +5%), with random
+  // variance and diminishing returns for repeated same-kind captures
+  permAdd: { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 },
+  kindCaptures: {} as Record<string, number>,
   speedMult: 1, // consumed by the planet movement controller
   lastHitAt: -10,
   killedBy: "", // flavor id of the last thing that bit us
@@ -171,6 +235,11 @@ export const run = {
   character: "ninja" as CharacterId,
   damage: 0, // total damage dealt (feeds the score formula)
   difficulty: "normal" as DifficultyId,
+  // client-side weekly mutator + deterministic daily seed
+  mutator: activeMutator(),
+  timeMult: 1,
+  scoreMult: 1,
+  rng: mulberry32(dailySeed()),
 };
 
 export function charDef() {
@@ -193,19 +262,41 @@ export function resetRun(diff?: DifficultyId, character?: CharacterId) {
   run.upgrades = {};
   run.fx = { shield: 0 };
   run.perm = { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 };
+  run.permAdd = { speed: 0, dmg: 0, rate: 0, xp: 0, magnet: 0 };
+  run.kindCaptures = {};
   run.speedMult = 1;
   run.lastHitAt = -10;
   run.killedBy = "";
   run.finalBossAlive = false;
   run.damage = 0;
+  run.mutator = activeMutator();
+  run.timeMult = run.mutator.timeMult;
+  run.scoreMult = run.mutator.scoreMult;
+  run.rng = mulberry32(dailySeed());
+
+  // weekly mutator: bonus starting levels
+  const bonusLevels = run.mutator.startLevel ?? 0;
+  if (bonusLevels > 0) {
+    run.level += bonusLevels;
+    // each level roughly doubles the next threshold
+    run.xpNext = Math.round(run.xpNext * Math.pow(2, bonusLevels));
+  }
 }
 
+/** Base score before the weekly mutator multiplier is applied. */
 export function scoreOf() {
-  const T = Math.min(RUN_SECONDS, run.t); // survival time caps at the run clock
+  const cap = effectiveRunSeconds();
+  const T = Math.min(cap, run.t); // survival time caps at the run clock
   // linear time term — the old T² quadratically rewarded circle-running;
   // kills, damage, and captures are the score now, surviving is the floor
   const base = (T * 40 + run.kills * 40 + run.damage / 2) / 100 + run.captured * 50;
   return Math.round(base * DIFFICULTIES[run.difficulty].scoreMult);
+}
+
+/** Final score for the current run, including mutator multipliers. */
+export function runScore(win = false): number {
+  const bonus = win ? 1000 : 0;
+  return Math.round((scoreOf() + bonus) * run.scoreMult);
 }
 
 // derived combat numbers (upgrades + timed powerups)
@@ -214,30 +305,39 @@ export function shurikenDamage() {
   // meant to make you 30% weaker, not just squishier. Normal/Hard = ×1.
   return (
     (10 + 6 * (run.upgrades.damage ?? 0)) *
-    (1 + Math.min(1.5, 0.1 * run.perm.dmg)) *
+    (1 + Math.min(1.5, run.permAdd.dmg)) *
     charDef().dmg *
     DIFFICULTIES[run.difficulty].statMult
   );
 }
 export function fireCooldown() {
-  return Math.max(0.15, 0.55 * charDef().cooldown * Math.pow(0.88, run.upgrades.firerate ?? 0) * Math.pow(0.94, run.perm.rate));
+  // permAdd.rate is the total fractional fire-rate bonus (mean ~6% per stack).
+  // Convert back to equivalent stacks so the curve stays the same shape.
+  const rateStacks = run.permAdd.rate / 0.06;
+  return Math.max(
+    0.15,
+    0.55 * charDef().cooldown * Math.pow(0.88, run.upgrades.firerate ?? 0) * Math.pow(0.94, rateStacks),
+  );
 }
 export function magnetAngle() {
   // capped: a fully-stacked magnet used to vacuum more than the visible planet
-  return Math.min(1.1, 0.75 * 0.2 * (1 + 0.6 * (run.upgrades.magnet ?? 0)) * (1 + 0.08 * run.perm.magnet));
+  return Math.min(
+    1.1,
+    0.75 * 0.2 * (1 + 0.6 * (run.upgrades.magnet ?? 0)) * (1 + run.permAdd.magnet / 0.08),
+  );
 }
 export function currentSpeedMult() {
   const finalStand = run.hp < run.maxHp * 0.2 ? 1.3 : 1;
   return (
     (1 + 0.1 * (run.upgrades.speed ?? 0)) *
-    (1 + Math.min(0.4, 0.05 * run.perm.speed)) *
+    (1 + Math.min(0.45, run.permAdd.speed)) *
     DIFFICULTIES[run.difficulty].statMult *
     charDef().speed *
     finalStand
   );
 }
 export function xpMult() {
-  return (1 + 0.1 * run.perm.xp) * charDef().xp;
+  return (1 + run.permAdd.xp) * charDef().xp;
 }
 export function armorMult() {
   return Math.max(0.15, 1 - 0.08 * (run.upgrades.armor ?? 0) - charDef().armor);
@@ -282,6 +382,9 @@ type GameStore = {
   choices: string[];
   activeSites: string[];
   best: number;
+  pb: number; // personal best for the currently selected character + difficulty
+  /** true if the just-ended run set a new per-character/difficulty PB */
+  newPb: boolean;
   character: CharacterId;
   setCharacter: (c: CharacterId) => void;
   finalScore: number;
@@ -309,6 +412,11 @@ type GameStore = {
   pick: (id: string) => void;
   setActiveSites: (ids: string[]) => void;
   capturedIds: string[];
+  /** transient id of a site whose arrow the player just tapped to flash */
+  flashSiteId: string | null;
+  tutorialPhase: TutorialPhase;
+  tutorialCompleted: boolean;
+  setTutorialPhase: (p: TutorialPhase) => void;
 };
 
 const emptyHud = (): Hud => ({
@@ -329,6 +437,27 @@ const emptyHud = (): Hud => ({
 });
 
 const BEST_KEY = "x1world_best_score";
+const TUTORIAL_KEY = "x1world_tutorial_v1";
+
+const pbKey = (char: CharacterId, diff: DifficultyId) => `x1world_pb_${char}_${diff}`;
+function readPb(char: CharacterId, diff: DifficultyId) {
+  if (typeof window === "undefined") return 0;
+  return Number(localStorage.getItem(pbKey(char, diff)) ?? 0);
+}
+export function getPb(char: CharacterId, diff: DifficultyId) {
+  return readPb(char, diff);
+}
+function writePb(char: CharacterId, diff: DifficultyId, score: number) {
+  if (typeof window === "undefined") return;
+  const key = pbKey(char, diff);
+  const prev = Number(localStorage.getItem(key) ?? 0);
+  localStorage.setItem(key, String(Math.max(prev, score)));
+}
+
+function readTutorialCompleted(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(TUTORIAL_KEY) === "1";
+}
 
 /** Only trust localStorage if it names a real, unlocked character. */
 function readSavedCharacter(): CharacterId {
@@ -344,7 +473,12 @@ export const useGame = create<GameStore>((set, get) => ({
   choices: [],
   activeSites: [],
   capturedIds: [],
+  flashSiteId: null,
+  tutorialPhase: readTutorialCompleted() ? "done" : "move",
+  tutorialCompleted: readTutorialCompleted(),
   best: 0,
+  pb: readPb(readSavedCharacter(), run.difficulty),
+  newPb: false,
   finalScore: 0,
   finalDiff: "normal",
   bossCard: "",
@@ -364,6 +498,9 @@ export const useGame = create<GameStore>((set, get) => ({
     });
     const best =
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
+    const completed = readTutorialCompleted();
+    const char = get().character;
+    const difficulty = diff ?? run.difficulty;
     // a new run supersedes the previous unposted score — retrySubmit ends here
     set({
       mode: "play",
@@ -372,15 +509,20 @@ export const useGame = create<GameStore>((set, get) => ({
       activeSites: [],
       capturedIds: [],
       best,
+      pb: readPb(char, difficulty),
       finalScore: 0,
       scoreSubmit: "",
+      newPb: false,
+      tutorialPhase: completed ? "done" : "move",
+      tutorialCompleted: completed,
     });
   },
   openMenu: () => {
     resetRun();
     const best =
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
-    set({ mode: "menu", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best });
+    const char = get().character;
+    set({ mode: "menu", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best, pb: readPb(char, run.difficulty), newPb: false });
   },
   pause: () => {
     if (get().mode === "play") set({ mode: "paused", hud: emptyHud() });
@@ -390,11 +532,13 @@ export const useGame = create<GameStore>((set, get) => ({
   },
   quit: () => set({ mode: "explore", activeSites: [], capturedIds: [] }),
   die: () => {
-    const score = scoreOf();
+    const score = runScore();
+    const prevPb = typeof window !== "undefined" ? readPb(run.character, run.difficulty) : 0;
     let best = 0;
     if (typeof window !== "undefined") {
       best = Math.max(score, Number(localStorage.getItem(BEST_KEY) ?? 0));
       localStorage.setItem(BEST_KEY, String(best));
+      writePb(run.character, run.difficulty, score);
     }
     sfx.death();
     const pd = useProfile.getState();
@@ -409,6 +553,8 @@ export const useGame = create<GameStore>((set, get) => ({
       finalScore: score,
       finalDiff: run.difficulty,
       best,
+      pb: readPb(run.character, run.difficulty),
+      newPb: score > prevPb,
       deathCause: run.killedBy,
       scoreSubmit: ranked ? "sending" : "",
       hud: emptyHud(),
@@ -418,11 +564,13 @@ export const useGame = create<GameStore>((set, get) => ({
     // Time-attack ending: the clock ran out. Scores like a death (no conquest
     // bonus — you only get that by actually finishing), but it's the EXPECTED
     // way most runs end, so it gets its own neutral screen, not a death card.
-    const score = scoreOf();
+    const score = runScore();
+    const prevPb = typeof window !== "undefined" ? readPb(run.character, run.difficulty) : 0;
     let best = 0;
     if (typeof window !== "undefined") {
       best = Math.max(score, Number(localStorage.getItem(BEST_KEY) ?? 0));
       localStorage.setItem(BEST_KEY, String(best));
+      writePb(run.character, run.difficulty, score);
     }
     sfx.win(); // a "you made it to the bell" flourish, not the death sting
     const pt = useProfile.getState();
@@ -437,16 +585,20 @@ export const useGame = create<GameStore>((set, get) => ({
       finalScore: score,
       finalDiff: run.difficulty,
       best,
+      pb: readPb(run.character, run.difficulty),
+      newPb: score > prevPb,
       scoreSubmit: ranked ? "sending" : "",
       hud: emptyHud(),
     });
   },
   win: () => {
-    const score = scoreOf() + 1000; // full-ecosystem bonus
+    const score = runScore(true);
+    const prevPb = typeof window !== "undefined" ? readPb(run.character, run.difficulty) : 0;
     let best = 0;
     if (typeof window !== "undefined") {
       best = Math.max(score, Number(localStorage.getItem(BEST_KEY) ?? 0));
       localStorage.setItem(BEST_KEY, String(best));
+      writePb(run.character, run.difficulty, score);
     }
     sfx.win();
     const pw = useProfile.getState();
@@ -461,6 +613,8 @@ export const useGame = create<GameStore>((set, get) => ({
       finalScore: score,
       finalDiff: run.difficulty,
       best,
+      pb: readPb(run.character, run.difficulty),
+      newPb: score > prevPb,
       scoreSubmit: ranked ? "sending" : "",
       hud: emptyHud(),
     });
@@ -476,7 +630,13 @@ export const useGame = create<GameStore>((set, get) => ({
     );
   },
   syncHud: () => set({ hud: emptyHud() }),
-  offerLevelUp: (choices) => set({ mode: "levelup", choices, hud: emptyHud() }),
+  offerLevelUp: (choices) => {
+    if (get().tutorialPhase === "capture-wait") {
+      set({ mode: "levelup", choices, hud: emptyHud(), tutorialPhase: "levelup" });
+    } else {
+      set({ mode: "levelup", choices, hud: emptyHud() });
+    }
+  },
   pick: (id) => {
     // only apply an upgrade that was actually offered this level-up
     if (get().mode !== "levelup" || !get().choices.includes(id)) return;
@@ -489,13 +649,27 @@ export const useGame = create<GameStore>((set, get) => ({
       run.maxHp += 25;
       run.hp = Math.min(run.maxHp, run.hp + 25);
     }
-    set({ mode: "play", choices: [], hud: emptyHud() });
+    const tutorialDone = get().tutorialPhase === "levelup";
+    if (tutorialDone && typeof window !== "undefined") {
+      localStorage.setItem(TUTORIAL_KEY, "1");
+    }
+    set({
+      mode: "play",
+      choices: [],
+      hud: emptyHud(),
+      tutorialPhase: tutorialDone ? "done" : get().tutorialPhase,
+      tutorialCompleted: tutorialDone || get().tutorialCompleted,
+    });
   },
   setActiveSites: (ids) => set({ activeSites: ids }),
   setCharacter: (c) => {
     if (typeof window !== "undefined") localStorage.setItem("x1world_char", c);
-    set({ character: c });
+    set({ character: c, pb: readPb(c, run.difficulty) });
     sfx.ui();
+  },
+  setTutorialPhase: (p) => {
+    if (get().tutorialCompleted) return;
+    set({ tutorialPhase: p });
   },
 }));
 
@@ -515,7 +689,8 @@ export function rollChoices(): string[] {
   const want = charDef().choices ?? 3; // THEO's AI surfaces an extra option
   while (out.length < want && candidates.length > 0) {
     const total = candidates.reduce((s, u) => s + u.weight, 0);
-    let r = Math.random() * total;
+    const rng = run.rng ?? Math.random;
+    let r = rng() * total;
     let idx = 0;
     for (let i = 0; i < candidates.length; i++) {
       r -= candidates[i].weight;

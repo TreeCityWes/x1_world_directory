@@ -1,5 +1,7 @@
 "use client";
 
+import { prefersReducedMotion } from "@/lib/motion";
+
 /**
  * Tiny WebAudio synth — all SFX are generated, no assets. Context is created
  * lazily on the first effect after a user gesture (autoplay-safe). Mute
@@ -8,8 +10,10 @@
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
-let muted =
+let sfxMuted =
   typeof window !== "undefined" && localStorage.getItem("x1world_muted") === "1";
+let musicMuted =
+  typeof window !== "undefined" && localStorage.getItem("x1world_music_muted") === "1";
 
 function ac(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -27,22 +31,110 @@ function ac(): AudioContext | null {
   }
 }
 
-const muteListeners = new Set<() => void>();
+// ---- SFX mute ----
+
+const sfxMuteListeners = new Set<() => void>();
 export function isMuted() {
-  return muted;
+  return sfxMuted;
 }
 /** for useSyncExternalStore — UI stays in sync with the module flag */
 export function subscribeMute(cb: () => void) {
-  muteListeners.add(cb);
+  sfxMuteListeners.add(cb);
   return () => {
-    muteListeners.delete(cb);
+    sfxMuteListeners.delete(cb);
   };
 }
 export function toggleMute() {
-  muted = !muted;
-  if (typeof window !== "undefined") localStorage.setItem("x1world_muted", muted ? "1" : "0");
-  muteListeners.forEach((l) => l());
-  return muted;
+  sfxMuted = !sfxMuted;
+  if (typeof window !== "undefined") localStorage.setItem("x1world_muted", sfxMuted ? "1" : "0");
+  sfxMuteListeners.forEach((l) => l());
+  return sfxMuted;
+}
+
+// ---- music mute ----
+
+const musicMuteListeners = new Set<() => void>();
+export function isMusicMuted() {
+  return musicMuted;
+}
+export function subscribeMusicMute(cb: () => void) {
+  musicMuteListeners.add(cb);
+  return () => {
+    musicMuteListeners.delete(cb);
+  };
+}
+export function toggleMusicMute() {
+  musicMuted = !musicMuted;
+  if (typeof window !== "undefined") localStorage.setItem("x1world_music_muted", musicMuted ? "1" : "0");
+  if (musicGain) {
+    const a = ac();
+    if (a) {
+      const target = musicMuted ? 0 : MUSIC_VOL;
+      musicGain.gain.setTargetAtTime(target, a.currentTime, 0.15);
+    }
+  }
+  musicMuteListeners.forEach((l) => l());
+  return musicMuted;
+}
+
+// ---- procedural ambient bed ----
+
+const MUSIC_VOL = 0.16;
+let musicStarted = false;
+let musicGain: GainNode | null = null;
+let musicDuck: GainNode | null = null;
+
+export function startMusic() {
+  if (musicStarted) return;
+  const a = ac();
+  if (!a) return;
+  if (prefersReducedMotion.current) return;
+
+  musicGain = a.createGain();
+  musicGain.gain.value = 0;
+  musicDuck = a.createGain();
+  musicDuck.gain.value = 1;
+  musicGain.connect(musicDuck).connect(a.destination);
+
+  // deep drone: two detuned lows + a harmonic fifth
+  const freqs = [55, 82.41, 110];
+  freqs.forEach((f) => {
+    const osc = a.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = f;
+    const g = a.createGain();
+    g.gain.value = 0.06;
+    osc.connect(g).connect(musicGain!);
+    osc.start();
+  });
+
+  // filtered noise pad for texture
+  const noise = a.createBuffer(1, a.sampleRate * 2, a.sampleRate);
+  const data = noise.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = a.createBufferSource();
+  src.buffer = noise;
+  src.loop = true;
+  const filter = a.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 320;
+  const g = a.createGain();
+  g.gain.value = 0.04;
+  src.connect(filter).connect(g).connect(musicGain!);
+  src.start();
+
+  if (!musicMuted) {
+    musicGain.gain.linearRampToValueAtTime(MUSIC_VOL, a.currentTime + 2.5);
+  }
+  musicStarted = true;
+}
+
+/** Duck (0..1) or boost the ambient bed based on combat intensity. */
+export function duckMusic(factor: number) {
+  if (!musicDuck) return;
+  const a = ac();
+  if (!a) return;
+  musicDuck.gain.setTargetAtTime(Math.max(0.04, Math.min(1, factor)), a.currentTime, 0.25);
 }
 
 type BlipOpts = {
@@ -55,7 +147,7 @@ type BlipOpts = {
 };
 
 function blip({ freq, end, dur = 0.1, type = "sine", vol = 0.12, delay = 0 }: BlipOpts) {
-  if (muted) return;
+  if (sfxMuted) return;
   const a = ac();
   if (!a || !master) return;
   try {
@@ -76,6 +168,7 @@ function blip({ freq, end, dur = 0.1, type = "sine", vol = 0.12, delay = 0 }: Bl
 }
 
 let lastCoinAt = 0;
+let lastTelegraphAt = 0;
 
 export const sfx = {
   /** classic two-tone coin — rate-limited so magnet vacuums don't shriek */
@@ -109,6 +202,8 @@ export const sfx = {
     );
   },
   boss() {
+    // low-frequency danger swell under the existing brass stab
+    blip({ freq: 36, end: 92, dur: 1.1, type: "sine", vol: 0.2 });
     blip({ freq: 55, end: 110, dur: 0.7, type: "sawtooth", vol: 0.18 });
     blip({ freq: 58, end: 112, dur: 0.7, type: "sawtooth", vol: 0.14, delay: 0.02 });
   },
@@ -124,5 +219,12 @@ export const sfx = {
   },
   ui() {
     blip({ freq: 700, end: 900, dur: 0.05, type: "triangle", vol: 0.05 });
+  },
+  /** warning ring tighten — short rising tone, rate-limited during bursts */
+  telegraph() {
+    const now = performance.now();
+    if (now - lastTelegraphAt < 90) return;
+    lastTelegraphAt = now;
+    blip({ freq: 180, end: 360, dur: 0.2, type: "sine", vol: 0.04 });
   },
 };

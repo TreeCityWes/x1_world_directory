@@ -38,6 +38,8 @@ function RunSummaryCard({
   score,
   scoreLabel = "score",
   best,
+  pb,
+  newPb,
   scoreSubmit,
   children,
 }: {
@@ -47,6 +49,8 @@ function RunSummaryCard({
   score: number;
   scoreLabel?: string;
   best: number;
+  pb: number;
+  newPb: boolean;
   scoreSubmit: ScoreSubmit;
   children: ReactNode;
 }) {
@@ -66,6 +70,17 @@ function RunSummaryCard({
       <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
         {scoreLabel} · best {best}
       </p>
+      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
+        pb {pb.toLocaleString()}
+        {newPb && (
+          <span className="ml-1.5 text-gold">★ new personal best</span>
+        )}
+      </p>
+      {scoreSubmit === "sending" && (
+        <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-cyan">
+          ◉ posting to leaderboard…
+        </p>
+      )}
       {scoreSubmit === "ok" && (
         <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
           ✓ recorded on the global leaderboard
@@ -114,9 +129,16 @@ function InscribeRow({ score }: { score: number }) {
   const name = useProfile((s) => s.name);
   const connecting = useProfile((s) => s.connecting);
   const walletError = useProfile((s) => s.walletError);
+  const [draftName, setDraftName] = useState(name);
   const [st, setSt] = useState<{ k: "idle" | "busy" | "done"; sig?: string; err?: string }>({
     k: "idle",
   });
+
+  const applyName = () => {
+    const trimmed = draftName.trim().slice(0, 20);
+    useProfile.setState({ name: trimmed });
+    if (trimmed && wallet) useGame.getState().retrySubmit();
+  };
 
   const doInscribe = async () => {
     if (st.k !== "idle") return;
@@ -147,53 +169,109 @@ function InscribeRow({ score }: { score: number }) {
     document.getElementById("x1-leaderboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  const openProfile = () => {
+    useGame.getState().openMenu();
+    setTimeout(() => {
+      document.getElementById("x1-profile")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+  };
+
   return (
     <div className="mt-4">
-      <div className="flex flex-wrap justify-center gap-2">
-        {st.k === "done" && st.sig ? (
-          <a
-            href={explorerTx(st.sig)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-md border border-success/50 bg-success/10 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-success transition-colors hover:border-success"
-          >
-            inscribed on x1 — view transaction ↗
-          </a>
-        ) : !wallet ? (
-          <button
-            onClick={() => void doConnect()}
-            disabled={connecting}
-            title="connect to inscribe on x1 and post your score to the board"
-            className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
-          >
-            {connecting ? "connecting…" : "↯ connect wallet"}
-          </button>
-        ) : (
-          <button
-            onClick={() => void doInscribe()}
-            disabled={st.k === "busy"}
-            title="write this score to X1 mainnet forever"
-            className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
-          >
-            {st.k === "busy" ? "inscribing…" : "inscribe score on x1"}
-          </button>
-        )}
-        <button
-          onClick={viewBoard}
-          className="rounded-md border border-cyan/40 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-cyan transition-colors hover:border-cyan"
-        >
-          ★ view leaderboard
-        </button>
-      </div>
-      {!wallet && st.k === "idle" && !st.err && !walletError && (
-        <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
-          connect to inscribe on x1 mainnet and rank on the global board
-        </p>
-      )}
-      {wallet && !name.trim() && (
-        <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
-          set a ninja name in the console to post this score to the board
-        </p>
+      {!wallet ? (
+        <>
+          <div className="flex flex-wrap justify-center gap-2">
+            <input
+              type="text"
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onBlur={applyName}
+              onKeyDown={(e) => e.key === "Enter" && applyName()}
+              placeholder="ninja name"
+              maxLength={20}
+              className="w-32 rounded-md border border-white/15 bg-space/70 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-ink placeholder:text-ink-dim/50 focus:border-gold/60 focus:outline-none"
+            />
+            <button
+              onClick={() => void doConnect()}
+              disabled={connecting}
+              title="connect to inscribe on x1 and post your score to the board"
+              className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
+            >
+              {connecting ? "connecting…" : "↯ connect wallet"}
+            </button>
+            <button
+              onClick={viewBoard}
+              className="rounded-md border border-cyan/40 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-cyan transition-colors hover:border-cyan"
+            >
+              ★ view leaderboard
+            </button>
+          </div>
+          {!walletError && (
+            <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
+              name + wallet needed to rank · connect to inscribe on x1 mainnet
+            </p>
+          )}
+        </>
+      ) : !name.trim() ? (
+        <>
+          <div className="flex flex-wrap justify-center gap-2">
+            <input
+              type="text"
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onBlur={applyName}
+              onKeyDown={(e) => e.key === "Enter" && applyName()}
+              placeholder="ninja name"
+              maxLength={20}
+              className="w-40 rounded-md border border-gold/40 bg-gold/5 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-gold placeholder:text-gold/40 focus:border-gold focus:outline-none"
+            />
+            <button
+              onClick={applyName}
+              className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold"
+            >
+              save & post
+            </button>
+          </div>
+          <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
+            set a name to post this score to the global leaderboard
+          </p>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-wrap justify-center gap-2">
+            {st.k === "done" && st.sig ? (
+              <a
+                href={explorerTx(st.sig)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md border border-success/50 bg-success/10 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-success transition-colors hover:border-success"
+              >
+                inscribed on x1 — view transaction ↗
+              </a>
+            ) : (
+              <button
+                onClick={() => void doInscribe()}
+                disabled={st.k === "busy"}
+                title="write this score to X1 mainnet forever"
+                className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
+              >
+                {st.k === "busy" ? "inscribing…" : "inscribe score on x1"}
+              </button>
+            )}
+            <button
+              onClick={viewBoard}
+              className="rounded-md border border-cyan/40 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-cyan transition-colors hover:border-cyan"
+            >
+              ★ view leaderboard
+            </button>
+          </div>
+          <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
+            posting as {name} ·{" "}
+            <button onClick={openProfile} className="underline hover:text-gold">
+              edit profile
+            </button>
+          </p>
+        </>
       )}
       {walletError && !wallet && (
         <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">
@@ -212,6 +290,7 @@ function InscribeRow({ score }: { score: number }) {
 /** Pause screen — interruptions never cost the run. */
 export function PauseScreen() {
   const hud = useGame((s) => s.hud);
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <motion.div
@@ -235,12 +314,21 @@ export function PauseScreen() {
           >
             resume
           </button>
-          <button
-            onClick={() => useGame.getState().openMenu()}
-            className="rounded-xl border border-white/20 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.14em] text-ink-dim transition-colors hover:border-danger/70 hover:text-danger-bright"
-          >
-            abandon run
-          </button>
+          {!confirming ? (
+            <button
+              onClick={() => setConfirming(true)}
+              className="rounded-xl border border-white/20 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.14em] text-ink-dim transition-colors hover:border-danger/70 hover:text-danger-bright"
+            >
+              abandon run
+            </button>
+          ) : (
+            <button
+              onClick={() => useGame.getState().openMenu()}
+              className="rounded-xl border border-danger/70 bg-danger/10 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.14em] text-danger-bright transition-colors hover:bg-danger/20"
+            >
+              confirm abandon
+            </button>
+          )}
         </div>
         <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim/60">
           esc or p to resume
@@ -255,6 +343,8 @@ export function VictoryScreen() {
   const hud = useGame((s) => s.hud);
   const start = useGame((s) => s.start);
   const best = useGame((s) => s.best);
+  const pb = useGame((s) => s.pb);
+  const newPb = useGame((s) => s.newPb);
   const finalScore = useGame((s) => s.finalScore);
   const scoreSubmit = useGame((s) => s.scoreSubmit);
 
@@ -271,6 +361,8 @@ export function VictoryScreen() {
         score={finalScore}
         scoreLabel="score (incl. 1000 conquest bonus)"
         best={best}
+        pb={pb}
+        newPb={newPb}
         scoreSubmit={scoreSubmit}
       >
         <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
@@ -289,6 +381,8 @@ export function DeathScreen() {
   const hud = useGame((s) => s.hud);
   const start = useGame((s) => s.start);
   const best = useGame((s) => s.best);
+  const pb = useGame((s) => s.pb);
+  const newPb = useGame((s) => s.newPb);
   const finalScore = useGame((s) => s.finalScore);
   const deathCause = useGame((s) => s.deathCause);
   const scoreSubmit = useGame((s) => s.scoreSubmit);
@@ -305,6 +399,8 @@ export function DeathScreen() {
         headline={DEATH_FLAVOR[deathCause] ?? "the bear market got you"}
         score={finalScore}
         best={best}
+        pb={pb}
+        newPb={newPb}
         scoreSubmit={scoreSubmit}
       >
         <div className="mt-4 space-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
@@ -323,6 +419,8 @@ export function TimeUpScreen() {
   const hud = useGame((s) => s.hud);
   const start = useGame((s) => s.start);
   const best = useGame((s) => s.best);
+  const pb = useGame((s) => s.pb);
+  const newPb = useGame((s) => s.newPb);
   const finalScore = useGame((s) => s.finalScore);
   const scoreSubmit = useGame((s) => s.scoreSubmit);
 
@@ -338,6 +436,8 @@ export function TimeUpScreen() {
         headline="time's up — the bell rings"
         score={finalScore}
         best={best}
+        pb={pb}
+        newPb={newPb}
         scoreSubmit={scoreSubmit}
       >
         <div className="mt-4 space-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">

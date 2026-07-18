@@ -31,7 +31,10 @@ export default function ProfileCard() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gold/40 bg-gradient-to-br from-[#151d36] to-[#0b1122] px-4 py-3.5">
+    <div
+      id="x1-profile"
+      className="relative overflow-hidden rounded-xl border border-gold/40 bg-gradient-to-br from-[#151d36] to-[#0b1122] px-4 py-3.5"
+    >
       <div className="shimmer-line pointer-events-none absolute inset-x-0 top-0 h-px" />
       <p className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-gold">
         ★ player one

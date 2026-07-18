@@ -1,5 +1,7 @@
 "use client";
 
+import { HEX, THEME } from "@/lib/theme";
+
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
@@ -12,11 +14,11 @@ import { monoFont } from "@/lib/canvasFont";
 
 // x1.ninja logo palette: charcoal hood + electric-blue headband/X + gold
 // katana furniture + steel blades.
-const MASK = "#0c0f16";
-const GOLD = "#f0c75e";
-const STEEL = "#c7d0e2";
+const MASK = HEX.mask;
+const GOLD = HEX.gold;
+const STEEL = HEX.steel;
 
-type MatOverride = Partial<{ color: string; emissive: string; emissiveIntensity: number }>;
+type MatOverride = Partial<{ color: string | THREE.Color; emissive: string | THREE.Color; emissiveIntensity: number }>;
 
 /** Clone a GLB scene normalized: longest dimension -> target, feet on y=0.
  *  `tint` recolors everything (robot treatment); `recolor` retints specific
@@ -25,7 +27,7 @@ function normClone(
   scene: THREE.Object3D,
   target: number,
   opts?: {
-    tint?: { color: string; metal?: number };
+    tint?: { color: string | THREE.Color; metal?: number };
     recolor?: Record<string, MatOverride>;
     hide?: string[];
   },
@@ -323,7 +325,7 @@ function NinjaBody({
             <boxGeometry args={[0.058, 0.05, 0.1]} />
             <meshStandardMaterial
               color={GOLD}
-              emissive="#c9921e"
+              emissive={HEX.goldEmissive}
               emissiveIntensity={0.25}
               metalness={0.5}
               roughness={0.45}
@@ -483,15 +485,15 @@ function TheoModel() {
   const size = CHARACTERS.theo.model?.size ?? 0.62;
   const lift = CHARACTERS.theo.model?.lift ?? 0;
   const body = useMemo(
-    () => normClone(bodyGltf.scene, size, { tint: { color: "#9aa3b2", metal: 0.65 } }),
+    () => normClone(bodyGltf.scene, size, { tint: { color: THEME.theoChrome, metal: 0.65 } }),
     [bodyGltf, size],
   );
   const hat = useMemo(
     () =>
       normClone(hatGltf.scene, size, {
         recolor: {
-          F44336: { color: "#1e4fd8", emissive: "#1e4fd8", emissiveIntensity: 0.7 },
-          FFCC88: { color: GOLD, emissive: "#c9921e", emissiveIntensity: 0.3 },
+          F44336: { color: THEME.theoBlue, emissive: THEME.theoBlue, emissiveIntensity: 0.7 },
+          FFCC88: { color: GOLD, emissive: THEME.goldEmissive, emissiveIntensity: 0.3 },
         },
       }),
     [hatGltf, size],
@@ -507,8 +509,8 @@ function TheoModel() {
         <mesh key={x} position={[x, 0.47, 0.188]}>
           <sphereGeometry args={[0.024, 8, 8]} />
           <meshStandardMaterial
-            color="#4f7dff"
-            emissive="#4f7dff"
+            color={HEX.theoEye}
+            emissive={HEX.theoEye}
             emissiveIntensity={3}
             toneMapped={false}
           />
@@ -523,10 +525,10 @@ function JackModel() {
   const lift = CHARACTERS.jack.model?.lift ?? 0;
   const recolor = useMemo(
     () => ({
-      Hair: { color: "#4a2f15" },
-      Hair2: { color: "#553a1d" },
-      Shirt: { color: "#f2f2f2" },
-      Shirt2: { color: "#e9e9e9" },
+      Hair: { color: THEME.jackHair },
+      Hair2: { color: THEME.jackHair2 },
+      Shirt: { color: THEME.jackShirt },
+      Shirt2: { color: THEME.jackShirt2 },
     }),
     [],
   );
@@ -538,7 +540,7 @@ function JackModel() {
     ctx.font = monoFont(900, 70);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "#0b0b0d";
+    ctx.fillStyle = HEX.coinDisc;
     ctx.fillText("XEN", 128, 64);
     return new THREE.CanvasTexture(c);
   }, []);

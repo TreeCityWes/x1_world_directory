@@ -16,7 +16,7 @@ const SB_URL =
 const SB_KEY =
   process.env["x1_world_new_SUPABASE_SERVICE_ROLE_KEY"] ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-type Entry = { name: string; wallet: string; score: number; diff: string; at: number };
+type Entry = { name: string; wallet: string; score: number; diff: string; at: number; verified?: boolean };
 
 // in-memory fallback store
 const mem = (globalThis as unknown as { __x1lb?: Map<string, Entry> }).__x1lb ?? new Map<string, Entry>();
@@ -43,21 +43,27 @@ function deriveMember(wallet: string, deviceId: unknown): string | null {
   return /^[\w-]{8,64}$/.test(d) ? `d:${d}` : null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const diffFilter = searchParams.get("diff");
+    const filterDiff = diffFilter && diffFilter !== "all" ? diffFilter : null;
+
     if (SB_URL && SB_KEY) {
-      const res = await sb(
-        "leaderboard?select=name,wallet,score,diff,verified&verified=eq.true&order=score.desc&limit=25",
-      );
+      let query = "leaderboard?select=name,wallet,score,diff,verified&verified=eq.true&order=score.desc&limit=25";
+      if (filterDiff) query += `&diff=eq.${encodeURIComponent(filterDiff)}`;
+      const res = await sb(query);
       if (!res.ok) throw new Error(`sb ${res.status}`);
       const rows = (await res.json()) as Omit<Entry, "at">[];
       const board = rows.map((r, i) => ({ rank: i + 1, ...r }));
       return NextResponse.json({ ok: true, board, persistent: true });
     }
     const board = [...mem.values()]
+      .filter((e) => e.verified)
+      .filter((e) => (filterDiff ? e.diff === filterDiff : true))
       .sort((a, b) => b.score - a.score)
       .slice(0, 25)
-      .map((e, i) => ({ rank: i + 1, name: e.name, wallet: e.wallet, score: e.score, diff: e.diff }));
+      .map((e, i) => ({ rank: i + 1, name: e.name, wallet: e.wallet, score: e.score, diff: e.diff, verified: true }));
     return NextResponse.json({ ok: true, board, persistent: false });
   } catch {
     return NextResponse.json({ ok: false, board: [] }, { status: 500 });
@@ -133,7 +139,7 @@ export async function POST(req: Request) {
       if (!renamed.ok) throw new Error(`sb rename ${renamed.status}`);
     } else {
       const prev = mem.get(member);
-      if (!prev || prev.score < score) mem.set(member, { name, wallet, score, diff, at: Date.now() });
+      if (!prev || prev.score < score) mem.set(member, { name, wallet, score, diff, at: Date.now(), verified: true });
       else mem.set(member, { ...prev, name });
     }
     return NextResponse.json({ ok: true });

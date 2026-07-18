@@ -1,9 +1,11 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
+import { useRef } from "react";
 import * as THREE from "three";
 import { moveState } from "@/lib/gameState";
-import { useGame } from "@/lib/gameStore";
+import { run, useGame } from "@/lib/gameStore";
+import { prefersReducedMotion } from "@/lib/motion";
 
 /**
  * Two cameras in one:
@@ -15,13 +17,17 @@ import { useGame } from "@/lib/gameStore";
  */
 const EXPLORE_LOOK = new THREE.Vector3(0, 0.5, 0);
 const _look = new THREE.Vector3();
+const _shake = new THREE.Vector3();
 
 const wrapPI = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export default function Rig() {
+  const baseFov = useRef(50);
+  const shakeDecay = useRef(0);
   useFrame((state, dt) => {
-    const cam = state.camera;
+    const cam = state.camera as THREE.Camera;
     const aspect = state.size.width / Math.max(1, state.size.height);
+    const perspective = cam instanceof THREE.PerspectiveCamera ? cam : null;
     const playing = useGame.getState().mode !== "explore";
 
     if (playing) {
@@ -49,6 +55,35 @@ export default function Rig() {
       cam.position.y = THREE.MathUtils.damp(cam.position.y, py, 3.2, dt);
       cam.position.z = THREE.MathUtils.damp(cam.position.z, pz, 3.2, dt);
       cam.lookAt(_look);
+
+      // ---- camera juice ----
+      if (!prefersReducedMotion.current) {
+        // damage shake + FOV punch on hit
+        const sinceHit = run.t - run.lastHitAt;
+        if (sinceHit < 0.28) {
+          shakeDecay.current = 1;
+        }
+        if (shakeDecay.current > 0.01) {
+          const intensity = shakeDecay.current * 0.018;
+          _shake.set(
+            (Math.random() - 0.5) * intensity,
+            (Math.random() - 0.5) * intensity,
+            (Math.random() - 0.5) * intensity,
+          );
+          cam.position.add(_shake);
+          shakeDecay.current *= Math.pow(0.05, dt); // fast decay
+        } else {
+          shakeDecay.current = 0;
+        }
+
+        // final boss / threat presence: subtle FOV widen + camera dip
+        const threat = run.finalBossAlive ? 1 : 0;
+        const targetFov = baseFov.current + threat * 2.5 + (shakeDecay.current > 0 ? 2 : 0);
+        if (perspective) {
+          perspective.fov = THREE.MathUtils.damp(perspective.fov, targetFov, 4, dt);
+          perspective.updateProjectionMatrix();
+        }
+      }
       return;
     }
 
@@ -61,6 +96,10 @@ export default function Rig() {
     cam.position.y = THREE.MathUtils.damp(cam.position.y, ty, 2.5, dt);
     cam.position.z = THREE.MathUtils.damp(cam.position.z, Math.cos(az) * dist, 2.5, dt);
     cam.lookAt(EXPLORE_LOOK);
+    if (perspective) {
+      perspective.fov = THREE.MathUtils.damp(perspective.fov, baseFov.current, 3, dt);
+      perspective.updateProjectionMatrix();
+    }
   });
   return null;
 }
