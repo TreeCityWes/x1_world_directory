@@ -1582,8 +1582,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       } else {
         rotateToward(e.dir, world.pLocal, e.speed * lunge * slow * bossMult * dt);
       }
-      // Ion Halo burns everything inside
-      if (inHalo) dealDamage(e, (10 + 6 * (run.upgrades.halo ?? 0)) * dt);
+      // Ion Halo burns everything inside — tuned to weaken, not erase, the horde
+      if (inHalo) dealDamage(e, (5 + 2 * (run.upgrades.halo ?? 0)) * dt);
       const contact = (CONTACT_BASE * R + e.radius) / R;
       if (e.dir.angleTo(world.pLocal) < contact) {
         moveState.contactSlow = true;
