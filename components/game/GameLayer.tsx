@@ -154,6 +154,28 @@ function getWarnTexture() {
   return warnTex;
 }
 
+// soft energy ring shared by shield / slash / scan / magnet — replaces
+// hard-edged geometry with a feathered radial band so FX read as glow volumes
+let energyRingTex: THREE.CanvasTexture | null = null;
+function getEnergyRingTexture() {
+  if (energyRingTex) return energyRingTex;
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(64, 64, 28, 64, 64, 60);
+  g.addColorStop(0, "rgba(255,255,255,0)");
+  g.addColorStop(0.38, "rgba(255,255,255,0.05)");
+  g.addColorStop(0.48, "rgba(255,255,255,0.9)");
+  g.addColorStop(0.58, "rgba(255,255,255,0.9)");
+  g.addColorStop(0.68, "rgba(255,255,255,0.05)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  energyRingTex = new THREE.CanvasTexture(c);
+  return energyRingTex;
+}
+
 // floating damage numbers — only crits and boss hits, so chaos stays readable
 const dmgTexCache = new Map<string, THREE.CanvasTexture>();
 function getDmgTexture(text: string, crit: boolean, kill: boolean) {
@@ -2188,11 +2210,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       ))}
       {/* CAPY Validator Shield — green hex barrier during the immune window */}
       <mesh ref={shieldRef} visible={false}>
-        <ringGeometry args={[0.82, 1, 6]} />
+        <ringGeometry args={[0.82, 1, 48]} />
         <meshBasicMaterial
+          map={getEnergyRingTexture()}
           color={HEX.success}
           transparent
-          opacity={0.4}
+          opacity={0.55}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}
@@ -2421,11 +2444,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       {/* CAPY — Bad Block Slash sweep: a STEEL flash, not a green wash —
           the sword-ness is the identity (green stays on his shield/aura) */}
       <mesh ref={slashRef} visible={false}>
-        <ringGeometry args={[0.28, 1, 28, 1, -1.15, 2.3]} />
+        <ringGeometry args={[0.28, 1, 48, 1, -1.15, 2.3]} />
         <meshBasicMaterial
+          map={getEnergyRingTexture()}
           color={HEX.slash}
           transparent
-          opacity={0.5}
+          opacity={0.55}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}
@@ -2433,11 +2457,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       </mesh>
       {/* THEO — FTS5 scan ring */}
       <mesh ref={scanRef} visible={false}>
-        <ringGeometry args={[0.9, 1, 48]} />
+        <ringGeometry args={[0.9, 1, 64]} />
         <meshBasicMaterial
+          map={getEnergyRingTexture()}
           color={HEX.cyanHot}
           transparent
-          opacity={0.5}
+          opacity={0.55}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}
@@ -2454,15 +2479,17 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           depthWrite={false}
         />
       </mesh>
-      {/* Coin Magnet — pickup-radius shimmer ring (8-segment = dashed look) */}
+      {/* Coin Magnet — pickup-radius shimmer ring */}
       <mesh ref={magnetRef} visible={false}>
-        <torusGeometry args={[1, 0.008, 6, 8]} />
+        <ringGeometry args={[0.96, 1, 8]} />
         <meshBasicMaterial
+          map={getEnergyRingTexture()}
           color={HEX.cyan}
           transparent
-          opacity={0.16}
+          opacity={0.22}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          side={THREE.DoubleSide}
         />
       </mesh>
       {/* Arc Node lightning */}
