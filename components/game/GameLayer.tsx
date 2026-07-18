@@ -1069,6 +1069,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           ret.quaternion.setFromUnitVectors(UP, target.dir);
           ret.rotateY(run.t * 2.5);
           ret.rotateX(Math.PI / 2);
+          ret.rotateZ(Math.PI / 4);
           ret.scale.setScalar((target.radius + 0.05) * 1.6);
         }
       }
@@ -2366,9 +2367,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         </sprite>
       ))}
       {Array.from({ length: MAX_GEMS }).map((_, i) => (
-        // classic arcade coin: upright gold disc, spinning on its vertical axis
+        // faceted arcade coin: upright gold disc, spinning on its vertical axis
         <mesh key={`g${i}`} ref={(el) => { gemRefs.current[i] = el; }} visible={false}>
-          <cylinderGeometry args={[0.04, 0.04, 0.012, 20]} />
+          <cylinderGeometry args={[0.04, 0.04, 0.012, 8]} />
           <meshStandardMaterial
             color={HEX.coin}
             emissive={HEX.goldEmissive}
@@ -2376,6 +2377,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             metalness={0.9}
             roughness={0.18}
           />
+          {[-1, 1].map((f) => (
+            <mesh
+              key={f}
+              position={[0, f * 0.0065, 0]}
+              rotation={[f === 1 ? -Math.PI / 2 : Math.PI / 2, 0, 0]}
+            >
+              <ringGeometry args={[0.018, 0.024, 8]} />
+              <meshBasicMaterial
+                color={HEX.white}
+                transparent
+                opacity={0.55}
+                toneMapped={false}
+              />
+            </mesh>
+          ))}
         </mesh>
       ))}
       {/* orbiting katanas — an actual sword (steel blade, gold tsuba,
@@ -2489,15 +2505,17 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           side={THREE.DoubleSide}
         />
       </mesh>
-      {/* THEO — lock-on reticle (4-segment torus = targeting diamond) */}
+      {/* THEO — lock-on reticle: sharp diamond bracket */}
       <mesh ref={reticleRef} visible={false}>
-        <torusGeometry args={[1, 0.05, 6, 4]} />
+        <ringGeometry args={[0.92, 0.98, 4]} />
         <meshBasicMaterial
+          map={getEnergyRingTexture()}
           color={HEX.cyanHot}
           transparent
-          opacity={0.8}
+          opacity={0.85}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          side={THREE.DoubleSide}
         />
       </mesh>
       {/* Coin Magnet — pickup-radius shimmer ring */}

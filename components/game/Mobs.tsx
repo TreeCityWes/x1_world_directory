@@ -117,6 +117,26 @@ function getWispPuffTexture() {
   return wispPuffTex;
 }
 
+// low-frequency weave texture for the Rug Mob body — reads as fabric, not
+// painted plastic, without adding geometry
+let rugTex: THREE.CanvasTexture | null = null;
+function getRugTexture() {
+  if (rugTex) return rugTex;
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = HEX.rugCrimson;
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = HEX.rugCrimsonDark;
+  for (let y = 4; y < 256; y += 12) {
+    ctx.fillRect(0, y, 256, 3);
+  }
+  rugTex = new THREE.CanvasTexture(c);
+  rugTex.wrapS = rugTex.wrapT = THREE.RepeatWrapping;
+  return rugTex;
+}
+
 /**
  * Crypto-native enemy cast, all procedural (built ~1 unit tall/long; the
  * pool wrapper scales them). The sync loop drives position/facing/wobble;
@@ -353,10 +373,10 @@ export function RugMob() {
     <group position={[0, 0.1, 0]}>
       {/* carpet body — gentle frozen wave instead of dead-flat boxes */}
       <mesh position={[0, 0.02, -0.4]} geometry={bodyGeo}>
-        <meshStandardMaterial color={RUG} roughness={0.85} />
+        <meshStandardMaterial map={getRugTexture()} color={RUG} roughness={0.88} />
       </mesh>
       <mesh position={[0, 0.02, 0.35]} geometry={rearGeo}>
-        <meshStandardMaterial color={RUG_DARK} roughness={0.85} />
+        <meshStandardMaterial map={getRugTexture()} color={RUG_DARK} roughness={0.88} />
       </mesh>
       {/* gold border running along both long edges (carpet frame) */}
       {[-1, 1].map((s) => (
