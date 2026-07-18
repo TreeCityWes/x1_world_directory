@@ -98,6 +98,7 @@ type Part = {
   alive: boolean;
   dir: THREE.Vector3;
   axis: THREE.Vector3;
+  tangent: THREE.Vector3;
   speed: number;
   life: number;
   color: string;
@@ -134,6 +135,25 @@ function getXCoinTexture() {
   return xCoinTex;
 }
 
+// spawn-warning marker: white-hot center that tightens into a red landing bloom
+let warnTex: THREE.CanvasTexture | null = null;
+function getWarnTexture() {
+  if (warnTex) return warnTex;
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(64, 64, 6, 64, 64, 58);
+  g.addColorStop(0, "rgba(255, 255, 245, 0.95)");
+  g.addColorStop(0.32, "rgba(255, 190, 70, 0.55)");
+  g.addColorStop(0.7, "rgba(255, 90, 40, 0.18)");
+  g.addColorStop(1, "rgba(255, 40, 20, 0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  warnTex = new THREE.CanvasTexture(c);
+  return warnTex;
+}
+
 // floating damage numbers — only crits and boss hits, so chaos stays readable
 const dmgTexCache = new Map<string, THREE.CanvasTexture>();
 function getDmgTexture(text: string, crit: boolean, kill: boolean) {
@@ -153,10 +173,19 @@ function getDmgTexture(text: string, crit: boolean, kill: boolean) {
   ctx.font = monoFont(900, size);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  // colored glow behind the text so it cuts through bright enemies/bloom
+  const glow = crit ? HEX.coin : kill ? HEX.dmgKill : HEX.inkLight;
+  ctx.save();
+  ctx.shadowBlur = 14;
+  ctx.shadowColor = glow;
+  ctx.fillStyle = glow;
+  ctx.globalAlpha = 0.5;
+  ctx.fillText(text, 64, 32);
+  ctx.restore();
   ctx.lineWidth = 7;
   ctx.strokeStyle = HEX.dmgOutline;
   ctx.strokeText(text, 64, 32);
-  ctx.fillStyle = crit ? HEX.coin : kill ? HEX.dmgKill : HEX.inkLight;
+  ctx.fillStyle = glow;
   ctx.fillText(text, 64, 32);
   const tex = new THREE.CanvasTexture(c);
   dmgTexCache.set(key, tex);
@@ -342,7 +371,7 @@ const world = {
   wake: Array.from({ length: MAX_WAKE }, (): Wake => ({ alive: false, dir: new THREE.Vector3(), life: 0 })),
   parts: Array.from(
     { length: MAX_PARTS },
-    (): Part => ({ alive: false, dir: new THREE.Vector3(), axis: new THREE.Vector3(), speed: 0, life: 0, color: HEX.white }),
+    (): Part => ({ alive: false, dir: new THREE.Vector3(), axis: new THREE.Vector3(), tangent: new THREE.Vector3(), speed: 0, life: 0, color: HEX.white }),
   ),
       started: false,
 };
@@ -637,6 +666,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (!p) return;
       p.alive = true;
       p.dir.copy(at);
+      p.tangent.set(0, 0, 0);
       _v2.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
       p.axis.crossVectors(at, _v2).normalize();
       p.speed = 0.7 + Math.random() * 0.9;
@@ -645,13 +675,13 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     }
   };
 
-  const spawnTrail = (at: THREE.Vector3, color: string) => {
+  const spawnTrail = (at: THREE.Vector3, color: string, tangent: THREE.Vector3) => {
     const p = world.parts.find((x) => !x.alive);
     if (!p) return;
     p.alive = true;
     p.dir.copy(at);
-    _v2.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
-    p.axis.crossVectors(at, _v2).normalize();
+    p.tangent.copy(tangent).normalize();
+    p.axis.set(0, 0, 0);
     p.speed = 0.08 + Math.random() * 0.14;
     p.life = 0.22 + Math.random() * 0.16;
     p.color = color;
@@ -1030,10 +1060,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           w.position.copy(p.dir).multiplyScalar(R + 0.02);
           w.quaternion.setFromUnitVectors(UP, p.dir);
           w.rotateX(Math.PI / 2);
-          w.scale.setScalar(0.2 - 0.09 * k);
+          const base = 0.28 - 0.18 * k;
+          const pop = late ? 1 + Math.sin(k * Math.PI) * 0.28 : 1;
+          w.scale.setScalar(base * pop);
           const mat = w.material as THREE.MeshBasicMaterial;
           mat.color.set(late ? THEME.warnLate : THEME.warnEarly);
-          mat.opacity = 0.28 + 0.32 * k + Math.sin(run.t * 8) * 0.08;
+          mat.opacity = 0.35 + 0.45 * k + Math.sin(run.t * 8) * 0.08;
         }
       }
       // floating damage numbers (crits + bosses only)
@@ -1056,7 +1088,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           }
           mat.opacity = 1 - k * k;
           const s = d.crit ? 0.46 : d.kill ? 0.4 : 0.32;
-          spr.scale.set(s, s / 2, 1);
+          const pop = 1 + 0.3 * (1 - k) * (d.crit || d.kill ? 1 : 0.5);
+          spr.scale.set(s * pop, (s / 2) * pop, 1);
         }
       }
       // capture celebration — gold beam + pulse from the claimed site
@@ -1163,8 +1196,20 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         m.color.set(p.color);
         const lifeRatio = Math.max(0, Math.min(1, p.life / 0.45));
         m.opacity = Math.min(1, lifeRatio * 2.2);
-        // puff up in the middle of the spark's life, then shrink to nothing
-        mesh.scale.setScalar(0.048 * Math.sin(lifeRatio * Math.PI));
+        // trail particles stretch along their projectile path; sparks stay uniform
+        if (p.tangent.lengthSq() > 0.001) {
+          _v2.copy(p.tangent).normalize();
+          _axis.crossVectors(p.dir, _v2).normalize();
+          _m4.makeBasis(_v2, _axis, p.dir);
+          mesh.quaternion.setFromRotationMatrix(_m4);
+          const thickness = 0.018 * Math.sin(lifeRatio * Math.PI);
+          const length = 0.09 * Math.sin(lifeRatio * Math.PI);
+          mesh.scale.set(length, thickness, thickness);
+        } else {
+          mesh.quaternion.set(0, 0, 0, 1);
+          // puff up in the middle of the spark's life, then shrink to nothing
+          mesh.scale.setScalar(0.048 * Math.sin(lifeRatio * Math.PI));
+        }
       }
     }
     // Ion Halo: molten filled disc + bright rim, hugging the surface
@@ -1645,7 +1690,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       // projectile trail: staggered so multishot salvos don't drain the pool instantly
       if (run.t >= s.trailAt) {
         const tcolor = s.kind === "xcoin" ? HEX.gold : s.kind === "pulse" ? HEX.cyanHot : HEX.shuriken;
-        spawnTrail(s.pos, tcolor);
+        _v2.crossVectors(s.axis, s.pos).normalize();
+        spawnTrail(s.pos, tcolor, _v2);
         s.trailAt = run.t + 0.045;
       }
       for (const e of world.enemies) {
@@ -2153,12 +2199,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           toneMapped={false}
         />
       </mesh>
-      {/* spawn warning rings — danger red, tightening until the hatch */}
+      {/* spawn warning markers — soft radial bloom tightening until the hatch */}
       {Array.from({ length: 40 }).map((_, i) => (
         <mesh key={`wr${i}`} ref={(el) => { warnRefs.current[i] = el; }} visible={false}>
-          <ringGeometry args={[0.78, 1, 28]} />
+          <planeGeometry args={[1, 1]} />
           <meshBasicMaterial
-            color={HEX.crimson}
+            map={getWarnTexture()}
             transparent
             opacity={0.45}
             blending={THREE.AdditiveBlending}
