@@ -180,12 +180,24 @@ function getSiteLabel(name: string) {
   const ctx = c.getContext("2d")!;
   let size = 56;
   ctx.font = monoFont(800, size);
-  while (ctx.measureText(name).width > 470 && size > 26) {
+  while (ctx.measureText(name).width > 430 && size > 26) {
     size -= 4;
     ctx.font = monoFont(800, size);
   }
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  const w = Math.min(500, ctx.measureText(name).width + 40);
+  const h = size + 28;
+  const x = 256 - w / 2;
+  const y = 64 - h / 2;
+  const r = 18;
+  ctx.fillStyle = rgba(HEX.space, 0.72);
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = rgba(HEX.siteLabel, 0.45);
+  ctx.stroke();
   ctx.lineWidth = 10;
   ctx.lineJoin = "round";
   ctx.strokeStyle = rgba(HEX.labelOutline, 0.95);
@@ -1118,10 +1130,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       mesh.visible = p.alive;
       if (p.alive) {
         mesh.position.copy(p.dir).multiplyScalar(R + 0.08);
-        const m = mesh.material as THREE.MeshStandardMaterial;
+        const m = mesh.material as THREE.MeshBasicMaterial;
         m.color.set(p.color);
-        m.emissive.set(p.color);
-        mesh.scale.setScalar(0.035 * (p.life / 0.45));
+        const lifeRatio = Math.max(0, Math.min(1, p.life / 0.45));
+        m.opacity = Math.min(1, lifeRatio * 2.2);
+        // puff up in the middle of the spark's life, then shrink to nothing
+        mesh.scale.setScalar(0.048 * Math.sin(lifeRatio * Math.PI));
       }
     }
     // Ion Halo: molten filled disc + bright rim, hugging the surface
@@ -1795,7 +1809,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (f.life <= 0) f.alive = false;
     }
 
-    // ---- particles (death bursts) ----
+    // ---- particles (death bursts / launch sparks) ----
     for (const p of world.parts) {
       if (!p.alive) continue;
       p.life -= dt;
@@ -1803,6 +1817,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         p.alive = false;
         continue;
       }
+      p.speed *= Math.max(0.35, 1 - dt * 1.8); // drag so sparks settle instead of streaking
       p.dir.applyQuaternion(_q.setFromAxisAngle(p.axis, p.speed * dt)).normalize();
     }
 
@@ -2124,7 +2139,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       {/* floating damage numbers (crits + bosses) */}
       {Array.from({ length: 10 }).map((_, i) => (
         <sprite key={`dn${i}`} ref={(el) => { dmgRefs.current[i] = el; }} visible={false}>
-          <spriteMaterial transparent depthWrite={false} toneMapped={false} />
+          <spriteMaterial transparent depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} />
         </sprite>
       ))}
       {/* capture celebration — a light pillar SHOOTS skyward, two shock
@@ -2287,7 +2302,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       {Array.from({ length: MAX_PARTS }).map((_, i) => (
         <mesh key={`p${i}`} ref={(el) => { partRefs.current[i] = el; }} visible={false}>
           <octahedronGeometry args={[1]} />
-          <meshStandardMaterial emissiveIntensity={1.8} roughness={0.3} />
+          <meshBasicMaterial transparent opacity={1} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
         </mesh>
       ))}
       {/* Ion Halo — bright rim + molten fill */}
