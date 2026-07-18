@@ -122,8 +122,21 @@ function getXCoinTexture() {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
   const ctx = c.getContext("2d")!;
-  ctx.strokeStyle = HEX.white;
-  ctx.lineWidth = 22;
+
+  // metallic gold rim so the coin reads as a charged projectile, not a sticker
+  const rg = ctx.createRadialGradient(64, 64, 10, 64, 64, 58);
+  rg.addColorStop(0, "#0b0b0d");
+  rg.addColorStop(0.72, "#181408");
+  rg.addColorStop(0.92, "#b8861b");
+  rg.addColorStop(1, "#5c3d05");
+  ctx.fillStyle = rg;
+  ctx.fillRect(0, 0, 128, 128);
+
+  // soft gold glow behind the white X
+  ctx.shadowColor = HEX.gold;
+  ctx.shadowBlur = 18;
+  ctx.strokeStyle = HEX.gold;
+  ctx.lineWidth = 26;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(36, 36);
@@ -131,6 +144,12 @@ function getXCoinTexture() {
   ctx.moveTo(92, 36);
   ctx.lineTo(36, 92);
   ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = HEX.white;
+  ctx.lineWidth = 20;
+  ctx.stroke();
+
   xCoinTex = new THREE.CanvasTexture(c);
   return xCoinTex;
 }
@@ -2147,7 +2166,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
               metalness={0.7}
               roughness={0.3}
               emissive={HEX.coinRim}
-              emissiveIntensity={0.5}
+              emissiveIntensity={0.9}
             />
           </mesh>
           {[-1, 1].map((f) => (
@@ -2408,13 +2427,15 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       ))}
       {/* Ion Halo — bright rim + molten fill */}
       <mesh ref={haloRef} visible={false}>
-        <torusGeometry args={[1, 0.02, 8, 48]} />
+        <ringGeometry args={[0.9, 1, 64]} />
         <meshBasicMaterial
+          map={getEnergyRingTexture()}
           color={HEX.halo}
           transparent
           opacity={0.7}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          side={THREE.DoubleSide}
         />
       </mesh>
       <mesh ref={haloFillRef} visible={false}>

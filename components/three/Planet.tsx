@@ -39,7 +39,6 @@ const NEAR_ANGLE = 0.28; // rad from the top at which a region counts as "near"
 const SITE_SCALE = 0.44; // 55 landmarks — keep them small so the world breathes
 
 // soft radial glow for project pads — accent color is supplied via material tint
-const sitePadCache = new Map<string, THREE.CanvasTexture>();
 function getSitePadTexture() {
   const c = document.createElement("canvas");
   c.width = 128;
@@ -52,9 +51,24 @@ function getSitePadTexture() {
   g.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 128, 128);
-  const tex = new THREE.CanvasTexture(c);
-  sitePadCache.set("shared", tex);
-  return tex;
+  return new THREE.CanvasTexture(c);
+}
+
+// thin radial ring that sits on top of the pad — same soft language
+function getSiteRingTexture() {
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createRadialGradient(64, 64, 40, 64, 64, 60);
+  g.addColorStop(0, "rgba(255,255,255,0)");
+  g.addColorStop(0.7, "rgba(255,255,255,0.15)");
+  g.addColorStop(0.85, "rgba(255,255,255,0.95)");
+  g.addColorStop(0.95, "rgba(255,255,255,0.95)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
 }
 
 // Classic additive fresnel glow — the planet's atmosphere.
@@ -526,13 +540,15 @@ function RegionSite({
           />
         </mesh>
         <mesh position={[0, 0.009, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.18, 0.009, 8, 48]} />
+          <ringGeometry args={[0.16, 0.2, 48]} />
           <meshBasicMaterial
+            map={getSiteRingTexture()}
             color={region.accent}
             transparent
-            opacity={lit ? 1 : 0.45}
+            opacity={lit ? 0.7 : 0.3}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
+            side={THREE.DoubleSide}
           />
         </mesh>
         {/* generous invisible hit target */}
