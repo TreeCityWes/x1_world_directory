@@ -67,36 +67,6 @@ export function TutorialOverlay() {
         </motion.div>
       )}
 
-      {phase === "capture" && (
-        <motion.div
-          key="capture"
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/50"
-          onClick={() => setPhase("capture-wait")}
-        >
-          <div className="text-center">
-            <motion.div
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              className="mx-auto mb-3 grid h-16 w-16 place-items-center rounded-full border-2 border-gold bg-gold/10 text-2xl text-gold"
-            >
-              ✓
-            </motion.div>
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-gold">
-              Site captured
-            </p>
-            <p className="mt-1 max-w-[260px] font-mono text-[10px] uppercase leading-relaxed tracking-[0.12em] text-ink">
-              Every site grants a permanent power. Capture them all to unlock the final boss.
-            </p>
-            <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/70">
-              tap anywhere to continue
-            </p>
-          </div>
-        </motion.div>
-      )}
-
       {phase === "levelup" && mode === "play" && (
         <motion.div
           key="levelup-wait"

@@ -1556,16 +1556,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         }
       }
       const count = weaponKind === "slash" ? 0 : 1 + (run.upgrades.multishot ?? 0);
-      // launch flash at the player — one quick burst per salvo
-      if (count > 0) {
+      // launch flash at the player — keep it subtle for shurikens so a single
+      // throw doesn't read like a fan of stray stars
+      if (weaponKind !== "slash") {
         const launchColor =
           weaponKind === "xcoin" ? HEX.gold : weaponKind === "pulse" ? HEX.cyanHot : HEX.shuriken;
-        spawnBurst(world.pLocal, launchColor, weaponKind === "xcoin" ? 5 : 4);
+        const launchN = weaponKind === "xcoin" ? 5 : weaponKind === "pulse" ? 3 : 1;
+        spawnBurst(world.pLocal, launchColor, launchN);
       }
       for (let i = 0; i < count; i++) {
         const s = world.shurikens.find((x) => !x.alive);
         if (!s) break;
-        const spread = (i - (count - 1) / 2) * 0.28;
+        const spread = (i - (count - 1) / 2) * 0.18;
         _v2.copy(aim).applyQuaternion(_q.setFromAxisAngle(world.pLocal, spread));
         s.alive = true;
         s.pos.copy(world.pLocal);
@@ -1905,7 +1907,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         useGame.setState((s) => ({ capturedIds: [...s.capturedIds, id] }));
         run.captured = world.captured.size;
         // tutorial: first capture triggers the celebration step
-        if (store.tutorialPhase === "move") store.setTutorialPhase("capture");
+        if (store.tutorialPhase === "move") store.setTutorialPhase("levelup");
         // request the FINAL BOSS at 5 sites left; the actual spawn (with
         // retry on a full pool) happens in the main loop so it can NEVER be
         // skipped, and victory is gated on it having spawned
