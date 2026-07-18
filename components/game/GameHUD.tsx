@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { effectiveRunSeconds, useGame } from "@/lib/gameStore";
@@ -22,16 +21,8 @@ export default function GameHUD() {
   const hud = useGame((s) => s.hud);
   const bossCard = useGame((s) => s.bossCard);
   const bossCardAt = useGame((s) => s.bossCardAt);
-  const [bossCardVisible, setBossCardVisible] = useState(false);
-  useEffect(() => {
-    if (!bossCardAt) return;
-    const show = setTimeout(() => setBossCardVisible(true), 0);
-    const hide = setTimeout(() => setBossCardVisible(false), 3000);
-    return () => {
-      clearTimeout(show);
-      clearTimeout(hide);
-    };
-  }, [bossCardAt]);
+  // boss cards are timed on run.t so they survive pauses cleanly
+  const bossCardVisible = bossCardAt > 0 && hud.time - bossCardAt < 3 && hud.time >= bossCardAt;
 
   if (mode === "explore") return null;
   const remaining = Math.max(0, effectiveRunSeconds() - hud.time);

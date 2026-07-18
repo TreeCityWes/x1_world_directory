@@ -1300,6 +1300,9 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       return;
     }
     if (store.mode !== "play") {
+      // freeze any queued knockback so it doesn't lurch on resume
+      moveState.pushVX = 0;
+      moveState.pushVZ = 0;
       syncMeshes(); // levelup: frozen but visible
       return;
     }
@@ -1373,7 +1376,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         sfx.boss();
         useGame.setState({
           bossCard: boss.bossKind === "whale" ? "THE WHALE SURFACES" : "YOUR SHADOW ARRIVES",
-          bossCardAt: Date.now(),
+          bossCardAt: run.t,
         });
       }
     }
@@ -1406,7 +1409,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         world.finalIdx = world.enemies.indexOf(fb);
         world.finalSpawned = true;
         run.finalBossAlive = true;
-        useGame.setState({ bossCard: "THE FINAL NEMESIS AWAKENS", bossCardAt: Date.now() });
+        useGame.setState({ bossCard: "THE FINAL NEMESIS AWAKENS", bossCardAt: run.t });
         sfx.boss();
       }
     }

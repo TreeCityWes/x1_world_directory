@@ -522,7 +522,7 @@ export const useGame = create<GameStore>((set, get) => ({
     const best =
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
     const char = get().character;
-    set({ mode: "menu", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best, pb: readPb(char, run.difficulty), newPb: false });
+    set({ mode: "menu", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best, pb: readPb(char, run.difficulty), newPb: false, bossCard: "", bossCardAt: 0 });
   },
   pause: () => {
     if (get().mode === "play") set({ mode: "paused", hud: emptyHud() });
@@ -530,7 +530,7 @@ export const useGame = create<GameStore>((set, get) => ({
   resume: () => {
     if (get().mode === "paused") set({ mode: "play" });
   },
-  quit: () => set({ mode: "explore", activeSites: [], capturedIds: [] }),
+  quit: () => set({ mode: "explore", activeSites: [], capturedIds: [], bossCard: "", bossCardAt: 0 }),
   die: () => {
     const score = runScore();
     const prevPb = typeof window !== "undefined" ? readPb(run.character, run.difficulty) : 0;
