@@ -150,13 +150,11 @@ export default function Overlay() {
         </p>
       )}
 
-      {/* sound toggles — split SFX and music so players can keep one on.
-          During an active run on mobile this folds into the run ribbon. */}
+      {/* audio toggles — top-right so they're always easy to find. On mobile
+          during an active run the run ribbon already carries these. */}
       <div
-        className={`pointer-events-auto absolute bottom-4 right-1/2 translate-x-1/2 flex gap-1 rounded-md border border-white/15 bg-space/70 p-1 backdrop-blur transition-colors hover:border-gold/60 ${
-          inRun
-            ? "max-md:hidden"
-            : "max-md:bottom-auto max-md:right-2 max-md:top-14 max-md:translate-x-0"
+        className={`pointer-events-auto absolute right-4 top-14 flex gap-1 rounded-md border border-white/15 bg-space/70 p-1 backdrop-blur transition-colors hover:border-gold/60 ${
+          inRun ? "max-md:hidden" : ""
         }`}
       >
         <button
@@ -167,7 +165,7 @@ export default function Overlay() {
             mutedUi ? "text-ink-dim" : "text-gold"
           }`}
         >
-          {mutedUi ? "sfx off" : "sfx on"}
+          {mutedUi ? "sfx✕" : "sfx♪"}
         </button>
         <button
           onClick={() => toggleMusicMute()}
@@ -177,7 +175,7 @@ export default function Overlay() {
             musicMutedUi ? "text-ink-dim" : "text-cyan"
           }`}
         >
-          {musicMutedUi ? "music off" : "music on"}
+          {musicMutedUi ? "mus✕" : "mus♫"}
         </button>
       </div>
 
