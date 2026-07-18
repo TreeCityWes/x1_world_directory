@@ -2443,12 +2443,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       ))}
       {/* Ion Halo — bright rim + molten fill */}
       <mesh ref={haloRef} visible={false}>
-        <ringGeometry args={[0.9, 1, 64]} />
+        <ringGeometry args={[0.97, 1, 64]} />
         <meshBasicMaterial
           map={getEnergyRingTexture()}
           color={HEX.halo}
           transparent
-          opacity={0.7}
+          opacity={0.55}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
           side={THREE.DoubleSide}
