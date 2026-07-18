@@ -720,14 +720,14 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       _aSite.set(reg.dir[0], reg.dir[1], reg.dir[2]);
       const ang = world.pLocal.angleTo(_aSite);
       _axis.crossVectors(world.pLocal, _aSite);
-      if (ang < 0.34 || _axis.lengthSq() < 1e-6) {
+      if (ang < 0.42 || _axis.lengthSq() < 1e-6) {
         m.visible = false; // target on screen (or antipodal) — no arrow needed
         continue;
       }
       m.visible = true;
       _q.setFromAxisAngle(_axis.normalize(), 0.3);
       _aPos.copy(world.pLocal).applyQuaternion(_q);
-      m.position.copy(_aPos).multiplyScalar(R + 0.14);
+      m.position.copy(_aPos).multiplyScalar(R + 0.08);
       m.quaternion.setFromUnitVectors(UP, _aPos);
       const t = tangentToward(_aPos, _aSite, _aT);
       if (t) {
@@ -737,23 +737,22 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         m.rotateY(yaw);
       }
       m.rotateX(Math.PI / 2);
-      m.scale.setScalar(1 + Math.sin(run.t * 5 + i * 2.1) * 0.18);
-      // head AND shaft wear the destination pillar's accent, breathing gently
+      // smaller, quieter arrows — they were reading as giant glowing obstacles
       const flashId = useGame.getState().flashSiteId;
       const flashing = flashId === id;
       const accent = flashing ? HEX.gold : reg.accent;
-      const pulse = flashing ? 3.2 : 1.6;
-      m.scale.setScalar((flashing ? 1.35 : 1) + Math.sin(run.t * 5 + i * 2.1) * 0.18);
+      const pulse = flashing ? 2.0 : 1.0;
+      m.scale.setScalar((flashing ? 1.12 : 0.74) + Math.sin(run.t * 5 + i * 2.1) * 0.08);
       const mat = m.material as THREE.MeshStandardMaterial;
       mat.color.set(accent);
       mat.emissive.set(accent);
-      mat.emissiveIntensity = pulse + Math.sin(run.t * 5 + i * 2.1) * 0.6;
+      mat.emissiveIntensity = pulse + Math.sin(run.t * 5 + i * 2.1) * 0.35;
       const shaft = m.children[0] as THREE.Mesh | undefined;
       if (shaft) {
         const sm = shaft.material as THREE.MeshStandardMaterial;
         sm.color.set(accent);
         sm.emissive.set(accent);
-        sm.emissiveIntensity = (flashing ? 2.2 : 1.1) + Math.sin(run.t * 5 + i * 2.1) * 0.4;
+        sm.emissiveIntensity = (flashing ? 1.4 : 0.7) + Math.sin(run.t * 5 + i * 2.1) * 0.25;
       }
     }
     for (let i = 0; i < MAX_ENEMIES; i++) {
@@ -2217,11 +2216,11 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           read as ARROWS, not tiny traffic cones */}
       {Array.from({ length: 3 }).map((_, i) => (
         <mesh key={`ar${i}`} ref={(el) => { arrowRefs.current[i] = el; }} visible={false}>
-          <coneGeometry args={[0.05, 0.12, 4]} />
-          <meshStandardMaterial emissiveIntensity={1.4} toneMapped={false} />
-          <mesh position={[0, -0.11, 0]}>
-            <boxGeometry args={[0.035, 0.12, 0.018]} />
-            <meshStandardMaterial color={HEX.white} emissive={HEX.white} emissiveIntensity={1.2} toneMapped={false} />
+          <coneGeometry args={[0.032, 0.08, 4]} />
+          <meshStandardMaterial emissiveIntensity={1.1} toneMapped={false} />
+          <mesh position={[0, -0.075, 0]}>
+            <boxGeometry args={[0.022, 0.08, 0.012]} />
+            <meshStandardMaterial color={HEX.white} emissive={HEX.white} emissiveIntensity={0.9} toneMapped={false} />
           </mesh>
         </mesh>
       ))}
