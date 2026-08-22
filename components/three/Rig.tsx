@@ -90,8 +90,13 @@ export default function Rig() {
         }
 
         // final boss / threat presence: subtle FOV widen + camera dip
-        const threat = run.finalBossAlive ? 1 : 0;
-        const targetFov = baseFov.current + threat * 2.5 + (shakeDecay.current > 0 ? 2 : 0);
+        const captureBeat =
+          run.captureSlowUntil > run.t
+            ? Math.min(1, (run.captureSlowUntil - run.t) / 0.55)
+            : 0;
+        const threat = run.finalBossAlive ? 1 : run.bossAlive ? 0.5 : 0;
+        const targetFov =
+          baseFov.current + threat * 2.5 + captureBeat * 3.5 + (shakeDecay.current > 0 ? 2 : 0);
         if (perspective) {
           perspective.fov = THREE.MathUtils.damp(perspective.fov, targetFov, 4, dt);
           perspective.updateProjectionMatrix();

@@ -36,7 +36,7 @@ function GamePanel() {
         <div className="relative mt-3 overflow-hidden rounded-xl border border-gold/40 bg-gradient-to-br from-[#1c1608] to-[#0b1122] px-4 py-3.5">
           <div className="shimmer-line pointer-events-none absolute inset-x-0 top-0 h-px" />
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[15px] font-bold tracking-tight text-gold">
+            <span className="font-display text-[15px] font-bold tracking-tight text-gold">
               ⚔ Capture the Ecosystem
             </span>
             <span className="font-mono text-xl font-bold tabular-nums text-gold">
@@ -79,7 +79,7 @@ function GamePanel() {
                   className="aspect-[8/5] w-20 shrink-0 rounded border border-white/10 object-cover object-top"
                 />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{r.name}</p>
+                  <p className="font-display truncate text-sm font-semibold">{r.name}</p>
                   <p
                     className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.14em]"
                     style={{ color: r.accent }}
@@ -240,7 +240,6 @@ export default function SidePanel() {
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          { }
           <div className="group shrink-0 overflow-hidden border-b border-white/10 bg-space-2">
             {/* eslint-disable-next-line @next/next/no-img-element -- site captures */}
             <img
@@ -269,7 +268,7 @@ export default function SidePanel() {
               )}
             </div>
 
-            <h2 className="mt-2.5 text-3xl font-semibold leading-tight tracking-tight max-sm:text-xl">
+            <h2 className="font-display mt-2.5 text-3xl font-bold leading-tight tracking-tight max-sm:text-xl">
               {region.name}
             </h2>
             <p className="mt-1 font-mono text-sm text-cyan/90">{region.domain}</p>

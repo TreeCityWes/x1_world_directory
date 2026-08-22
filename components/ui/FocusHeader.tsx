@@ -39,7 +39,7 @@ export default function FocusHeader() {
               {region.category}
             </p>
             <h2
-              className="truncate text-base font-semibold leading-tight tracking-tight text-ink max-md:text-sm"
+              className="font-display truncate text-base font-bold leading-tight tracking-tight text-ink max-md:text-sm"
               style={{ textShadow: `0 0 18px ${region.accent}66` }}
             >
               {region.name}

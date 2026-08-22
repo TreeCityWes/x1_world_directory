@@ -2104,6 +2104,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     const density = activeEnemies / MAX_ENEMIES;
     const duck = bossAlive ? 0.2 : density > 0.45 ? 0.45 : 1 - density * 0.5;
     duckMusic(duck);
+    run.bossAlive = bossAlive;
 
     // the run is a time attack — when the clock runs out, bank the score. (win()
     // fires earlier in the capture handler if you complete the map first.)

@@ -233,6 +233,8 @@ export const run = {
   lastHitAt: -10,
   killedBy: "", // flavor id of the last thing that bit us
   finalBossAlive: false,
+  /** any block boss (whale/nemesis) currently on the field */
+  bossAlive: false,
   character: "ninja" as CharacterId,
   damage: 0, // total damage dealt (feeds the score formula)
   difficulty: "normal" as DifficultyId,
@@ -271,6 +273,7 @@ export function resetRun(diff?: DifficultyId, character?: CharacterId) {
   run.lastHitAt = -10;
   run.killedBy = "";
   run.finalBossAlive = false;
+  run.bossAlive = false;
   run.damage = 0;
   run.mutator = activeMutator();
   run.timeMult = run.mutator.timeMult;
