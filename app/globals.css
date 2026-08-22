@@ -64,6 +64,22 @@ body {
   }
 }
 
+/* mobile survival run: pin the world pane to the full viewport */
+@media (max-width: 767px) {
+  body.x1-immersive #world {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    height: 100dvh;
+    width: 100%;
+  }
+  body.x1-immersive #world canvas {
+    display: block;
+    height: 100% !important;
+    width: 100% !important;
+  }
+}
+
 /* animated sheen used by console cards */
 @keyframes shimmer-slide {
   0% { transform: translateX(-100%); }

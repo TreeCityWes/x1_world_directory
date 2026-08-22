@@ -288,7 +288,14 @@ try {
     return !!start;
   });
   if (!mobileStarted) fail("mobile start action could not be activated");
-  await mobile.waitForTimeout(1200);
+  await mobile.waitForFunction(
+    () => {
+      const canvas = document.querySelector("canvas")?.getBoundingClientRect();
+      return (canvas?.height ?? 0) >= window.innerHeight * 0.95;
+    },
+    undefined,
+    { timeout: 12_000 },
+  );
   const mobilePlay = await mobile.evaluate(() => {
     const canvas = document.querySelector("canvas")?.getBoundingClientRect();
     const pause = document.querySelector('button[aria-label="pause"]')?.getBoundingClientRect();
@@ -325,6 +332,13 @@ try {
     if (m.type() === "error") capyErrors.push(m.text());
   });
   await capyPage.goto(URL, { waitUntil: "networkidle", timeout: 30_000 });
+  // pick Jack first so CAPY isn't already selected (re-clicking a selected
+  // roster card is a no-op and skips the model fetch the probe watches for)
+  await capyPage.evaluate(() => {
+    const jack = [...document.querySelectorAll("button")].find((b) => /Jack Levin/i.test(b.textContent));
+    jack?.click();
+  });
+  await capyPage.waitForTimeout(400);
   const capySelected = await capyPage.evaluate(() => {
     const card = [...document.querySelectorAll("button")].find((b) =>
       /CAPY\s*Tank Validator/i.test(b.textContent),
@@ -333,7 +347,12 @@ try {
     return !!card;
   });
   if (!capySelected) fail("CAPY roster card not found");
-  await capyPage.waitForTimeout(1200);
+  await capyPage.waitForFunction(
+    () =>
+      performance.getEntriesByType("resource").some((r) => r.name.endsWith("/models/capybara.glb")),
+    undefined,
+    { timeout: 10_000 },
+  );
   const capyLoaded = await capyPage.evaluate(() =>
     performance.getEntriesByType("resource").some((r) => r.name.endsWith("/models/capybara.glb")),
   );

@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { sfx } from "@/lib/sound";
+import { preloadCharacterModel } from "@/lib/preloadCharacter";
 import { CHARACTERS, type CharacterId } from "@/lib/characters";
 import { submitScore } from "@/lib/leaderboard";
 import { useProfile } from "@/lib/profile";
@@ -664,6 +665,7 @@ export const useGame = create<GameStore>((set, get) => ({
   setActiveSites: (ids) => set({ activeSites: ids }),
   setCharacter: (c) => {
     if (typeof window !== "undefined") localStorage.setItem("x1world_char", c);
+    preloadCharacterModel(c);
     set({ character: c, pb: readPb(c, run.difficulty) });
     sfx.ui();
   },

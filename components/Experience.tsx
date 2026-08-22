@@ -36,12 +36,17 @@ export default function Experience() {
   const immersive = mode === "play" || mode === "paused" || mode === "levelup";
 
   useEffect(() => {
-    if (!immersive) return;
+    if (!immersive) {
+      document.body.classList.remove("x1-immersive");
+      return;
+    }
+    document.body.classList.add("x1-immersive");
     const htmlOverflow = document.documentElement.style.overflow;
     const bodyOverflow = document.body.style.overflow;
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     return () => {
+      document.body.classList.remove("x1-immersive");
       document.documentElement.style.overflow = htmlOverflow;
       document.body.style.overflow = bodyOverflow;
     };
@@ -52,17 +57,21 @@ export default function Experience() {
     <div
       className={`absolute inset-0 flex select-none max-md:flex-col ${
         immersive
-          ? "max-md:fixed max-md:z-30 max-md:h-dvh max-md:bg-space"
+          ? "max-md:fixed max-md:inset-0 max-md:z-30 max-md:h-dvh max-md:w-full max-md:bg-space"
           : "max-md:static"
       }`}
     >
       {/* left screen — the world */}
       <div
         className={`relative min-w-0 flex-1 max-md:flex-none ${
-          immersive ? "max-md:h-dvh max-md:touch-none max-md:overflow-hidden" : "max-md:h-[62dvh]"
+          immersive
+            ? "max-md:h-full max-md:min-h-0 max-md:flex-1 max-md:touch-none max-md:overflow-hidden"
+            : "max-md:h-[62dvh]"
         }`}
       >
         <Canvas
+          className="!h-full !w-full touch-none"
+          style={{ touchAction: "none" }}
           // shadow pass renders every castShadow mesh a second time — on a
           // dark starry globe the additive contact glows carry the grounding,
           // so coarse GPUs skip shadows entirely

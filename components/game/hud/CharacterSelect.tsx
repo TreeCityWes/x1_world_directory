@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { CHARACTERS, CHARACTER_ORDER, type WeaponKind } from "@/lib/characters";
 import CharacterPreview from "@/components/game/CharacterPreview";
 import { useGame } from "@/lib/gameStore";
 import { sfx } from "@/lib/sound";
+import { preloadCharacterModel } from "@/lib/preloadCharacter";
 
 // weapon glyph per kind — the roster card's emblem
 const WEAPON_GLYPH: Record<WeaponKind, string> = {
@@ -41,6 +43,10 @@ export function CharacterSelect() {
   const setCharacter = useGame((s) => s.setCharacter);
   const ch = CHARACTERS[selected];
   const accent = ch.colors.band;
+
+  useEffect(() => {
+    preloadCharacterModel(selected);
+  }, [selected]);
 
   return (
     <div className="mx-auto mt-3 w-full max-w-3xl px-4 text-left">
