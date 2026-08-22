@@ -177,7 +177,7 @@ function Row({ d }: { d: DirectoryEntry }) {
               rel="noopener noreferrer"
               className="text-ink-dim hover:text-cyan"
             >
-              ✈
+              ↗
             </a>
           )}
         </div>

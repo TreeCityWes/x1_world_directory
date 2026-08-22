@@ -62,7 +62,7 @@ export function MenuScreen() {
                   background: selDiff ? `${tone}14` : undefined,
                 }}
               >
-                <p className="text-lg font-semibold tracking-tight">{d.name}</p>
+                <p className="font-display text-lg font-bold tracking-tight">{d.name}</p>
                 <p className="mt-1 text-xs leading-relaxed text-ink-dim">{d.desc}</p>
                 <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-gold">
                   {d.scoreMult}× score

@@ -91,7 +91,7 @@ type PendingSpawn = { active: boolean; type: EnemyTypeId; dir: THREE.Vector3; at
 type DmgNum = { alive: boolean; dir: THREE.Vector3; t0: number; val: number; crit: boolean; kill: boolean };
 type CaptureFx = { active: boolean; dir: THREE.Vector3; t0: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
-type Wake = { alive: boolean; dir: THREE.Vector3; life: number };
+type Wake = { alive: boolean; dir: THREE.Vector3; life: number; kind: "gold" | "cyan" };
 type Flame = { alive: boolean; dir: THREE.Vector3; life: number; maxLife: number; smoke: boolean };
 type Boom = { alive: boolean; dir: THREE.Vector3; t0: number };
 type Part = {
@@ -395,6 +395,7 @@ const world = {
   knockAt: 0,
   novaAt: 0,
   wakeAt: 0,
+  whaleWakeAt: 0,
   arcAt: 0,
   scanAt: 0,
   capyShieldAt: 0,
@@ -409,7 +410,7 @@ const world = {
   flameAt: 0,
   flames: Array.from({ length: MAX_FLAMES }, (): Flame => ({ alive: false, dir: new THREE.Vector3(), life: 0, maxLife: 1, smoke: false })),
   booms: Array.from({ length: 6 }, (): Boom => ({ alive: false, dir: new THREE.Vector3(), t0: 0 })),
-  wake: Array.from({ length: MAX_WAKE }, (): Wake => ({ alive: false, dir: new THREE.Vector3(), life: 0 })),
+  wake: Array.from({ length: MAX_WAKE }, (): Wake => ({ alive: false, dir: new THREE.Vector3(), life: 0, kind: "gold" })),
   parts: Array.from(
     { length: MAX_PARTS },
     (): Part => ({ alive: false, dir: new THREE.Vector3(), axis: new THREE.Vector3(), tangent: new THREE.Vector3(), speed: 0, life: 0, color: HEX.white }),
@@ -1222,9 +1223,10 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         mesh.quaternion.setFromUnitVectors(UP, w.dir);
         mesh.rotateX(-Math.PI / 2);
         const m = mesh.material as THREE.MeshBasicMaterial;
-        m.opacity = 0.45 * (w.life / 1.1);
+        m.color.set(w.kind === "cyan" ? HEX.cyan : HEX.coin);
+        m.opacity = (w.kind === "cyan" ? 0.35 : 0.45) * (w.life / 1.1);
         const sc = 0.7 + 0.5 * (1 - w.life / 1.1);
-        mesh.scale.setScalar(sc);
+        mesh.scale.setScalar(w.kind === "cyan" ? sc * 1.15 : sc);
       }
     }
     for (let i = 0; i < MAX_PARTS; i++) {
@@ -1386,6 +1388,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.knockAt = 0;
       world.novaAt = 0;
       world.wakeAt = 0;
+      world.whaleWakeAt = 0;
       world.arcAt = 0;
       world.arcFlash = 0;
       world.arcDirty = false;
@@ -1439,7 +1442,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       return;
     }
 
-    const dt = Math.min(rawDt, 0.05);
+    const captureSlow = run.t < run.captureSlowUntil ? 0.2 : 1;
+    const dt = Math.min(rawDt, 0.05) * captureSlow;
     run.t += dt;
     run.speedMult = currentSpeedMult();
     const D = DIFFICULTIES[run.difficulty];
@@ -1882,6 +1886,27 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         w.alive = true;
         w.dir.copy(world.pLocal);
         w.life = 1.1;
+        w.kind = "gold";
+      }
+    }
+    // ---- Whale boss: cyan ocean wake as it swims ----
+    if (run.t >= world.whaleWakeAt) {
+      let whaleDir: THREE.Vector3 | null = null;
+      for (const e of world.enemies) {
+        if (e.alive && e.type === "boss" && e.bossKind === "whale") {
+          whaleDir = e.dir;
+          break;
+        }
+      }
+      if (whaleDir) {
+        world.whaleWakeAt = run.t + 0.13;
+        const w = world.wake.find((x) => !x.alive);
+        if (w) {
+          w.alive = true;
+          w.dir.copy(whaleDir);
+          w.life = 0.95;
+          w.kind = "cyan";
+        }
       }
     }
     for (const w of world.wake) {
@@ -1891,6 +1916,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         w.alive = false;
         continue;
       }
+      if (w.kind !== "gold") continue;
       for (const e of world.enemies) {
         if (!e.alive) continue;
         if (w.dir.angleTo(e.dir) < (e.radius + 0.08) / R + 0.02) {
@@ -2038,6 +2064,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         cfx.active = true;
         cfx.dir.copy(_v);
         cfx.t0 = run.t;
+        run.captureSlowUntil = run.t + 0.55;
         spawnBurst(_v, HEX.siteLabel, 14);
         spawnBurst(_v, HEX.cyan, 7);
         world.captured.add(id);

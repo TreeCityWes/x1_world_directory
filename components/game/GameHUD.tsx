@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { effectiveRunSeconds, useGame } from "@/lib/gameStore";
-import { CaptureFlash, CaptureToast } from "@/components/game/hud/CaptureFX";
+import { CaptureBeat, CaptureFlash, CaptureToast } from "@/components/game/hud/CaptureFX";
 import { MenuScreen } from "@/components/game/hud/MenuScreen";
 import { LevelUpScreen } from "@/components/game/hud/LevelUpScreen";
 import { DeathScreen, PauseScreen, TimeUpScreen, VictoryScreen } from "@/components/game/hud/EndScreens";
@@ -96,6 +96,7 @@ export default function GameHUD() {
         )}
       </div>
 
+      {mode === "play" && <CaptureBeat />}
       {mode === "play" && <CaptureToast />}
       {mode === "play" && <CaptureFlash />}
 

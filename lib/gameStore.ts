@@ -241,6 +241,8 @@ export const run = {
   timeMult: 1,
   scoreMult: 1,
   rng: mulberry32(dailySeed()),
+  /** run.t clock — brief slow-mo beat on site capture */
+  captureSlowUntil: 0,
 };
 
 export function charDef() {
@@ -274,6 +276,7 @@ export function resetRun(diff?: DifficultyId, character?: CharacterId) {
   run.timeMult = run.mutator.timeMult;
   run.scoreMult = run.mutator.scoreMult;
   run.rng = mulberry32(dailySeed());
+  run.captureSlowUntil = 0;
 
   // weekly mutator: bonus starting levels
   const bonusLevels = run.mutator.startLevel ?? 0;

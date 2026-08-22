@@ -59,6 +59,43 @@ export function CaptureToast() {
   );
 }
 
+/** Gold radial beat synced to capture slow-mo — pairs with the in-world pillar. */
+export function CaptureBeat() {
+  const capturedIds = useGame((s) => s.capturedIds);
+  const [beat, setBeat] = useState(false);
+  const seen = useRef(0);
+
+  useEffect(() => {
+    if (capturedIds.length > seen.current) {
+      seen.current = capturedIds.length;
+      setBeat(true);
+      const hide = setTimeout(() => setBeat(false), 650);
+      return () => clearTimeout(hide);
+    }
+    seen.current = capturedIds.length;
+  }, [capturedIds]);
+
+  return (
+    <AnimatePresence>
+      {beat && (
+        <motion.div
+          key="capture-beat"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          className="pointer-events-none absolute inset-0 z-30"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 45%, rgba(240,199,94,0.28) 0%, transparent 58%)",
+            boxShadow: "inset 0 0 90px 36px rgba(240,199,94,0.16)",
+          }}
+        />
+      )}
+    </AnimatePresence>
+  );
+}
+
 /** Center-screen reward beat when a site is captured: big project name +
  *  the bonus it grants, in bold display type. Pairs with the corner toast. */
 export function CaptureFlash() {

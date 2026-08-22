@@ -14,6 +14,7 @@ import {
 } from "@/lib/sound";
 import { isTyping } from "@/lib/useKeyboard";
 import FocusHeader from "@/components/ui/FocusHeader";
+import ArrivalIntro from "@/components/ui/ArrivalIntro";
 import TouchPad from "@/components/ui/TouchPad";
 import GameHUD from "@/components/game/GameHUD";
 
@@ -180,6 +181,7 @@ export default function Overlay() {
       </div>
 
       {mode === "explore" && <FocusHeader />}
+      <ArrivalIntro />
       <GameHUD />
 
       <TouchPad />
