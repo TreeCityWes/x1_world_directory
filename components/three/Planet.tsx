@@ -9,7 +9,7 @@ import { useWorld } from "@/lib/store";
 import { moveState } from "@/lib/gameState";
 import { prefersReducedMotion } from "@/lib/motion";
 import { run, useGame } from "@/lib/gameStore";
-import { touchStick } from "@/lib/touchInput";
+import { inStickZone, touchDrag, touchStick } from "@/lib/touchInput";
 import { useKeyboard } from "@/lib/useKeyboard";
 import Landmark from "@/components/three/Landmarks";
 import MergeStatic from "@/components/three/MergeStatic";
@@ -198,20 +198,24 @@ export default function Planet() {
     let lastY = 0;
     const down = (e: PointerEvent) => {
       if (useGame.getState().mode !== "explore") return; // drag-spin is explore-only
+      if (touchStick.active || inStickZone(e.clientX, e.clientY)) return;
       dragging.current = true;
+      touchDrag.globe = true;
       lastX = e.clientX;
       lastY = e.clientY;
     };
     const move = (e: PointerEvent) => {
       if (useGame.getState().mode !== "explore") return;
       if (!dragging.current) return;
-      vel.current.x += (e.clientY - lastY) * 0.0055;
-      vel.current.y += (e.clientX - lastX) * 0.0055;
+      const dragScale = LOW_GPU ? 0.0038 : 0.0055;
+      vel.current.x += (e.clientY - lastY) * dragScale;
+      vel.current.y += (e.clientX - lastX) * dragScale;
       lastX = e.clientX;
       lastY = e.clientY;
     };
     const up = () => {
       dragging.current = false;
+      touchDrag.globe = false;
     };
     el.addEventListener("pointerdown", down);
     window.addEventListener("pointermove", move);
@@ -250,7 +254,9 @@ export default function Planet() {
       if (touchStick.active && (touchStick.x !== 0 || touchStick.y !== 0)) {
         const dirNow = Math.atan2(touchStick.x, touchStick.y);
         const turned = Math.abs(Math.atan2(Math.sin(dirNow - stickDir.current), Math.cos(dirNow - stickDir.current)));
-        if (!touchHeld.current || turned > 0.45) {
+        // re-anchor only on a deliberate new push — small thumb wiggles must
+        // not reframe the world and kick the chase cam
+        if (!touchHeld.current || turned > 0.72) {
           touchAz.current = az;
           stickDir.current = dirNow;
         }

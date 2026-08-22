@@ -40,7 +40,7 @@ export default function TouchPad() {
       dy = (dy / len) * RADIUS;
     }
     // deadzone: thumb jitter near center must not flip direction
-    if (len < RADIUS * 0.18) {
+    if (len < RADIUS * 0.28) {
       touchStick.x = 0;
       touchStick.y = 0;
     } else {

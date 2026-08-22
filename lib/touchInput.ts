@@ -9,3 +9,19 @@ export const touchStick = {
   y: 0,
   active: false,
 };
+
+/** True while the user is drag-spinning the globe (explore). Rig reads this
+ *  so pointer drift doesn't also swing the marketing camera. */
+export const touchDrag = {
+  globe: false,
+};
+
+/** Bottom-right safe zone reserved for the virtual stick (px from edges). */
+export const STICK_ZONE = { inset: 160, bottom: 140 };
+export function inStickZone(clientX: number, clientY: number) {
+  if (typeof window === "undefined") return false;
+  return (
+    clientX >= window.innerWidth - STICK_ZONE.inset &&
+    clientY >= window.innerHeight - STICK_ZONE.bottom
+  );
+}

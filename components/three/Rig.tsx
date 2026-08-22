@@ -6,6 +6,8 @@ import * as THREE from "three";
 import { moveState } from "@/lib/gameState";
 import { run, useGame } from "@/lib/gameStore";
 import { prefersReducedMotion } from "@/lib/motion";
+import { LOW_GPU } from "@/lib/quality";
+import { touchDrag, touchStick } from "@/lib/touchInput";
 
 /**
  * Two cameras in one:
@@ -33,21 +35,32 @@ export default function Rig() {
     if (playing) {
       // follow azimuth — only for DELIBERATE movement (keys held, not
       // knockback shoves) that is away-ish/lateral (≤ ~105°)
+      const touchSteer = LOW_GPU && touchStick.active;
       if (moveState.inputActive && moveState.speed > 0.25) {
         const mAz = moveState.inputAz; // intent, not velocity — no mid-reversal sweep
         const delta = wrapPI(mAz - moveState.camAz);
         if (Math.abs(delta) < 1.85) {
-          moveState.camAz += delta * (1 - Math.exp(-2.6 * dt));
+          if (touchSteer) {
+            // mobile stick: lock the chase cam to thumb intent — no lag/swoop
+            moveState.camAz = mAz;
+          } else {
+            const follow = LOW_GPU ? 1.1 : 2.6;
+            moveState.camAz += delta * (1 - Math.exp(-follow * dt));
+          }
         }
       }
-      const az = moveState.camAz + state.pointer.x * 0.05;
+      // pointer parallax is desktop-only; on touch it tracks stray drags and
+      // fights the virtual stick
+      const ptrX = LOW_GPU || touchStick.active ? 0 : state.pointer.x;
+      const ptrY = LOW_GPU || touchStick.active ? 0 : state.pointer.y;
+      const az = moveState.camAz + ptrX * 0.05;
       // NEAR TOP-DOWN (Vampire Survivors legibility on a sphere): high above
       // the ninja, tilted slightly behind his facing. From up here the visible
       // cap covers ~55° ahead / ~80° behind — the whole action bubble.
       const dh = 1.7;
       const px = Math.sin(az) * dh;
       const pz = Math.cos(az) * dh;
-      const py = 6.6 * Math.max(1, 0.9 / aspect) - state.pointer.y * 0.3;
+      const py = 6.6 * Math.max(1, 0.9 / aspect) - ptrY * 0.3;
       // look almost at the ninja (slight ahead bias) so the view splits evenly
       // — running backwards you can see behind you too
       _look.set(-Math.sin(az) * 0.25, 2.3, -Math.cos(az) * 0.25);
@@ -89,9 +102,10 @@ export default function Rig() {
 
     // explore: ease the follow angle home, classic front view
     moveState.camAz += wrapPI(0 - moveState.camAz) * (1 - Math.exp(-2.2 * dt));
-    const az = moveState.camAz + state.pointer.x * 0.12;
+    const exploreParallaxOff = LOW_GPU || touchStick.active || touchDrag.globe;
+    const az = moveState.camAz + (exploreParallaxOff ? 0 : state.pointer.x * 0.12);
     const dist = Math.max(9.2, 8.6 / aspect);
-    const ty = 3.2 - state.pointer.y * 0.55;
+    const ty = 3.2 - (exploreParallaxOff ? 0 : state.pointer.y * 0.55);
     cam.position.x = THREE.MathUtils.damp(cam.position.x, Math.sin(az) * dist, 2.5, dt);
     cam.position.y = THREE.MathUtils.damp(cam.position.y, ty, 2.5, dt);
     cam.position.z = THREE.MathUtils.damp(cam.position.z, Math.cos(az) * dist, 2.5, dt);
