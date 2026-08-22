@@ -6,6 +6,7 @@ import { preloadCharacterModel } from "@/lib/preloadCharacter";
 import { CHARACTERS, type CharacterId } from "@/lib/characters";
 import { submitScore } from "@/lib/leaderboard";
 import { useProfile } from "@/lib/profile";
+import { moveState } from "@/lib/gameState";
 
 /**
  * X1 Ninja Survivors — game state. Authoritative per-frame numbers live in the
@@ -532,7 +533,11 @@ export const useGame = create<GameStore>((set, get) => ({
     set({ mode: "menu", hud: emptyHud(), choices: [], activeSites: [], capturedIds: [], best, pb: readPb(char, run.difficulty), newPb: false, bossCard: "", bossCardAt: 0 });
   },
   pause: () => {
-    if (get().mode === "play") set({ mode: "paused", hud: emptyHud() });
+    if (get().mode === "play") {
+      moveState.pushVX = 0;
+      moveState.pushVZ = 0;
+      set({ mode: "paused", hud: emptyHud() });
+    }
   },
   resume: () => {
     if (get().mode === "paused") set({ mode: "play" });

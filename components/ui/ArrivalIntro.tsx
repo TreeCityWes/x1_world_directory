@@ -6,27 +6,20 @@ import { useGame } from "@/lib/gameStore";
 
 const ARRIVAL_KEY = "x1world_arrival_v1";
 
-function hasSeenArrival() {
-  if (typeof window === "undefined") return true;
-  return localStorage.getItem(ARRIVAL_KEY) === "1";
+function initialArrivalShow() {
+  if (typeof window === "undefined") return false;
+  if (localStorage.getItem(ARRIVAL_KEY) === "1") return false;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    localStorage.setItem(ARRIVAL_KEY, "1");
+    return false;
+  }
+  return true;
 }
 
 /** First-visit cinematic beat: star-field drifts in, title + pitch fade, then release. */
 export default function ArrivalIntro() {
   const mode = useGame((s) => s.mode);
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (hasSeenArrival()) return;
-    const reduced =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      localStorage.setItem(ARRIVAL_KEY, "1");
-      return;
-    }
-    setShow(true);
-  }, []);
+  const [show, setShow] = useState(initialArrivalShow);
 
   const dismiss = () => {
     if (typeof window !== "undefined") localStorage.setItem(ARRIVAL_KEY, "1");

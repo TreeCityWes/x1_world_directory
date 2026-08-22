@@ -1467,7 +1467,12 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     const interval = Math.max(0.25, (1.25 * Math.pow(0.9, run.block)) / D.enemyMult);
     if (run.t >= world.spawnAt) {
       world.spawnAt = run.t + interval;
-      const n = 1 + Math.floor(run.block / 3);
+      const burstWant = 1 + Math.floor(run.block / 3);
+      let pendingFree = 0;
+      for (const slot of world.pending) if (!slot.active) pendingFree++;
+      // never flood all 40 telegraph slots in one tick — late-game bursts
+      // stay warned instead of falling through to silent instant spawns
+      const n = Math.min(burstWant, pendingFree, 10);
       for (let i = 0; i < n; i++) {
         // weighted pick
         const entries = (Object.keys(ENEMY_TYPES) as EnemyTypeId[])
