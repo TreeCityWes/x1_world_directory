@@ -252,7 +252,7 @@ function InscribeRow({ score }: { score: number }) {
               <button
                 onClick={() => void doInscribe()}
                 disabled={st.k === "busy"}
-                title="write this score to X1 mainnet forever"
+                title="write this score to X1 mainnet forever (tiny XNT fee)"
                 className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
               >
                 {st.k === "busy" ? "inscribing…" : "inscribe score on x1"}

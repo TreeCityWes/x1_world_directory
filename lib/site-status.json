@@ -319,15 +319,15 @@
     "telegram": "",
     "checkedAt": "2026-07-03T13:37:34.204Z"
   },
-  "x1-onchain-randomness-x1-randomness-vercel-app": {
+  "x1-onchain-randomness-x1randomness-xyz": {
     "ok": true,
     "note": "HTTP 200",
-    "domain": "x1-randomness.vercel.app",
+    "domain": "x1randomness.xyz",
     "project": "X1 Onchain Randomness",
     "description": "On-demand randomness with sub-second latency on X1 Mainnet",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:45:55.058Z"
+    "checkedAt": "2026-08-22T21:05:00.000Z"
   },
   "x1-forge-x1forge-xyz": {
     "ok": true,
@@ -464,10 +464,30 @@
     "note": "HTTP 200",
     "domain": "vow-protocol.vercel.app",
     "project": "Vow Protocol",
-    "description": "",
+    "description": "Community DEX / trading protocol live on X1.",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:38:50.086Z"
+    "checkedAt": "2026-08-22T21:05:00.000Z"
+  },
+  "x1-agents-radio-x1agentsradio-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1agentsradio.xyz",
+    "project": "X1 Agents Radio",
+    "description": "X1 Agents Radio broadcasts the X1 program map to on-chain agents. Subscribe once, receive the bootstrap digest, daily digests of new programs, and priority webhooks.",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-08-22T21:05:00.000Z"
+  },
+  "x1-forensics-x1forensics-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1forensics.xyz",
+    "project": "X1 Forensics",
+    "description": "Trace value on X1 and Solana. Find what moved without a transfer.",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-08-22T21:05:00.000Z"
   },
   "x1city-x1city-io": {
     "ok": true,

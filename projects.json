@@ -203,8 +203,9 @@
   {
     "category": "Data / Oracle",
     "project": "X1 Onchain Randomness",
-    "domain": "x1-randomness.vercel.app",
-    "builder": "Unknown"
+    "domain": "x1randomness.xyz",
+    "builder": "Unknown",
+    "blurb": "On-demand randomness with sub-second latency on X1 mainnet — permissionless V4 rounds, validator rewards, and game seeds."
   },
   {
     "category": "Staking",
@@ -300,7 +301,22 @@
     "category": "DEX / Trading",
     "project": "Vow Protocol",
     "domain": "vow-protocol.vercel.app",
-    "builder": "Unknown"
+    "builder": "Unknown",
+    "blurb": "Community DEX / trading protocol live on X1."
+  },
+  {
+    "category": "Infrastructure",
+    "project": "X1 Agents Radio",
+    "domain": "x1agentsradio.xyz",
+    "builder": "Unknown",
+    "blurb": "Program-discovery radio for on-chain agents — bootstrap digest, daily new-program feed, and priority webhooks."
+  },
+  {
+    "category": "Data / Explorer",
+    "project": "X1 Forensics",
+    "domain": "x1forensics.xyz",
+    "builder": "Unknown",
+    "blurb": "Trace value on X1 and Solana — find what moved without a transfer."
   },
   {
     "category": "DEX / Trading",

@@ -66,4 +66,13 @@ describe("regions registry", () => {
       expect(r.href, r.id).toMatch(/^https:\/\//);
     }
   });
+
+  it("lists the current community domains (randomness, radio, forensics, vow)", () => {
+    const domains = regions.map((r) => r.domain);
+    expect(domains).toContain("x1randomness.xyz");
+    expect(domains).not.toContain("x1-randomness.vercel.app");
+    expect(domains).toContain("x1agentsradio.xyz");
+    expect(domains).toContain("x1forensics.xyz");
+    expect(domains).toContain("vow-protocol.vercel.app");
+  });
 });
