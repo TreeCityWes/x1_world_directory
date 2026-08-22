@@ -31,9 +31,10 @@
   },
   {
     "category": "DEX / Trading",
-    "project": "APEXfaucet",
+    "project": "APEX City",
     "domain": "apexfaucet.xyz",
-    "builder": "APEXfaucet"
+    "builder": "APEXfaucet",
+    "blurb": "XNT faucet plus Citizens City — CAPY dashboard, cinema, provably-fair games, and the APEX token ecosystem."
   },
   {
     "category": "DEX / Trading",
@@ -310,8 +311,9 @@
   {
     "category": "Social / Community",
     "project": "X1City",
-    "domain": "x1city.io",
-    "builder": "Unknown"
+    "domain": "x1.city",
+    "builder": "X1 Brains",
+    "blurb": "UE5 open-world hub on X1 — Genesis NFT mint, AI NPCs, and on-chain property from the x1brains.io team."
   },
   {
     "category": "NFT Marketplace",
@@ -330,5 +332,73 @@
     "project": "THEO Pools",
     "domain": "theo-pools.vercel.app",
     "builder": "Unknown"
+  },
+  {
+    "category": "Core Infra",
+    "project": "X1 Wallet",
+    "domain": "wallet.x1.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "Bridge UI",
+    "project": "Warp Bridge",
+    "domain": "app.bridge.x1.xyz",
+    "builder": "Official"
+  },
+  {
+    "category": "Game / Mining",
+    "project": "X1 Games",
+    "domain": "games.x1.xyz",
+    "builder": "Official",
+    "blurb": "Official X1 Labs gaming hub — Chess Arena, Tetris Rush, Drift, Block Breaker. Wallet-bound XP ladder."
+  },
+  {
+    "category": "Infrastructure",
+    "project": "X1 Intelligence Network",
+    "domain": "x1labs.io",
+    "builder": "X1 Labs",
+    "blurb": "Sovereign AI agents with wallet-key encrypted memory, multi-model routing, and USDC pay-per-message."
+  },
+  {
+    "category": "Infrastructure",
+    "project": "x1scroll",
+    "domain": "x1scroll.io",
+    "builder": "Unknown",
+    "blurb": "Archival X1 RPC from genesis, plus on-chain agent identity and comms for builders."
+  },
+  {
+    "category": "Staking",
+    "project": "ANL Protocol",
+    "domain": "github.com/dawidosX/ANL-Protocol",
+    "builder": "dawidosX",
+    "blurb": "On-chain ANL/XNT staking with immutable APY windows — one of the largest community DeFi protocols on X1."
+  },
+  {
+    "category": "NFT Marketplace",
+    "project": "X1 Punks",
+    "domain": "x1punks.xyz",
+    "builder": "Unknown",
+    "blurb": "10K fully on-chain punk collection — image and metadata inscribed on X1 mainnet."
+  },
+  {
+    "category": "Meme / Community",
+    "project": "BLU (Blue Whale)",
+    "domain": "x1.ninja",
+    "builder": "Community",
+    "blurb": "Trending X1 memecoin ($BLU) — track and trade on X1 Ninja and XDEX."
+  },
+  {
+    "category": "Meme / Community",
+    "project": "X1NU",
+    "domain": "degen.fyi",
+    "builder": "Community",
+    "blurb": "Community memecoin launched on Degen Launchpad — fair launch with locked LP."
+  },
+  {
+    "category": "Meme / Community",
+    "project": "Xenprime",
+    "domain": "xen.pub",
+    "builder": "Community",
+    "blurb": "XEN ecosystem successor token ($XENP) — part of the growing X1 meme scene."
   }
 ]
