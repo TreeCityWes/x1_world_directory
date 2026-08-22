@@ -9,11 +9,14 @@
 const fs = require("fs");
 const path = require("path");
 const { chromium } = require("playwright-core");
+const sharp = require("sharp");
 
 const root = path.join(__dirname, "..");
 const allProjects = JSON.parse(fs.readFileSync(path.join(root, "projects.json"), "utf8"));
 const outDir = path.join(root, "public", "projects");
+const thumbDir = path.join(outDir, "thumbs");
 fs.mkdirSync(outDir, { recursive: true });
+fs.mkdirSync(thumbDir, { recursive: true });
 
 // Optional domain filter: `node scripts/check-sites.js x1app.fyi` re-checks
 // just the matching site(s); results merge into the existing status file.
@@ -45,6 +48,45 @@ const SITE_ACTIONS = {
 
 // keep in sync with lib/regions.ts
 const slugify = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+async function writeThumb(id) {
+  const png = path.join(outDir, `${id}.png`);
+  const svg = path.join(outDir, `${id}.svg`);
+  const src = fs.existsSync(png) ? png : svg;
+  if (!fs.existsSync(src)) return;
+  await sharp(src)
+    .resize(120, 75, { fit: "cover", position: "top" })
+    .jpeg({ quality: 80 })
+    .toFile(path.join(thumbDir, `${id}.jpg`));
+}
+
+/** og:image / twitter:card preview — faster than a full viewport shot. */
+async function saveSocialPreview(page, id) {
+  const imageUrl = await page
+    .evaluate(() => {
+      const pick = (sel) => document.querySelector(sel)?.getAttribute("content") || "";
+      return (
+        pick('meta[property="og:image"]') ||
+        pick('meta[property="og:image:url"]') ||
+        pick('meta[name="twitter:image"]') ||
+        pick('meta[name="twitter:image:src"]')
+      );
+    })
+    .catch(() => "");
+  if (!imageUrl) return false;
+  try {
+    const abs = new URL(imageUrl, page.url()).href;
+    const resp = await page.context().request.get(abs, { timeout: 15000 });
+    if (!resp.ok()) return false;
+    const buf = await resp.body();
+    if (buf.length < 512) return false;
+    fs.writeFileSync(path.join(outDir, `${id}.png`), buf);
+    await writeThumb(id);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Try to click a visible "agree / accept / continue / enter" style gate
 // button. Exact-match patterns only, so we never hit "Continue with Google".
@@ -164,8 +206,19 @@ async function dismissGate(page) {
   return did;
 }
 
+async function launchBrowser() {
+  for (const channel of ["chrome", undefined]) {
+    try {
+      return await chromium.launch(channel ? { channel } : {});
+    } catch {
+      /* try next */
+    }
+  }
+  throw new Error("no Chrome/Chromium found for playwright-core");
+}
+
 async function main() {
-  const browser = await chromium.launch();
+  const browser = await launchBrowser();
   const ctx = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     userAgent:
@@ -233,10 +286,26 @@ async function main() {
           }
         }
         await page.screenshot({ path: path.join(outDir, `${id}.png`) });
+        await writeThumb(id);
+      } else if (await saveSocialPreview(page, id)) {
+        ok = true;
+        note = "social preview";
       }
     } catch (err) {
       ok = false;
       note = String(err.message || err).split("\n")[0].slice(0, 120);
+    }
+
+    // page may have partially loaded — try og:image even after errors
+    if (!ok) {
+      try {
+        if (await saveSocialPreview(page, id)) {
+          ok = true;
+          note = (note ? `${note}; ` : "") + "social preview";
+        }
+      } catch {
+        /* keep down */
+      }
     }
 
     // scrape lightweight metadata: description + social links

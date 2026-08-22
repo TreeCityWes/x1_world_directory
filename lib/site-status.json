@@ -67,7 +67,7 @@
     "description": "Track X1 tokens, new pairs, prices, volume, liquidity, wallets, staking, validators, and transactions with X1.Ninja.",
     "twitter": "https://x.com/TreeRootDev",
     "telegram": "https://t.me/TreeCityTrading",
-    "checkedAt": "2026-07-03T13:35:17.146Z"
+    "checkedAt": "2026-08-22T14:58:06.568Z"
   },
   "x1-prism-x1prism-com": {
     "ok": true,
@@ -237,7 +237,7 @@
     "description": "Real-time XEN crypto stats across 15+ blockchains. Track supply, burns, staking, DBXEN, FENIX, XenBlocks and more — all in one place.",
     "twitter": "https://x.com/xenpub",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:35:58.875Z"
+    "checkedAt": "2026-08-22T14:55:11.275Z"
   },
   "degen-launchpad-degen-fyi": {
     "ok": true,
@@ -245,9 +245,9 @@
     "domain": "degen.fyi",
     "project": "Degen Launchpad",
     "description": "Degens + Chaos + 2 Blockchains",
-    "twitter": "https://x.com/phonkmasta228",
-    "telegram": "https://t.me/phonkmasta",
-    "checkedAt": "2026-07-03T13:36:03.206Z"
+    "twitter": "",
+    "telegram": "https://t.me/DGNKANG",
+    "checkedAt": "2026-08-22T14:54:53.072Z"
   },
   "x1-scr-x1scr-xyz": {
     "ok": true,
@@ -507,7 +507,7 @@
     "description": "Degens + Chaos + 2 Blockchains",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:37:46.722Z"
+    "checkedAt": "2026-08-22T14:54:58.884Z"
   },
   "x1-brains-x1brains-io": {
     "ok": true,
@@ -548,5 +548,125 @@
     "twitter": "",
     "telegram": "",
     "checkedAt": "2026-07-03T13:37:38.860Z"
+  },
+  "apex-city-apexfaucet-xyz": {
+    "ok": true,
+    "note": "cached capture — apexfaucet.xyz returned 502 at last check",
+    "domain": "apexfaucet.xyz",
+    "project": "APEX City",
+    "description": "The X1 faucet. Free XNT on the X1 blockchain — no gas charge, no signup, no email. Claim every hour. Plus a swap, a screener, a citizens city, and on-chain games.",
+    "twitter": "https://x.com/ApexFaucet",
+    "telegram": "https://t.me/X1APEX",
+    "checkedAt": "2026-08-22T15:00:00.000Z"
+  },
+  "x1city-x1-city": {
+    "ok": true,
+    "note": "HTTP 200 +strip",
+    "domain": "x1.city",
+    "project": "X1City",
+    "description": "",
+    "twitter": "https://twitter.com/X1Brains",
+    "telegram": "https://t.me/x1brainsxyz",
+    "checkedAt": "2026-08-22T14:53:56.910Z"
+  },
+  "x1-wallet-wallet-x1-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "wallet.x1.xyz",
+    "project": "X1 Wallet",
+    "description": "",
+    "twitter": "",
+    "telegram": "https://t.me/x1_wallet",
+    "checkedAt": "2026-08-22T14:54:03.145Z"
+  },
+  "warp-bridge-app-bridge-x1-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "app.bridge.x1.xyz",
+    "project": "Warp Bridge",
+    "description": "Bridge tokens between Solana and X1 with Warp Bridge. Fast, secure, and decentralized cross-chain transfers powered by guardian multisig.",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-08-22T14:54:10.353Z"
+  },
+  "x1-games-games-x1-xyz": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "games.x1.xyz",
+    "project": "X1 Games",
+    "description": "The competitive gaming network. One identity. Every game. Real competition.",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-08-22T14:54:16.328Z"
+  },
+  "x1-intelligence-network-x1labs-io": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1labs.io",
+    "project": "X1 Intelligence Network",
+    "description": "",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-08-22T14:54:22.437Z"
+  },
+  "x1scroll-x1scroll-io": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1scroll.io",
+    "project": "x1scroll",
+    "description": "Archival RPC and AI agent infrastructure for the X1 network. Genesis to now.",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-08-22T14:54:28.235Z"
+  },
+  "anl-protocol-github-com-dawidosx-anl-protocol": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "github.com/dawidosX/ANL-Protocol",
+    "project": "ANL Protocol",
+    "description": "Contribute to dawidosX/ANL-Protocol development by creating an account on GitHub.",
+    "twitter": "",
+    "telegram": "",
+    "checkedAt": "2026-08-22T14:54:35.347Z"
+  },
+  "x1-punks-x1punks-xyz": {
+    "ok": true,
+    "note": "HTTP 200 +gate",
+    "domain": "x1punks.xyz",
+    "project": "X1 Punks",
+    "description": "",
+    "twitter": "https://x.com/X1punksxyz",
+    "telegram": "https://t.me/X1Punksbot",
+    "checkedAt": "2026-08-22T14:54:46.420Z"
+  },
+  "x1nu-degen-fyi": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "degen.fyi",
+    "project": "X1NU",
+    "description": "Degens + Chaos + 2 Blockchains",
+    "twitter": "",
+    "telegram": "https://t.me/DGNKANG",
+    "checkedAt": "2026-08-22T14:55:04.702Z"
+  },
+  "xenprime-xen-pub": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "xen.pub",
+    "project": "Xenprime",
+    "description": "Real-time XEN crypto stats across 15+ blockchains. Track supply, burns, staking, DBXEN, FENIX, XenBlocks and more — all in one place.",
+    "twitter": "https://x.com/xenpub",
+    "telegram": "",
+    "checkedAt": "2026-08-22T14:55:17.138Z"
+  },
+  "blu-blue-whale-x1-ninja": {
+    "ok": true,
+    "note": "HTTP 200",
+    "domain": "x1.ninja",
+    "project": "BLU (Blue Whale)",
+    "description": "Track X1 tokens, new pairs, prices, volume, liquidity, wallets, staking, validators, and transactions with X1.Ninja.",
+    "twitter": "https://x.com/TreeRootDev",
+    "telegram": "https://t.me/TreeCityTrading",
+    "checkedAt": "2026-08-22T14:58:16.061Z"
   }
 }
