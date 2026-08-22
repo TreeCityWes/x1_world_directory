@@ -63,7 +63,7 @@ export default function Experience() {
     >
       {/* left screen — the world */}
       <div
-        className={`relative min-w-0 flex-1 max-md:flex-none ${
+        className={`film-grain relative min-w-0 flex-1 max-md:flex-none ${
           immersive
             ? "max-md:h-full max-md:min-h-0 max-md:flex-1 max-md:touch-none max-md:overflow-hidden"
             : "max-md:h-[62dvh]"

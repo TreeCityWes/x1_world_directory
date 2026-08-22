@@ -66,7 +66,7 @@ function RunSummaryCard({
       {flavor && (
         <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">{flavor}</p>
       )}
-      <p className="mt-3 text-5xl font-semibold tracking-tight max-md:text-4xl">{score}</p>
+      <p className="mt-3 font-display text-5xl font-bold tracking-tight max-md:text-4xl">{score}</p>
       <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
         {scoreLabel} · best {best}
       </p>

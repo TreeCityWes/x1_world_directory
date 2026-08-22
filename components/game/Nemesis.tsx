@@ -88,6 +88,18 @@ export default function Nemesis({ scale = 1.05, charId = "ninja" }: { scale?: nu
     <group ref={root} scale={scale}>
       <CharacterBody charId={id} />
       <DarkAura />
+      {/* void corona — second ring, wider and dimmer */}
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.28, 0.38, 48]} />
+        <meshBasicMaterial
+          color="#1a0508"
+          transparent
+          opacity={0.35}
+          blending={THREE.MultiplyBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
     </group>
   );
 }

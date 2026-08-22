@@ -143,6 +143,33 @@ function getRugTexture() {
  * these stay static internally. +Z faces the ninja.
  */
 
+/** Compound eyes with a digital glitch flicker — reads as "exploit" at distance. */
+function BugEyes() {
+  const left = useRef<THREE.Mesh>(null);
+  const right = useRef<THREE.Mesh>(null);
+  useFrame((state) => {
+    if (!left.current || !isShown(left.current)) return;
+    const t = state.clock.elapsedTime;
+    const pulse = 1.5 + Math.sin(t * 22) * 0.35 + (Math.sin(t * 47) > 0.92 ? 0.8 : 0);
+    for (const ref of [left, right]) {
+      const m = ref.current?.material as THREE.MeshStandardMaterial | undefined;
+      if (m) m.emissiveIntensity = pulse;
+    }
+  });
+  return (
+    <>
+      <mesh ref={left} position={[0.1, 0.08, 0.44]}>
+        <sphereGeometry args={[0.085, 8, 8]} />
+        <meshStandardMaterial color={HEX.crimson} emissive={HEX.cyanHot} emissiveIntensity={1.8} toneMapped={false} />
+      </mesh>
+      <mesh ref={right} position={[-0.1, 0.08, 0.44]}>
+        <sphereGeometry args={[0.085, 8, 8]} />
+        <meshStandardMaterial color={HEX.crimson} emissive={HEX.cyanHot} emissiveIntensity={1.8} toneMapped={false} />
+      </mesh>
+    </>
+  );
+}
+
 /** THE BUG — an exploit crawling out of the codebase. Segmented, splayed,
  *  glowing — unmistakably insect. Wasp-amber, NOT green: green belongs to
  *  CAPY (color bible: identity colors are heroes-only, warm = hostile). */
@@ -176,15 +203,8 @@ export function BugMob() {
         <sphereGeometry args={[0.14, 10, 10]} />
         <meshStandardMaterial color={HEX.bugHead} roughness={0.45} />
       </mesh>
-      {/* BIG compound eyes — intensity trimmed from 2.8 so bloom stops white-clipping */}
-      <mesh position={[0.1, 0.08, 0.44]}>
-        <sphereGeometry args={[0.085, 8, 8]} />
-        <meshStandardMaterial color={HEX.crimson} emissive={HEX.crimson} emissiveIntensity={1.8} toneMapped={false} />
-      </mesh>
-      <mesh position={[-0.1, 0.08, 0.44]}>
-        <sphereGeometry args={[0.085, 8, 8]} />
-        <meshStandardMaterial color={HEX.crimson} emissive={HEX.crimson} emissiveIntensity={1.8} toneMapped={false} />
-      </mesh>
+      {/* compound eyes — chromatic glitch pulse */}
+      <BugEyes />
       {/* mandibles — pincers curving inward */}
       {[-1, 1].map((s) => (
         <mesh key={s} position={[s * 0.09, -0.03, 0.5]} rotation={[1.35, 0, s * -0.5]}>
@@ -360,8 +380,19 @@ function wavyBox(w: number, h: number, d: number, freq = 2.2, amp = 0.045) {
 }
 
 /** THE RUG — a possessed flying carpet mid-strike: frozen wave body, uneven
- *  hand-tied fringe, eyes glaring over the leading edge. */
+ *  hand-tied fringe, eyes glaring over the leading edge. Trailing edge billows
+ *  in useFrame so the pull reads as cloth, not a plank. */
 export function RugMob() {
+  const root = useRef<THREE.Group>(null);
+  const trail = useRef<THREE.Mesh>(null);
+  useFrame((state) => {
+    if (!isShown(root.current)) return;
+    const t = state.clock.elapsedTime;
+    if (trail.current) {
+      trail.current.rotation.x = -0.12 + Math.sin(t * 5.5) * 0.1;
+      trail.current.scale.y = 1 + Math.sin(t * 6.2 + 0.4) * 0.18;
+    }
+  });
   const RUG = HEX.rugCrimson;
   const RUG_DARK = HEX.rugCrimsonDark;
   const TRIM = HEX.gold;
@@ -370,13 +401,26 @@ export function RugMob() {
   // deterministic hand-tied fringe variation (avoids impure random in render)
   const tasselJitter = TASSEL_JITTER;
   return (
-    <group position={[0, 0.1, 0]}>
+    <group ref={root} position={[0, 0.1, 0]}>
       {/* carpet body — gentle frozen wave instead of dead-flat boxes */}
       <mesh position={[0, 0.02, -0.4]} geometry={bodyGeo}>
         <meshStandardMaterial map={getRugTexture()} color={RUG} roughness={0.88} />
       </mesh>
       <mesh position={[0, 0.02, 0.35]} geometry={rearGeo}>
         <meshStandardMaterial map={getRugTexture()} color={RUG_DARK} roughness={0.88} />
+      </mesh>
+      {/* billowing trailing edge — the cloth wake behind the pull */}
+      <mesh ref={trail} position={[0, 0.05, -0.88]} rotation={[-0.15, 0, 0]}>
+        <planeGeometry args={[0.76, 0.2, 10, 2]} />
+        <meshStandardMaterial
+          map={getRugTexture()}
+          color={RUG_DARK}
+          transparent
+          opacity={0.88}
+          roughness={0.92}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
       </mesh>
       {/* gold border running along both long edges (carpet frame) */}
       {[-1, 1].map((s) => (

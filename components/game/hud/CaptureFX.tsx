@@ -111,7 +111,7 @@ export function CaptureFlash() {
             initial={{ scale: 1.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.04 }}
-            className="mt-1 text-2xl font-black italic tracking-tight max-md:text-lg"
+            className="font-display mt-1 text-2xl font-bold tracking-tight max-md:text-lg"
             style={{
               color: "#fff",
               // the one earned glow in this decluttered UI: mid-run capture celebration — halved intensity

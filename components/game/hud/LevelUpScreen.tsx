@@ -39,7 +39,7 @@ export function LevelUpScreen() {
       className="pointer-events-auto absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-space/60 backdrop-blur-sm max-md:fixed"
     >
       <div className="max-h-full w-full py-6 text-center [padding-bottom:env(safe-area-inset-bottom)]">
-        <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-gold">
+        <p className="font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">
           level {hud.level} — choose an upgrade
         </p>
         <div className="mt-4 flex flex-wrap items-stretch justify-center gap-3 px-4">

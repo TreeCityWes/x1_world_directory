@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { shortAddr, useProfile, watchWalletProvider } from "@/lib/profile";
 import { removeMe } from "@/lib/leaderboard";
 import { useGame } from "@/lib/gameStore";
-import { CHARACTERS } from "@/lib/characters";
+import { CHARACTERS, type WeaponKind } from "@/lib/characters";
+
+const WEAPON_GLYPH: Record<WeaponKind, string> = {
+  shuriken: "✦",
+  xcoin: "◎",
+  pulse: "⌁",
+  slash: "⚔",
+};
 
 /** The player card — arcade "enter your name" energy, not a KYC form. */
 export default function ProfileCard() {
@@ -48,7 +55,7 @@ export default function ProfileCard() {
             color: ch.colors.band,
           }}
         >
-          {ch.name.replace(/^X1 /, "")[0]}
+          {WEAPON_GLYPH[ch.weapon.kind]}
         </span>
         <input
           value={name}

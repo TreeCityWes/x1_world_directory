@@ -132,7 +132,7 @@ export default function Overlay() {
       )}
 
       <h1
-        className={`absolute bottom-6 left-5 text-5xl font-semibold leading-none tracking-tighter max-md:bottom-3 max-md:text-2xl md:text-6xl ${
+        className={`font-display absolute bottom-6 left-5 text-5xl font-bold leading-none tracking-tighter max-md:bottom-3 max-md:text-2xl md:text-6xl ${
           mode !== "explore" ? "max-md:hidden" : ""
         }`}
       >

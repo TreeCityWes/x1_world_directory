@@ -389,11 +389,12 @@ export default function Planet() {
         <mesh ref={sphere} receiveShadow>
           <sphereGeometry args={[PLANET_RADIUS, SPHERE_SEG, SPHERE_SEG]} />
           <meshPhysicalMaterial
-            color="#16234a"
-            roughness={0.5}
-            metalness={0.25}
-            clearcoat={0.4}
-            clearcoatRoughness={0.4}
+            color="#0a0f1e"
+            roughness={0.35}
+            metalness={0.55}
+            clearcoat={0.65}
+            clearcoatRoughness={0.25}
+            reflectivity={0.9}
           />
         </mesh>
         {/* subtle hex-grid shell */}
@@ -402,7 +403,7 @@ export default function Planet() {
           <meshBasicMaterial
             map={hexMap}
             transparent
-            opacity={0.14}
+            opacity={0.2}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
           />
@@ -456,6 +457,7 @@ function RegionSite({
     (s) => (s.selectedId ?? s.nearId ?? s.hoveredId ?? s.closestId) === region.id,
   );
   const lit = forceLit || panelLit;
+  const glow = forceLit ? 1.35 : lit ? 1 : 0.72;
   const select = useWorld((s) => s.select);
   const setHoveredId = useWorld((s) => s.setHovered);
   const [hovered, setHovered] = useState(false);
@@ -539,7 +541,7 @@ function RegionSite({
             map={getSitePadTexture()}
             color={region.accent}
             transparent
-            opacity={lit ? 0.45 : 0.18}
+            opacity={(lit ? 0.45 : 0.18) * glow}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -551,7 +553,7 @@ function RegionSite({
             map={getSiteRingTexture()}
             color={region.accent}
             transparent
-            opacity={lit ? 0.7 : 0.3}
+            opacity={(lit ? 0.7 : 0.3) * glow}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -562,8 +564,8 @@ function RegionSite({
           <sphereGeometry args={[0.24, 8, 8]} />
         </mesh>
         {/* exactly ONE landmark is lit: the one in the side panel */}
-        {lit && (
-          <pointLight position={[0, 0.35, 0]} color={region.accent} distance={1.6} intensity={2} />
+        {(lit || forceLit) && (
+          <pointLight position={[0, 0.35, 0]} color={region.accent} distance={1.6} intensity={forceLit ? 2.8 : 2} />
         )}
       </group>
     </group>

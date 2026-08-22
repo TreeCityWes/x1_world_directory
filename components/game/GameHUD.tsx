@@ -117,7 +117,7 @@ export default function GameHUD() {
               <p className="font-mono text-[9px] uppercase tracking-[0.34em] text-danger-bright">
                 boss detected
               </p>
-              <p className="mt-1 text-xl font-black tracking-[0.06em] text-danger-bright max-md:text-base">
+              <p className="font-display mt-1 text-xl font-bold tracking-[0.04em] text-danger-bright max-md:text-base">
                 {bossCard}
               </p>
             </div>
