@@ -1,6 +1,7 @@
 /**
  * Generates dark placeholder screenshot SVGs in public/projects/ — one per
- * entry in projects.json. Re-run after editing the list:
+ * entry in projects.json — plus 120×75 JPEG thumbnails in public/projects/thumbs/.
+ * Re-run after editing the list:
  *
  *   node scripts/gen-screenshots.js
  *
@@ -9,11 +10,14 @@
  */
 const fs = require("fs");
 const path = require("path");
+const sharp = require("sharp");
 
 const root = path.join(__dirname, "..");
 const projects = JSON.parse(fs.readFileSync(path.join(root, "projects.json"), "utf8"));
 const outDir = path.join(root, "public", "projects");
+const thumbDir = path.join(outDir, "thumbs");
 fs.mkdirSync(outDir, { recursive: true });
+fs.mkdirSync(thumbDir, { recursive: true });
 
 // keep in sync with lib/regions.ts
 const slugify = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -27,11 +31,22 @@ const accentFor = (c) => {
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-let count = 0;
-for (const p of projects) {
-  const id = slugify(`${p.project}-${p.domain}`);
-  const accent = accentFor(p.category);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+async function writeThumb(id) {
+  const png = path.join(outDir, `${id}.png`);
+  const svg = path.join(outDir, `${id}.svg`);
+  const src = fs.existsSync(png) ? png : svg;
+  await sharp(src)
+    .resize(120, 75, { fit: "cover", position: "top" })
+    .jpeg({ quality: 80 })
+    .toFile(path.join(thumbDir, `${id}.jpg`));
+}
+
+async function main() {
+  let count = 0;
+  for (const p of projects) {
+    const id = slugify(`${p.project}-${p.domain}`);
+    const accent = accentFor(p.category);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
   <rect width="800" height="500" fill="#0b1020"/>
   <rect width="800" height="44" fill="#121933"/>
   <circle cx="24" cy="22" r="6" fill="#3a466e"/><circle cx="44" cy="22" r="6" fill="#3a466e"/><circle cx="64" cy="22" r="6" fill="#3a466e"/>
@@ -46,7 +61,14 @@ for (const p of projects) {
   <rect x="60" y="338" width="310" height="2" fill="${accent}" opacity="0.7"/>
   <rect x="400" y="338" width="310" height="2" fill="${accent}" opacity="0.7"/>
 </svg>\n`;
-  fs.writeFileSync(path.join(outDir, `${id}.svg`), svg);
-  count++;
+    fs.writeFileSync(path.join(outDir, `${id}.svg`), svg);
+    await writeThumb(id);
+    count++;
+  }
+  console.log(`wrote ${count} placeholder screenshots + thumbnails to public/projects/`);
 }
-console.log(`wrote ${count} placeholder screenshots to public/projects/`);
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
