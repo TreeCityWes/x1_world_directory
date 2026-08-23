@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     // Node CLI scripts (CommonJS by design):
     "scripts/**",
     "ninja_game/**",
+    "tier_list_gen/**",
   ]),
 ]);
 
