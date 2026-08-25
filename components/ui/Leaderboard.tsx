@@ -62,21 +62,12 @@ export default function Leaderboard() {
   const mode = useGame((s) => s.mode);
   const finalDiff = useGame((s) => s.finalDiff);
   const runDiff = useGame((s) => s.hud.diff);
-  const [filter, setFilter] = useState<DiffTab>(() =>
-    defaultDiffTab(mode, finalDiff, runDiff),
-  );
-  const [userPicked, setUserPicked] = useState(false);
+  const [userFilter, setUserFilter] = useState<DiffTab | null>(null);
+  const filter = userFilter ?? defaultDiffTab(mode, finalDiff, runDiff);
   const [board, setBoard] = useState<BoardEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
   const name = useProfile((s) => s.name);
   const wallet = useProfile((s) => s.wallet);
-
-  // Keep the default tab in sync with the last / just-finished run until the
-  // player picks a tab themselves — avoids always landing on "all".
-  useEffect(() => {
-    if (userPicked) return;
-    setFilter(defaultDiffTab(mode, finalDiff, runDiff));
-  }, [mode, finalDiff, runDiff, userPicked]);
 
   useEffect(() => {
     let stale = false;
@@ -114,10 +105,7 @@ export default function Leaderboard() {
         {DIFF_TABS.map((d) => (
           <button
             key={d}
-            onClick={() => {
-              setUserPicked(true);
-              setFilter(d);
-            }}
+            onClick={() => setUserFilter(d)}
             className={`rounded border px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] transition-colors ${
               filter === d
                 ? "border-gold/70 bg-gold/10 text-gold"
