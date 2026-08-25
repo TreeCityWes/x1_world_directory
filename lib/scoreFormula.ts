@@ -12,6 +12,22 @@ export const SCORE_BOARD_CAP = 500_000;
 /** Upper bound on captures — projects.json can grow; leave headroom. */
 export const MAX_CAPTURES = 120;
 
+/**
+ * Nominal map size for win-bonus scaling. Full clear ≈ historical flat +1000;
+ * keeps scoreFormula free of regions/projects imports (API route safe).
+ */
+export const WIN_BONUS_SITES = 65;
+
+/**
+ * Conquest bonus when the run is won — scales with sites captured so a
+ * minimal clear doesn't dominate short runs (GROK-REVIEW §4).
+ * Formula: `round(400 + 600 * captured / WIN_BONUS_SITES)`.
+ */
+export function winBonus(captured: number): number {
+  const c = Math.max(0, captured);
+  return Math.round(400 + (600 * c) / Math.max(1, WIN_BONUS_SITES));
+}
+
 export const DIFFICULTY_SCORE_MULT = {
   normal: 1,
   hard: 1.5,
@@ -91,9 +107,9 @@ export function baseScoreOf(input: ScoreInput): number {
   return Math.round(base * diffMult);
 }
 
-/** Final run score including win bonus + mutator multiplier. */
+/** Final run score including capture-scaled win bonus + mutator multiplier. */
 export function computeRunScore(input: ScoreInput): number {
-  const bonus = input.win ? 1000 : 0;
+  const bonus = input.win ? winBonus(input.captured) : 0;
   return Math.round((baseScoreOf(input) + bonus) * (input.mutatorScoreMult || 1));
 }
 
