@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { DIFFICULTIES, useGame, getPb, activeMutator, type DifficultyId } from "@/lib/gameStore";
 import { CHARACTERS } from "@/lib/characters";
-import { sfx } from "@/lib/sound";
+import { sfx, startMusic } from "@/lib/sound";
 import { CharacterSelect } from "@/components/game/hud/CharacterSelect";
 
 /** Run menu — pick your character, pick your bet (Normal / Hard / Cursed). */
@@ -93,6 +93,8 @@ export function MenuScreen() {
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.97 }}
           onClick={() => {
+            // user gesture — unlock AudioContext + start ambient bed (autoplay-safe)
+            startMusic();
             sfx.ui();
             start(diff);
           }}
@@ -102,7 +104,10 @@ export function MenuScreen() {
         </motion.button>
         <div className="max-md:hidden">
           <button
-            onClick={quit}
+            onClick={() => {
+              startMusic();
+              quit();
+            }}
             className="mt-4 rounded-md border border-white/15 px-5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
           >
             back to explore
@@ -149,7 +154,10 @@ export function MenuScreen() {
         <div className="mt-2 flex gap-2">
           <button
             type="button"
-            onClick={quit}
+            onClick={() => {
+              startMusic();
+              quit();
+            }}
             aria-label="back to explore"
             title="back to explore"
             className="grid h-12 w-12 shrink-0 place-items-center rounded-md border border-white/20 bg-space-2 text-lg text-ink-dim"
@@ -160,6 +168,7 @@ export function MenuScreen() {
             <button
               type="button"
               onClick={() => {
+                startMusic();
                 sfx.ui();
                 start(diff);
               }}

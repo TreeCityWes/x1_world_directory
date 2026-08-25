@@ -187,9 +187,9 @@ imported. Treat the embedded 3D game as the product.
 
 ### Juice & feedback
 
-- **[P2] No music / ambient bed.** `sound.ts` is a solid WebAudio synth for SFX only.
-  A low, looping ambient pad (even procedural) would help 10-minute runs feel less
-  sterile.
+- ~~**[P2] No music / ambient bed.**~~ **Shipped** — procedural bed in `sound.ts`
+  (`startMusic` / mute / `duckMusic`); polish: Start-gesture unlock + mute UI via
+  `useSyncExternalStore`.
 - **[P3] Leaderboard submit is silent.** `submitScore()` is fire-and-forget; players
   with a name but no wallet never know if their run registered. A tiny toast on POST
   success/failure would close the loop.

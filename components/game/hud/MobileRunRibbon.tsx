@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { useGame, effectiveRunSeconds, type DifficultyId } from "@/lib/gameStore";
 import {
   isMuted,
   isMusicMuted,
+  subscribeMute,
+  subscribeMusicMute,
   toggleMute,
   toggleMusicMute,
 } from "@/lib/sound";
@@ -28,22 +30,13 @@ export function MobileRunRibbon() {
   const hud = useGame((s) => s.hud);
   const activeSites = useGame((s) => s.activeSites);
   const [expanded, setExpanded] = useState(false);
-  const [muted, setMuted] = useState(() => isMuted());
-  const [musicMuted, setMusicMuted] = useState(() => isMusicMuted());
+  const muted = useSyncExternalStore(subscribeMute, isMuted, () => false);
+  const musicMuted = useSyncExternalStore(subscribeMusicMute, isMusicMuted, () => false);
 
   const remaining = Math.max(0, effectiveRunSeconds() - hud.time);
   const clock = `${Math.floor(remaining / 60)}:${String(Math.floor(remaining % 60)).padStart(2, "0")}`;
   const lowTime = remaining <= 30;
   const diff = DIFF_TAG[hud.diff];
-
-  const toggleSfx = () => {
-    toggleMute();
-    setMuted(isMuted());
-  };
-  const toggleMusic = () => {
-    toggleMusicMute();
-    setMusicMuted(isMusicMuted());
-  };
 
   const flashSite = (id: string) => {
     // transient signal consumed by GameLayer to briefly intensify the arrow
@@ -85,7 +78,7 @@ export function MobileRunRibbon() {
             {expanded ? "▲" : "▼"}
           </button>
           <button
-            onClick={toggleSfx}
+            onClick={() => toggleMute()}
             aria-label={muted ? "unmute sfx" : "mute sfx"}
             className={`grid h-11 w-11 place-items-center rounded border text-[9px] transition-colors ${
               muted
@@ -96,7 +89,7 @@ export function MobileRunRibbon() {
             {muted ? "sfx✕" : "sfx♪"}
           </button>
           <button
-            onClick={toggleMusic}
+            onClick={() => toggleMusicMute()}
             aria-label={musicMuted ? "unmute music" : "mute music"}
             className={`grid h-11 w-11 place-items-center rounded border text-[9px] transition-colors ${
               musicMuted

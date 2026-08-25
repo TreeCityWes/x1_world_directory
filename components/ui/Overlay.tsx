@@ -34,6 +34,8 @@ export default function Overlay() {
   // single row here; the pause menu is the exit, so the mode tabs step aside
   const inRun = mode === "play" || mode === "levelup";
 
+  // start ambient when leaving menu (explore / play / …). Start button also
+  // calls startMusic() so AudioContext unlocks on a clear user gesture.
   useEffect(() => {
     if (mode !== "menu") startMusic();
   }, [mode]);
@@ -92,7 +94,10 @@ export default function Overlay() {
             // never abandon a LIVE run in one click — pause into the
             // resume/abandon choice; from any other non-explore state, leave
             if (g.mode === "play") g.pause();
-            else if (g.mode !== "explore") g.quit();
+            else if (g.mode !== "explore") {
+              startMusic();
+              g.quit();
+            }
           }}
           className={`rounded-xl border px-4 py-2 font-mono text-sm font-bold uppercase tracking-[0.14em] backdrop-blur transition-all hover:-translate-y-0.5 max-md:px-3 max-md:text-xs ${
             mode === "explore"
