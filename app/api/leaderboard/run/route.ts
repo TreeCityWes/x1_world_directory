@@ -18,7 +18,10 @@ export async function POST(req: Request) {
       : "normal") as DifficultyId;
     const issued = issueRunToken(difficulty);
     if (!issued) {
-      return NextResponse.json({ ok: false, error: "unavailable" }, { status: 503 });
+      // Misconfigured production (no HMAC secret) — ranked submits will also
+      // fail closed. Return 200 so clients don't log a console network error
+      // on every casual start (smoke / guests / local demos).
+      return NextResponse.json({ ok: false, error: "unavailable" });
     }
     return NextResponse.json({
       ok: true,

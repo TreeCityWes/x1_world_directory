@@ -310,6 +310,35 @@ function snapshotStats(win: boolean): RunStats {
 /** Server-issued proof for the active / just-ended ranked run (SEC-01). */
 let runProof: RunProof | null = null;
 
+function ensureRunProof(difficulty: DifficultyId): Promise<RunProof | null> {
+  if (runProof && runProof.difficulty === difficulty) return Promise.resolve(runProof);
+  return beginRun(difficulty).then((proof) => {
+    if (proof && run.difficulty === proof.difficulty) runProof = proof;
+    return runProof;
+  });
+}
+
+async function postRanked(score: number, stats: RunStats, set: (p: Partial<{ scoreSubmit: "" | "sending" | "ok" | "fail" }>) => void) {
+  const pd = useProfile.getState();
+  if (!pd.name.trim() || !pd.wallet) return false;
+  const proof = await ensureRunProof(run.difficulty);
+  if (!proof) {
+    set({ scoreSubmit: "fail" });
+    return false;
+  }
+  const ok = await submitScore({
+    name: pd.name,
+    wallet: pd.wallet,
+    score,
+    diff: run.difficulty,
+    stats,
+    runToken: proof.token,
+    startedAt: proof.startedAt,
+  });
+  set({ scoreSubmit: ok ? "ok" : "fail" });
+  return ok;
+}
+
 // derived combat numbers (upgrades + timed powerups)
 export function shurikenDamage() {
   // Cursed's statMult (0.7) now weakens outgoing damage too — the mode is
@@ -503,10 +532,14 @@ export const useGame = create<GameStore>((set, get) => ({
     resetRun(diff ?? run.difficulty, get().character);
     runProof = null;
     const difficulty = diff ?? run.difficulty;
-    // mint SEC-01 run token in the background — ranked submit needs it
-    void beginRun(difficulty).then((proof) => {
-      if (proof && run.difficulty === proof.difficulty) runProof = proof;
-    });
+    // mint SEC-01 run token only for ranked intent (wallet present) — guests
+    // keep local bests and must not trip console 4xx/5xx noise on start
+    const wallet = useProfile.getState().wallet;
+    if (wallet) {
+      void beginRun(difficulty).then((proof) => {
+        if (proof && run.difficulty === proof.difficulty) runProof = proof;
+      });
+    }
     // selection bugs are invisible without this — one line per run start
     console.info("[x1:run]", {
       selectedCharacterId: get().character,
@@ -567,18 +600,8 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.death();
     const pd = useProfile.getState();
-    const ranked = !!pd.name.trim() && !!pd.wallet && !!runProof;
-    if (ranked && runProof) {
-      void submitScore({
-        name: pd.name,
-        wallet: pd.wallet,
-        score,
-        diff: run.difficulty,
-        stats,
-        runToken: runProof.token,
-        startedAt: runProof.startedAt,
-      }).then((ok) => set({ scoreSubmit: ok ? "ok" : "fail" }));
-    }
+    const ranked = !!pd.name.trim() && !!pd.wallet;
+    if (ranked) void postRanked(score, stats, set);
     set({
       mode: "dead",
       finalScore: score,
@@ -607,18 +630,8 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.win(); // a "you made it to the bell" flourish, not the death sting
     const pt = useProfile.getState();
-    const ranked = !!pt.name.trim() && !!pt.wallet && !!runProof;
-    if (ranked && runProof) {
-      void submitScore({
-        name: pt.name,
-        wallet: pt.wallet,
-        score,
-        diff: run.difficulty,
-        stats,
-        runToken: runProof.token,
-        startedAt: runProof.startedAt,
-      }).then((ok) => set({ scoreSubmit: ok ? "ok" : "fail" }));
-    }
+    const ranked = !!pt.name.trim() && !!pt.wallet;
+    if (ranked) void postRanked(score, stats, set);
     set({
       mode: "timeup",
       finalScore: score,
@@ -643,18 +656,8 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.win();
     const pw = useProfile.getState();
-    const ranked = !!pw.name.trim() && !!pw.wallet && !!runProof;
-    if (ranked && runProof) {
-      void submitScore({
-        name: pw.name,
-        wallet: pw.wallet,
-        score,
-        diff: run.difficulty,
-        stats,
-        runToken: runProof.token,
-        startedAt: runProof.startedAt,
-      }).then((ok) => set({ scoreSubmit: ok ? "ok" : "fail" }));
-    }
+    const ranked = !!pw.name.trim() && !!pw.wallet;
+    if (ranked) void postRanked(score, stats, set);
     set({
       mode: "won",
       finalScore: score,
@@ -669,19 +672,34 @@ export const useGame = create<GameStore>((set, get) => ({
   },
   retrySubmit: () => {
     const { finalScore, finalDiff, finalStats, scoreSubmit } = get();
-    if (finalScore <= 0 || scoreSubmit === "ok" || scoreSubmit === "sending") return;
+    if (finalScore <= 0 || !finalStats || scoreSubmit === "ok" || scoreSubmit === "sending") return;
     const p = useProfile.getState();
-    if (!p.name.trim() || !p.wallet || !runProof || !finalStats) return;
+    if (!p.name.trim() || !p.wallet) return;
     set({ scoreSubmit: "sending" });
-    void submitScore({
-      name: p.name,
-      wallet: p.wallet,
-      score: finalScore,
-      diff: finalDiff,
-      stats: finalStats,
-      runToken: runProof.token,
-      startedAt: runProof.startedAt,
-    }).then((ok) => set({ scoreSubmit: ok ? "ok" : "fail" }));
+    // use finalDiff for the proof — run.difficulty may have been reset by openMenu
+    void (async () => {
+      const proof =
+        runProof && runProof.difficulty === finalDiff
+          ? runProof
+          : await beginRun(finalDiff).then((p) => {
+              if (p) runProof = p;
+              return p;
+            });
+      if (!proof) {
+        set({ scoreSubmit: "fail" });
+        return;
+      }
+      const ok = await submitScore({
+        name: p.name,
+        wallet: p.wallet,
+        score: finalScore,
+        diff: finalDiff,
+        stats: finalStats,
+        runToken: proof.token,
+        startedAt: proof.startedAt,
+      });
+      set({ scoreSubmit: ok ? "ok" : "fail" });
+    })();
   },
   syncHud: () => set({ hud: emptyHud() }),
   offerLevelUp: (choices) => {
