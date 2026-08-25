@@ -64,7 +64,7 @@
 ```
 Regular mob ──► world.pending (0.7s ring, pool 40) ──► hatch retries until slot frees
 Block % 5 boss ──► spawnEnemy INSTANT + full-screen nameplate (by design)
-Finale (5 sites left) ──► spawnEnemy INSTANT + 2.5× HP Nemesis + nameplate
+Finale (≤5 sites left ∧ level ≥8, or all captured) ──► spawnEnemy INSTANT + power-scaled HP Nemesis + nameplate
 Boss pool: slots 52–56 only (4 total)
 ```
 
@@ -124,7 +124,8 @@ Server:      clamp score ≤ 500k; verify sig → verified boolean ONLY
 | Nonce freshness (5 min HMAC) | POST score matches signed score |
 | Device identity (guest) | Guest deviceId is secret |
 
-**Open (SEC-01):** scores client-trusted — deferred, needs run-token design.
+**SHIPPED (SEC-01) `ee6a729`:** server-issued run token at ranked start;
+POST verifies token and recomputes score from claimed stats (`lib/runToken.ts`).
 
 **Open (SEC-03):** `lib/nonce.ts` HMAC falls back to `"dev-secret"` if env missing.
 
@@ -203,7 +204,7 @@ Status: **open** | **partial** | **fixed** | **deferred**
 
 | ID | P | Finding | Status | Commit |
 | --- | --- | --- | --- | --- |
-| SEC-01 | P1 | Client-trusted scores | deferred | — |
+| SEC-01 | P1 | Client-trusted scores | shipped | `ee6a729` |
 | SEC-02 | P1 | Wallet squatting without sig | fixed | `35c7988` |
 | SEC-03 | P1 | Nonce HMAC `"dev-secret"` fallback | fixed | `35c7988` |
 | SEC-04 | P2 | Nonce GET unrate-limited | fixed | `35c7988` |
@@ -225,7 +226,7 @@ Status: **open** | **partial** | **fixed** | **deferred**
 
 | ID | P | Finding | Status |
 | --- | --- | --- | --- |
-| UX-01 | P1 | Mobile inscribe/connect split across panes | open |
+| UX-01 | P1 | Mobile inscribe/connect split across panes | shipped |
 | UX-02 | P2 | viewBoard → openMenu() confuses flow | open |
 | UX-03 | P2 | Explore panel hardcodes "online" | open |
 | UX-04 | P3 | gen-screenshots.js violet accent drift | open |
@@ -245,13 +246,15 @@ Status: **open** | **partial** | **fixed** | **deferred**
 | OG/metadata game copy | `ca8efb4` | fixed |
 | TouchPad safe-area | `ca8efb4` | fixed |
 | Win target decoupling | — | deferred |
-| Run-token anti-cheat | — | deferred |
+| ~~Run-token anti-cheat~~ | `ee6a729` | shipped |
 | ninja_game archive | — | deferred |
-| Finale player-power key | — | deferred |
-| Difficulty rankings | — | deferred |
-| Music bed | — | deferred |
+| ~~Finale player-power key~~ | `ab9fe90` | shipped |
+| ~~Difficulty rankings~~ | `9ac29d2` | shipped |
+| ~~Music bed~~ | `sound.ts` | shipped |
 | Daily seed / mutator | — | deferred |
-| Mobile run ribbon | — | deferred |
+| ~~Mobile run ribbon~~ | `4c74b90` / `67a4701` | shipped |
+| ~~Per-diff PBs~~ | `137931d` | shipped |
+| ~~Network links~~ | `b269bbc` | shipped |
 
 ---
 
@@ -269,11 +272,11 @@ Status: **open** | **partial** | **fixed** | **deferred**
 | openMenu capturedIds | — | #7 open | fixed | `0c72ff6` |
 | Leaderboard res.ok | — | #2 open | fixed | prior + rate limit |
 | Esc confirm leak | — | #8 open | fixed | pause rework |
-| Client-trusted scores | — | #1 open | deferred | — |
+| Client-trusted scores | — | #1 open | shipped | `ee6a729` |
 | Boss pool starvation | P2 open | — | partial | retry `ca8efb4` |
 | CAPY/fort shield | P3 open | — | partial | Math.max `ca8efb4` |
 | Win target = regions.length | deferred | — | deferred | — |
-| NetworkLinks missing | — | — | open | — |
+| NetworkLinks missing | — | — | shipped | `b269bbc` |
 | Boss telegraph gap | — | — | by design | nameplate |
 | pick() validation | — | — | fixed | `c57e3ec` |
 | Wallet squatting | — | — | fixed | `35c7988` |
@@ -283,14 +286,18 @@ Status: **open** | **partial** | **fixed** | **deferred**
 
 ## Highest-value next (post-loop)
 
-1. UX-01 — wallet connect on death/win overlay (mobile)
-2. Mobile run ribbon (design session)
-3. Finale player-power scaling (design session)
-4. SEC-01 — run-token design if competitive integrity matters
-5. Site power balance — break stat-site-first route
-6. PERF-01 — landmark instancing (partial tessellation done)
-7. Difficulty-normalized rankings (design session)
-8. Network links on globe
+Shipped since loop close (see `GROK-REVIEW.md`): SEC-01 · music · mobile
+ribbon + UX-01 end-screen wallet · finale level/power gate · per-diff PBs ·
+normalized rankings · NetworkLinks.
+
+Still open:
+
+1. Site power balance — break stat-site-first route
+2. PERF-01 — landmark instancing (partial tessellation done)
+3. Daily seed / weekly mutator
+4. UX-02/03/04
+5. `ninja_game/` archival (owner call)
+6. Per-character PBs (per-diff done)
 
 ---
 
@@ -315,7 +322,7 @@ Worked the register in priority batches. Status deltas:
 - SEC-03 ✅ fixed — nonce fails closed in production (no public `dev-secret`).
 - SEC-04 ✅ fixed — nonce GET rate-limited 30/min per IP.
 - SEC-05 ✅ fixed — HMAC uses a *derived* key, not the raw service-role key.
-- SEC-01 ↩ deferred (client-trusted scores — needs run-token design).
+- SEC-01 ✅ shipped (`ee6a729`) — run token mint + verify/recompute on POST.
 - SEC-06 ↩ open (wallet accountChanged sync). SEC-07 ↩ accepted as designed.
 
 **Performance** (`a557d96`)
@@ -326,4 +333,7 @@ Worked the register in priority batches. Status deltas:
 
 **Owner touch** (`67cbc96`) — capture bonus flash: granted power flashes center-screen in bold display type on POI capture.
 
-Still open for a design session: UX-01 (mobile wallet on end screens), UX-02/03/04, finale player-power scaling, mobile run ribbon, music bed, daily seed, `ninja_game/` archival, SEC-01 run tokens.
+Still open for a design session: UX-02/03/04, site-power route balance, daily
+seed, `ninja_game/` archival. **Shipped post-loop:** UX-01 end-screen wallet,
+mobile run ribbon, finale level/power gate, music bed, SEC-01 run tokens,
+per-diff PBs, difficulty-normalized rankings, NetworkLinks.

@@ -25,6 +25,12 @@ Three waves processed. Full per-ID log: **`GROK-REVIEW-DEEP.md` § Loop resoluti
 
 **Verified:** pause headless; capture flash live ("SITE CAPTURED" + power label).
 
+### Post-loop ship sync (2026-08-25)
+
+Marked SHIPPED/RESOLVED in-place (no full rewrite): SEC-01 `ee6a729`, music bed,
+mobile run ribbon + UX-01 `67a4701`, finale level/power gate `ab9fe90`, per-diff
+PBs `137931d`, normalized rankings `9ac29d2`, NetworkLinks `b269bbc`.
+
 ### Taken (register closed)
 
 All items above plus: telegraph rings no longer clear without a spawn payoff; unsigned wallet POSTs become guest entries; `sfx.boss` only on successful spawn.
@@ -36,13 +42,15 @@ All items above plus: telegraph rings no longer clear without a spawn payoff; un
 | COMBAT-05 secondary-DPS scaling | **Rejected** — buffing halo/arc/katana makes the game easier; owner guardrail "keep it hard" |
 | COMBAT-01 boss ground-ring telegraph | **By design** — full-screen nameplate is the boss tell |
 | Win-target decoupling | **Deferred** — build-time constant; revisit past ~70 projects |
-| SEC-01 run-token anti-cheat | **Deferred** — needs real design |
+| ~~SEC-01 run-token anti-cheat~~ | **SHIPPED** `ee6a729` — mint at start, verify + recompute on POST |
 | `ninja_game/` archival | **Owner call** |
-| Finale player-power key | **Design session** |
-| Difficulty-normalized rankings | **Design session** |
-| Music bed | **Design session** |
+| ~~Finale player-power key~~ | **SHIPPED** `ab9fe90` / `b86d6a6` — level gate + power-scaled HP |
+| ~~Difficulty-normalized rankings~~ | **SHIPPED** `9ac29d2` — mixed board ranks by `normalizedScore` |
+| ~~Music bed~~ | **SHIPPED** — procedural bed in `sound.ts` (+ mute polish `90918fb`) |
 | Daily seed / weekly mutator | **Design session** |
-| Mobile run ribbon | **Design session** |
+| ~~Mobile run ribbon~~ | **SHIPPED** `4c74b90` / `67a4701` — `MobileRunRibbon` + end-screen wallet |
+| ~~Per-diff leaderboard PBs~~ | **SHIPPED** `137931d` — wallet × difficulty member keys |
+| ~~Network links on globe~~ | **SHIPPED** `b269bbc` — `NetworkLinks` mounted in `Planet.tsx` |
 | PERF-02 lazy GLB per char | **Deferred** — Suspense/invisible-character risk |
 
 ---
@@ -102,16 +110,12 @@ imported. Treat the embedded 3D game as the product.
 
 ### Console layout & mobile
 
-- **[P2] Mobile survival layout splits attention.** `Experience.tsx` gives the
-  canvas `62vh`; `SidePanel` (capture targets, ecosystem grid, leaderboard) stacks
-  below. During a run, arrows and site names are on the globe, but the quest
-  progress board requires scrolling away from the fight. Consider a collapsible
-  run drawer, or pin "current targets + capture count" as a slim strip over the
-  canvas on `max-md`.
-- **[P3] Top chrome collisions on small screens.** Run stats (`GameHUD` top center),
-  focus header (explore), pause chip (top right), mode tabs, and mute button all
-  compete for the same band. On phones the stats bar drops to `top-12` but still
-  overlaps onboarding toasts. A single "run ribbon" component would simplify.
+- ~~**[P2] Mobile survival layout splits attention.**~~ **SHIPPED** —
+  `MobileRunRibbon` pins capture count / targets / pause over the canvas on
+  `max-md` (`4c74b90`, polish `67a4701`).
+- ~~**[P3] Top chrome collisions on small screens.**~~ **RESOLVED** — run
+  stats + pause consolidated into the mobile run ribbon; desktop keeps the
+  separate chrome.
 - ~~**[P3] Touch joystick lacks safe-area insets.**~~ **Fixed `ca8efb4`** —
   `TouchPad` uses `max(1rem, env(safe-area-inset-bottom/right))`.
 - **[P3] "Game" tab label when already exploring.** Clicking game while in
@@ -133,11 +137,8 @@ imported. Treat the embedded 3D game as the product.
 
 ### Explore-specific gaps
 
-- **[P2] Network links between nodes are missing.** `Planet.tsx` has an orphan
-  comment where `NetworkLinks` used to mount — the "living geodesic ecosystem" art
-  direction from `CONCEPT.md` / sketch is only half-delivered (beacons yes, rivers
-  no). Reinstating faint great-circle lines between related categories would
-  strengthen the screenshot moment.
+- ~~**[P2] Network links between nodes are missing.**~~ **SHIPPED** `b269bbc` —
+  `NetworkLinks` great-circle arcs mount in `Planet.tsx` (explore-only).
 - **[P3] Click-to-lock (E) is undiscoverable.** Side panel footer mentions it;
   no on-canvas affordance when near a landmark. A brief "press E to lock" chip in
   `FocusHeader` when `nearId` is set would help.
@@ -203,14 +204,17 @@ imported. Treat the embedded 3D game as the product.
 
 ### Leaderboard & trust
 
-- **[P1] Scores are client-trusted (SEC-01).** Wallet squatting closed `35c7988`
-  (unsigned wallet → guest entry). Score value itself still client-supplied —
-  **deferred** until run-token design.
-- **[P3] Rankings ignore difficulty.** Hard (1.5×) and Cursed (2×) multiply locally
-  but the board sorts raw `score`. **Deferred** — design session.
+- ~~**[P1] Scores are client-trusted (SEC-01).**~~ **SHIPPED** `ee6a729` —
+  server-issued run token at ranked start; POST verifies token + recomputes
+  score from claimed stats (`lib/runToken.ts`, `/api/leaderboard/run`). Wallet
+  squatting already closed `35c7988`.
+- ~~**[P3] Rankings ignore difficulty.**~~ **SHIPPED** `9ac29d2` — mixed
+  ("all") board ranks by `normalizedScore`; per-diff tabs keep raw score.
+- ~~**[P3] No per-difficulty PBs.**~~ **SHIPPED** `137931d` — member key
+  `w:<pubkey>:<diff>` so each wallet keeps a PB per difficulty.
 - **[P3] No score without name.** `die()` / `win()` only call `submitScore` when
-  `name.trim()` — silent skip. Fine for privacy, but the leaderboard nudge appears
-  only in the side panel; death screen doesn't prompt naming.
+  `name.trim()` — silent skip. Fine for privacy; end screens now nudge wallet
+  connect (`67a4701`), but naming still required to submit.
 
 ### Game state & edge cases
 
@@ -263,8 +267,9 @@ imported. Treat the embedded 3D game as the product.
 
 ### Finale & bosses
 
-- **[P2] Finale triggers at "5 sites remaining," not player power.** **Deferred** —
-  design session.
+- ~~**[P2] Finale triggers at "5 sites remaining," not player power.**~~
+  **SHIPPED** `ab9fe90` / `b86d6a6` — soft level gate (`FINALE_MIN_LEVEL`) +
+  power-scaled Nemesis HP in `lib/finale.ts` (all-sites-captured bypass).
 - **[P2] Mid-run bosses lack attack patterns.** Regular mobs have spawn telegraphs;
   bosses/finale spawn instantly. **Deferred** — boss telegraph + windup/charge.
 - **[P3] Boss loot unclear.** Boss kills drop gems but no distinct "boss chest" moment.
@@ -277,7 +282,8 @@ imported. Treat the embedded 3D game as the product.
 ### Meta / replay
 
 - **[P2] No daily seed or weekly modifier.** **Deferred** — design session.
-- **[P3] Best score is local only + global board.** No per-character/difficulty PBs.
+- ~~**[P3] Best score is local only + global board.** No per-difficulty PBs.~~
+  **SHIPPED** `137931d` — per-diff PBs on the board; per-character PBs still open.
 
 ---
 
@@ -313,18 +319,18 @@ See **`GROK-REVIEW-DEEP.md` § Loop resolution log** for per-ID mapping. Highlig
 
 ## Highest-leverage next (post-loop)
 
-Design sessions only — register is patch-clean:
+Shipped since the loop close (check these off above, don't re-open):
+SEC-01 run tokens · music bed · mobile run ribbon + end-screen wallet ·
+finale level gate / power HP · per-diff PBs · normalized rankings · network links.
 
-1. **Mobile run ribbon** + **UX-01** wallet on end screens
-2. **Finale keyed to player power**
-3. **Site power balance** — break stat-site-first route
-4. **SEC-01 run tokens** — if competitive integrity matters
-5. **Difficulty-normalized rankings**
-6. **Tutorialize site loop**
-7. **Network links** on globe
-8. **WebGL / reduced-motion fallback**
-9. **Music bed** / **daily seed**
-10. **`ninja_game/`** archive (owner call)
+Still open — design / polish:
+
+1. **Site power balance** — break stat-site-first route
+2. **Tutorialize site loop**
+3. **WebGL / reduced-motion fallback**
+4. **Daily seed** / weekly mutator
+5. **`ninja_game/`** archive (owner call)
+6. **Per-character PBs** (per-diff is done)
 
 Not planned: secondary-DPS scaling (rejected — easier game); boss ground-rings (nameplate by design).
 
