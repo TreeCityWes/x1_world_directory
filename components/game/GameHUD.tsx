@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { winTarget } from "@/lib/finale";
@@ -12,6 +13,7 @@ import { MobileRunRibbon } from "@/components/game/hud/MobileRunRibbon";
 import { TutorialOverlay } from "@/components/game/hud/TutorialOverlay";
 
 const TOTAL_SITES = winTarget(regions.length);
+const WIN_TOAST_KEY = "x1world_win_toast_v1";
 
 /**
  * DOM HUD for survival runs: HP/XP bars, run stats, level-up cards, death
@@ -22,18 +24,49 @@ export default function GameHUD() {
   const hud = useGame((s) => s.hud);
   const bossCard = useGame((s) => s.bossCard);
   const bossCardAt = useGame((s) => s.bossCardAt);
+  const tutorialPhase = useGame((s) => s.tutorialPhase);
+  const tutorialCompleted = useGame((s) => s.tutorialCompleted);
   // boss cards are timed on run.t so they survive pauses cleanly
   const bossCardVisible = bossCardAt > 0 && hud.time - bossCardAt < 3 && hud.time >= bossCardAt;
+  const [winToastDismissed, setWinToastDismissed] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem(WIN_TOAST_KEY) === "1",
+  );
 
   if (mode === "explore") return null;
   const remaining = Math.max(0, effectiveRunSeconds() - hud.time);
   const clock = `${Math.floor(remaining / 60)}:${String(Math.floor(remaining % 60)).padStart(2, "0")}`;
   const lowTime = remaining <= 30;
+  // after tutorial ends (skip or first level-up pick) — reinforce the win path once
+  const showWinToast =
+    mode === "play" &&
+    !winToastDismissed &&
+    (tutorialCompleted || tutorialPhase === "done");
+
+  const dismissWinToast = () => {
+    setWinToastDismissed(true);
+    if (typeof window !== "undefined") localStorage.setItem(WIN_TOAST_KEY, "1");
+  };
 
   return (
     <>
       <TutorialOverlay />
       <MobileRunRibbon />
+
+      {/* first-run win path — dismiss once; hidden while the interactive tutorial runs */}
+      {showWinToast && (
+        <div className="pointer-events-auto absolute left-1/2 top-14 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-gold/40 bg-[rgba(9,13,28,0.9)] px-4 py-2 backdrop-blur max-md:top-[4.75rem] max-md:w-[92%] max-md:justify-between max-md:gap-2 max-md:px-3">
+          <p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.14em] text-gold max-md:text-[9px]">
+            sites for powers · fill the meter · slay the finale boss to win
+          </p>
+          <button
+            onClick={dismissWinToast}
+            aria-label="dismiss"
+            className="shrink-0 text-sm text-ink-dim transition-colors hover:text-gold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* damage vignette */}
       <AnimatePresence>
