@@ -27,11 +27,15 @@ const DIFF_TAG: Record<DifficultyId, { text: string; color: string }> = {
  * that can expand to show active target chips.
  */
 export function MobileRunRibbon() {
+  const mode = useGame((s) => s.mode);
   const hud = useGame((s) => s.hud);
   const activeSites = useGame((s) => s.activeSites);
   const [expanded, setExpanded] = useState(false);
   const muted = useSyncExternalStore(subscribeMute, isMuted, () => false);
   const musicMuted = useSyncExternalStore(subscribeMusicMute, isMusicMuted, () => false);
+
+  // Only during live run chrome — hide on menu / end screens / explore.
+  if (mode !== "play" && mode !== "paused" && mode !== "levelup") return null;
 
   const remaining = Math.max(0, effectiveRunSeconds() - hud.time);
   const clock = `${Math.floor(remaining / 60)}:${String(Math.floor(remaining % 60)).padStart(2, "0")}`;
@@ -45,7 +49,7 @@ export function MobileRunRibbon() {
   };
 
   return (
-    <div className="pointer-events-auto absolute inset-x-2 top-3 z-40 hidden flex-col gap-1.5 max-md:flex">
+    <div className="pointer-events-auto absolute inset-x-2 top-3 z-40 hidden flex-col gap-1.5 pt-[env(safe-area-inset-top)] max-md:flex">
       {/* main row */}
       <div className="flex items-center justify-between rounded-lg border border-white/10 bg-[rgba(9,13,28,0.88)] px-2 py-1.5 backdrop-blur">
         <div className="flex items-center gap-2.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em]">

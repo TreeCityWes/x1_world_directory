@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { run, useGame } from "@/lib/gameStore";
-import { useProfile } from "@/lib/profile";
+import { getWalletProvider, useProfile } from "@/lib/profile";
 import { explorerTx, inscribeRun } from "@/lib/inscribe";
 
 const TOTAL_SITES = regions.length;
@@ -161,12 +161,20 @@ function InscribeRow({ score }: { score: number }) {
   };
 
   const viewBoard = () => {
-    // Mobile: the end screen is a fixed full-viewport overlay, so the board is
-    // only reachable via the menu. Desktop: the side panel is already on
-    // screen — scroll to it WITHOUT dismissing the summary (dismissing it used
-    // to strand un-inscribed scores).
-    if (!window.matchMedia("(min-width: 768px)").matches) useGame.getState().openMenu();
-    document.getElementById("x1-leaderboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Prefer scrolling to the board in place — openMenu() dismisses the
+    // end-screen (and its inscribe flow). Desktop side panel is already on
+    // screen; on mobile GamePanel still mounts #x1-leaderboard below the fold
+    // once the run leaves immersive play.
+    const el = document.getElementById("x1-leaderboard");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    // Rare fallback when the panel isn't mounted yet.
+    useGame.getState().openMenu();
+    setTimeout(() => {
+      document.getElementById("x1-leaderboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
   };
 
   const openProfile = () => {
@@ -275,7 +283,22 @@ function InscribeRow({ score }: { score: number }) {
       )}
       {walletError && !wallet && (
         <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">
-          {walletError}
+          {!getWalletProvider() ? (
+            <>
+              no supported wallet — get{" "}
+              <a
+                href="https://wallet.x1.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-dotted underline-offset-2 hover:text-gold"
+              >
+                X1 Wallet
+              </a>{" "}
+              at wallet.x1.xyz (or Backpack)
+            </>
+          ) : (
+            walletError
+          )}
         </p>
       )}
       {st.err && (
