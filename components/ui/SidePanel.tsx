@@ -50,6 +50,9 @@ function GamePanel() {
               style={{ width: `${Math.max(2, (hud.captured / total) * 100)}%` }}
             />
           </div>
+          <p className="mt-2 font-mono text-[9px] uppercase leading-relaxed tracking-[0.12em] text-ink-dim/80">
+            sites grant powers · fill the meter · slay the finale boss to win
+          </p>
         </div>
 
         {sites.length > 0 && (
@@ -182,8 +185,7 @@ function GamePanel() {
             })}
           </div>
           <p className="mt-4 font-mono text-[9px] uppercase leading-relaxed tracking-[0.14em] text-ink-dim/70">
-            capture all {total} projects to win · glowing sites grant powers · your weapon aims
-            where you run
+            your weapon aims where you run
           </p>
         </div>
       </div>

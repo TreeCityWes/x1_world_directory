@@ -8,13 +8,13 @@ const TUTORIAL_KEY = "x1world_tutorial_v1";
 /**
  * First-run interactive tutorial for X1 Ninja Survivors.
  *
- * Step 1 — Move: point the player toward the glowing compass arrows.
- * Step 2 — Capture: celebrate the first site capture and explain powers.
+ * Step 1 — Move: point the player toward the glowing compass arrows;
+ *          sites grant powers.
+ * Step 2 — After first capture: fill the capture meter, finale boss, win.
  * Step 3 — Level up: prompt the player to pick their first upgrade.
  *
- * The overlay is DOM-only so it survives mode changes and does not need
- * 3D-to-screen projection. Phase transitions are driven by game events
- * in GameLayer and gameStore; only the tap-to-dismiss action lives here.
+ * Non-blocking only — no tap-to-dismiss modals over combat (see 3ffa061).
+ * Phase transitions are driven by GameLayer / gameStore; skip lives here.
  */
 export function TutorialOverlay() {
   const mode = useGame((s) => s.mode);
@@ -54,7 +54,7 @@ export function TutorialOverlay() {
                 Follow the glowing arrows
               </p>
               <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim">
-                Walk to the nearest glowing site
+                Capture sites for powers
               </p>
             </div>
           </div>
@@ -83,9 +83,12 @@ export function TutorialOverlay() {
             >
               ↑
             </motion.div>
-            <div className="mt-1 rounded-lg border border-gold/40 bg-[rgba(9,13,28,0.92)] px-4 py-2 backdrop-blur">
+            <div className="mt-1 max-w-[280px] rounded-lg border border-gold/40 bg-[rgba(9,13,28,0.92)] px-4 py-2 backdrop-blur">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-gold">
-                Grab coins to level up
+                Fill the capture meter
+              </p>
+              <p className="mt-0.5 font-mono text-[9px] uppercase leading-relaxed tracking-[0.12em] text-ink-dim">
+                Finale boss at the end — slay it to win · grab coins to level
               </p>
             </div>
           </div>
