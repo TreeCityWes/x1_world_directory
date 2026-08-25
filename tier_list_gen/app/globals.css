@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #100e0c;
+  --surface: #1a1714;
+  --ink: #f3ece2;
+  --muted: #9a9186;
+  --hairline: #2c2722;
+  --brass: #e0b56a;
+  --brass-dim: color-mix(in oklab, var(--brass) 16%, transparent);
+  --background: var(--bg);
+  --foreground: var(--ink);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument);
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  background:
+    radial-gradient(900px 480px at 8% -10%, rgba(224, 181, 106, 0.08), transparent 55%),
+    radial-gradient(700px 420px at 100% 0%, rgba(90, 70, 40, 0.18), transparent 50%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.font-serif {
+  font-family: var(--font-instrument), Georgia, serif;
+}
+
+.btn-primary,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  transition: 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--brass);
+  color: #1b1208;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.btn-primary:disabled,
+.btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  background: transparent;
+}
+
+.btn-ghost:hover {
+  border-color: var(--brass);
+}
+
+.card {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 1rem;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  outline: none;
+}
+
+.field:focus {
+  border-color: var(--brass);
+}
+
+.title-input {
+  background: transparent;
+  font-family: var(--font-instrument), Georgia, serif;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1;
+  color: var(--ink);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.001ms !important;
+  }
+}

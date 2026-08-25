@@ -12,10 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Node CLI scripts (CommonJS by design):
-    "scripts/**",
-    "ninja_game/**",
-    "tier_list_gen/**",
   ]),
 ]);
 
