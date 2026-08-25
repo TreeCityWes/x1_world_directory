@@ -8,11 +8,17 @@ import { useWorld } from "@/lib/store";
  * Top-center header over the world: names the focused landmark (the same one
  * that's lit and shown in the console) and swaps with a blur/slide animation.
  * Lives in the HUD so it can never cover the ninja.
+ * When nearId is set (in range, not locked), shows a brief press-E chip.
  */
 export default function FocusHeader() {
+  const nearId = useWorld((s) => s.nearId);
+  const selectedId = useWorld((s) => s.selectedId);
   const id = useWorld((s) => s.selectedId ?? s.nearId ?? s.hoveredId ?? s.closestId);
   const region = regions.find((r) => r.id === id);
   if (!region) return null;
+
+  // in range but not yet locked — surface E next to the landmark name
+  const canLock = Boolean(nearId && !selectedId);
 
   return (
     <div className="pointer-events-none absolute left-1/2 top-3 w-full max-w-[min(340px,60%)] -translate-x-1/2">
@@ -44,6 +50,13 @@ export default function FocusHeader() {
             >
               {region.name}
             </h2>
+            {canLock && (
+              <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-cyan">
+                press{" "}
+                <span className="rounded border border-cyan/60 px-1 text-cyan">e</span> to
+                lock
+              </p>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

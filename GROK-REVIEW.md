@@ -138,9 +138,8 @@ imported. Treat the embedded 3D game as the product.
   direction from `CONCEPT.md` / sketch is only half-delivered (beacons yes, rivers
   no). Reinstating faint great-circle lines between related categories would
   strengthen the screenshot moment.
-- **[P3] Click-to-lock (E) is undiscoverable.** Side panel footer mentions it;
-  no on-canvas affordance when near a landmark. A brief "press E to lock" chip in
-  `FocusHeader` when `nearId` is set would help.
+- **[P3] ~~Click-to-lock (E) is undiscoverable.~~** Done — `FocusHeader` + SidePanel
+  show a brief "press e to lock" chip when `nearId` is set (and not yet selected).
 
 ### Accessibility
 
