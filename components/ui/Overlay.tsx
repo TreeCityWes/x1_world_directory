@@ -26,8 +26,6 @@ import GameHUD from "@/components/game/GameHUD";
 export default function Overlay() {
   const mode = useGame((s) => s.mode);
   const openMenu = useGame((s) => s.openMenu);
-  const nearId = useWorld((s) => s.nearId);
-  const selectedId = useWorld((s) => s.selectedId);
   const mutedUi = useSyncExternalStore(subscribeMute, isMuted, () => false);
   const musicMutedUi = useSyncExternalStore(subscribeMusicMute, isMusicMuted, () => false);
   // active run (playing or mid level-up) — mobile top chrome collapses to a
@@ -147,14 +145,6 @@ export default function Overlay() {
       <p className="absolute bottom-1.5 left-5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim/50 max-md:hidden">
         unofficial fan experience · not affiliated with x1 foundation
       </p>
-
-      {/* discoverability: the E lock is invisible without this */}
-      {mode === "explore" && nearId && !selectedId && (
-        <p className="absolute bottom-24 left-1/2 -translate-x-1/2 rounded-md border border-cyan/40 bg-space/80 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-cyan backdrop-blur max-md:hidden">
-          press <span className="rounded border border-cyan/60 px-1 text-cyan">e</span> to lock
-          focus
-        </p>
-      )}
 
       {/* audio toggles — top-right so they're always easy to find. On mobile
           during an active run the run ribbon already carries these. */}

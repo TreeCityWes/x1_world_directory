@@ -139,9 +139,8 @@ imported. Treat the embedded 3D game as the product.
 
 - ~~**[P2] Network links between nodes are missing.**~~ **SHIPPED** `b269bbc` —
   `NetworkLinks` great-circle arcs mount in `Planet.tsx` (explore-only).
-- **[P3] Click-to-lock (E) is undiscoverable.** Side panel footer mentions it;
-  no on-canvas affordance when near a landmark. A brief "press E to lock" chip in
-  `FocusHeader` when `nearId` is set would help.
+- **[P3] ~~Click-to-lock (E) is undiscoverable.~~** Done — `FocusHeader` + SidePanel
+  show a brief "press e to lock" chip when `nearId` is set (and not yet selected).
 
 ### Accessibility
 

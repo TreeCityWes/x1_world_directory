@@ -209,6 +209,7 @@ export default function SidePanel() {
   const activeId = selectedId ?? nearId ?? hoveredId ?? closestId;
   const region = regions.find((r) => r.id === activeId) ?? regions[0];
   const isApproaching = activeId !== null && activeId === closestId && nearId === null;
+  const canLock = Boolean(nearId && !selectedId && activeId === nearId);
 
   return (
     <aside className="flex h-full w-[40vw] flex-col border-l border-cyan/20 bg-[rgba(9,13,28,0.92)] backdrop-blur-md max-md:h-auto max-md:w-full max-md:border-l-0 max-md:border-t">
@@ -261,6 +262,12 @@ export default function SidePanel() {
               >
                 {region.category}
               </p>
+              {canLock && (
+                <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.14em] text-cyan">
+                  press{" "}
+                  <span className="rounded border border-cyan/60 px-1">e</span> to lock
+                </p>
+              )}
               {isApproaching && (
                 <p className="ml-auto font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
                   nearest — walk closer
