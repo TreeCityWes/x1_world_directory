@@ -7,7 +7,7 @@
     "description": "",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:34:38.446Z"
+    "checkedAt": "2026-08-25T11:51:21.079Z"
   },
   "x1-validator-dashboard-x1val-online": {
     "ok": true,
@@ -21,13 +21,13 @@
   },
   "fortiblox-fortiblox-com": {
     "ok": true,
-    "note": "HTTP 200 +strip",
+    "note": "HTTP 200",
     "domain": "fortiblox.com",
     "project": "FortiBlox",
-    "description": "FortiBlox provides comprehensive X1 Blockchain services including Explorer, Honey Badger Trading Bot, and Documentation solutions.",
+    "description": "FortiBlox builds and operates two products on the X1 Blockchain: the X1 Explorer and the Honey Badger trading bot, fully documented for developers.",
     "twitter": "https://www.twitter.com/fortiblox",
     "telegram": "https://t.me/HoneyBadgerCoreBot",
-    "checkedAt": "2026-07-03T13:34:47.878Z"
+    "checkedAt": "2026-08-25T11:49:29.156Z"
   },
   "xdex-xdex-xyz": {
     "ok": true,
@@ -37,7 +37,7 @@
     "description": "XDEX | X1 DEX",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:34:58.835Z"
+    "checkedAt": "2026-08-25T11:49:22.669Z"
   },
   "apexfaucet-apexfaucet-xyz": {
     "ok": true,
@@ -67,17 +67,17 @@
     "description": "Track X1 tokens, new pairs, prices, volume, liquidity, wallets, staking, validators, and transactions with X1.Ninja.",
     "twitter": "https://x.com/TreeRootDev",
     "telegram": "https://t.me/TreeCityTrading",
-    "checkedAt": "2026-08-22T14:58:06.568Z"
+    "checkedAt": "2026-08-25T11:52:01.951Z"
   },
   "x1-prism-x1prism-com": {
     "ok": true,
     "note": "HTTP 200",
     "domain": "x1prism.com",
     "project": "X1 Prism",
-    "description": "X1-Prism - Portfolio tracker and analytics dashboard for the X1 blockchain. See the full spectrum of your X1 holdings.",
+    "description": "Track any X1 wallet and the whole X1 ecosystem — prices, portfolio, bridge, charts, and validators. No wallet connection required.",
     "twitter": "https://x.com/X1_chain",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:35:21.181Z"
+    "checkedAt": "2026-08-25T11:51:37.617Z"
   },
   "x1-report-x1report-com": {
     "ok": true,
@@ -86,8 +86,8 @@
     "project": "X1 Report",
     "description": "Real-time X1 Blockchain news, XNT price, staking stats, validator data, and ecosystem coverage.",
     "twitter": "https://x.com/X1_chain",
-    "telegram": "https://t.me/+yT0VAcNPFqM3OGQ0",
-    "checkedAt": "2026-07-03T13:35:25.354Z"
+    "telegram": "https://t.me/+HtiLywX2Dug3MjJk",
+    "checkedAt": "2026-08-25T11:52:53.935Z"
   },
   "x1-galaxy-x1galaxy-io": {
     "ok": true,
@@ -97,7 +97,7 @@
     "description": "",
     "twitter": "https://x.com/tangyujie2002",
     "telegram": "https://t.me/X1rpc",
-    "checkedAt": "2026-07-03T13:35:30.421Z"
+    "checkedAt": "2026-08-25T11:52:46.314Z"
   },
   "x1-oracle-x1oracle-com": {
     "ok": true,
@@ -107,7 +107,7 @@
     "description": "A decentralised, multi-feeder token price oracle deployed on X1.",
     "twitter": "https://x.com/ludolphus",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:35:34.687Z"
+    "checkedAt": "2026-08-25T11:52:25.972Z"
   },
   "x1-world-x1-world": {
     "ok": true,
@@ -137,7 +137,7 @@
     "description": "Register your .x1 or .xnt domain on the X1 blockchain. Decentralized, secure, and easy-to-use naming service for Web3. Own your digital identity.",
     "twitter": "https://x.com/x1ns_xnt",
     "telegram": "https://t.me/X1NameService",
-    "checkedAt": "2026-07-03T13:35:47.322Z"
+    "checkedAt": "2026-08-25T11:51:43.873Z"
   },
   "prime-miner-primeminer-xyz": {
     "ok": true,
@@ -147,7 +147,7 @@
     "description": "Primeminer ⛏🟢 is a variation of crypto mining with a twist. Compete with other miners for the treasury and points. Every mining round costs you 10 points.",
     "twitter": "https://x.com/ludolphus",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:36:14.116Z"
+    "checkedAt": "2026-08-25T11:50:27.431Z"
   },
   "x1-app-x1app-fyi": {
     "ok": true,
@@ -157,7 +157,7 @@
     "description": "",
     "twitter": "https://twitter.com/ludolphus",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:36:20.753Z"
+    "checkedAt": "2026-08-25T11:48:33.045Z"
   },
   "kryptark-kryptark-com": {
     "ok": true,
@@ -247,17 +247,17 @@
     "description": "Degens + Chaos + 2 Blockchains",
     "twitter": "",
     "telegram": "https://t.me/DGNKANG",
-    "checkedAt": "2026-08-22T14:54:53.072Z"
+    "checkedAt": "2026-08-25T11:48:52.527Z"
   },
   "x1-scr-x1scr-xyz": {
     "ok": true,
     "note": "HTTP 200",
     "domain": "x1scr.xyz",
     "project": "X1 SCR",
-    "description": "",
-    "twitter": "",
-    "telegram": "",
-    "checkedAt": "2026-07-03T13:37:03.234Z"
+    "description": "Real-time X1 blockchain token screener: live prices, charts, liquidity, holders and transactions for every XDEX and Degen token.",
+    "twitter": "https://x.com/X1SCR",
+    "telegram": "https://t.me/share/url?url=https%3A%2F%2Fx1scr.xyz%2F&text=X1%20Screener%20%E2%80%94%20Live%20X1%20token%20prices%2C%20charts%20%26%20trades",
+    "checkedAt": "2026-08-25T11:53:01.781Z"
   },
   "x1xh-x1xh-vercel-app": {
     "ok": true,
@@ -287,7 +287,7 @@
     "description": "Honey Badger - X1 Trading Bot Dashboard",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:34:52.031Z"
+    "checkedAt": "2026-08-25T11:49:46.400Z"
   },
   "otc-otc-xonedex-xyz": {
     "ok": true,
@@ -317,7 +317,7 @@
     "description": "X1 Charts!",
     "twitter": "https://twitter.com/ludolphus",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:37:34.204Z"
+    "checkedAt": "2026-08-25T11:51:04.855Z"
   },
   "x1-onchain-randomness-x1randomness-xyz": {
     "ok": true,
@@ -327,7 +327,7 @@
     "description": "On-demand randomness with sub-second latency on X1 Mainnet",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-08-22T21:05:00.000Z"
+    "checkedAt": "2026-08-25T11:47:26.997Z"
   },
   "x1-forge-x1forge-xyz": {
     "ok": true,
@@ -337,7 +337,7 @@
     "description": "Buy, sell, and trade NFTs on X1. Open to all creators. Built by Echo Hound Labs.",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:37:50.999Z"
+    "checkedAt": "2026-08-25T11:53:09.597Z"
   },
   "geiger-entropy-oracle-geiger-dashboard-vercel-app": {
     "ok": true,
@@ -357,7 +357,7 @@
     "description": "",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:37:59.866Z"
+    "checkedAt": "2026-08-25T11:50:58.108Z"
   },
   "x1-games-lobby-games-x1app-fyi": {
     "ok": true,
@@ -367,7 +367,7 @@
     "description": "Tic-Tac-Toe, Reversi, Four in a Row, Sea Battle, Bubble Battle, Pipe Battle — live on the X1 Blockchain.",
     "twitter": "https://x.com/x1gamezone?s=11&t=6Nhy3FnNCgwRNzISR4UE8g",
     "telegram": "https://t.me/+msft_F7RegQ4ZTBk",
-    "checkedAt": "2026-07-03T13:38:04.157Z"
+    "checkedAt": "2026-08-25T11:48:45.570Z"
   },
   "block-breaker-jack0-x1-xyz": {
     "ok": true,
@@ -397,7 +397,7 @@
     "description": "Inspect transactions, accounts, blocks, and more on the X1 Network ™ blockchain",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:47:26.287Z"
+    "checkedAt": "2026-08-25T11:48:15.618Z"
   },
   "validator-management-validator-x1-wiki": {
     "ok": true,
@@ -417,7 +417,7 @@
     "description": "Freedom to transact.",
     "twitter": "https://x.com/X1_chain",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:38:29.458Z"
+    "checkedAt": "2026-08-25T11:48:23.421Z"
   },
   "fortiblox-explorer-explorer-fortiblox-com": {
     "ok": true,
@@ -427,7 +427,7 @@
     "description": "Comprehensive blockchain explorer for the X1 ecosystem. Monitor transactions, blocks, validators, and network performance in real-time.",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:38:33.833Z"
+    "checkedAt": "2026-08-25T11:50:13.876Z"
   },
   "x1-sonar-x1sonar-xyz": {
     "ok": true,
@@ -436,8 +436,8 @@
     "project": "X1 Sonar",
     "description": "Live program discovery and activity leaderboard for the X1 blockchain. Every program, ranked by real on-chain activity.",
     "twitter": "",
-    "telegram": "",
-    "checkedAt": "2026-07-03T13:38:37.891Z"
+    "telegram": "https://t.me/x1sonar",
+    "checkedAt": "2026-08-25T11:53:16.399Z"
   },
   "x1-buy-alert-bot-t-me-x1-official-buy-bot": {
     "ok": true,
@@ -477,17 +477,17 @@
     "description": "X1 Agents Radio broadcasts the X1 program map to on-chain agents. Subscribe once, receive the bootstrap digest, daily digests of new programs, and priority webhooks.",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-08-22T21:05:00.000Z"
+    "checkedAt": "2026-08-25T11:47:33.959Z"
   },
   "x1-forensics-x1forensics-xyz": {
     "ok": true,
     "note": "HTTP 200",
     "domain": "x1forensics.xyz",
     "project": "X1 Forensics",
-    "description": "Trace value on X1 and Solana. Find what moved without a transfer.",
+    "description": "",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-08-22T21:05:00.000Z"
+    "checkedAt": "2026-08-25T11:47:39.935Z"
   },
   "x1city-x1city-io": {
     "ok": true,
@@ -527,7 +527,7 @@
     "description": "Degens + Chaos + 2 Blockchains",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-08-22T14:54:58.884Z"
+    "checkedAt": "2026-08-25T11:48:58.567Z"
   },
   "x1-brains-x1brains-io": {
     "ok": true,
@@ -537,7 +537,7 @@
     "description": "",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-07-03T13:39:00.509Z"
+    "checkedAt": "2026-08-25T11:50:51.291Z"
   },
   "capy-nft-capy-nft-mint-vercel-app": {
     "ok": true,
@@ -571,13 +571,13 @@
   },
   "apex-city-apexfaucet-xyz": {
     "ok": true,
-    "note": "cached capture — apexfaucet.xyz returned 502 at last check",
+    "note": "HTTP 200",
     "domain": "apexfaucet.xyz",
     "project": "APEX City",
     "description": "The X1 faucet. Free XNT on the X1 blockchain — no gas charge, no signup, no email. Claim every hour. Plus a swap, a screener, a citizens city, and on-chain games.",
     "twitter": "https://x.com/ApexFaucet",
     "telegram": "https://t.me/X1APEX",
-    "checkedAt": "2026-08-22T15:00:00.000Z"
+    "checkedAt": "2026-08-25T11:55:03.795Z"
   },
   "x1city-x1-city": {
     "ok": true,
@@ -587,7 +587,7 @@
     "description": "",
     "twitter": "https://twitter.com/X1Brains",
     "telegram": "https://t.me/x1brainsxyz",
-    "checkedAt": "2026-08-22T14:53:56.910Z"
+    "checkedAt": "2026-08-25T11:53:46.278Z"
   },
   "x1-wallet-wallet-x1-xyz": {
     "ok": true,
@@ -597,7 +597,7 @@
     "description": "",
     "twitter": "",
     "telegram": "https://t.me/x1_wallet",
-    "checkedAt": "2026-08-22T14:54:03.145Z"
+    "checkedAt": "2026-08-25T11:51:11.049Z"
   },
   "warp-bridge-app-bridge-x1-xyz": {
     "ok": true,
@@ -617,7 +617,7 @@
     "description": "The competitive gaming network. One identity. Every game. Real competition.",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-08-22T14:54:16.328Z"
+    "checkedAt": "2026-08-25T11:53:52.344Z"
   },
   "x1-intelligence-network-x1labs-io": {
     "ok": true,
@@ -627,7 +627,7 @@
     "description": "",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-08-22T14:54:22.437Z"
+    "checkedAt": "2026-08-25T11:53:39.230Z"
   },
   "x1scroll-x1scroll-io": {
     "ok": true,
@@ -637,7 +637,7 @@
     "description": "Archival RPC and AI agent infrastructure for the X1 network. Genesis to now.",
     "twitter": "",
     "telegram": "",
-    "checkedAt": "2026-08-22T14:54:28.235Z"
+    "checkedAt": "2026-08-25T11:53:33.120Z"
   },
   "anl-protocol-github-com-dawidosx-anl-protocol": {
     "ok": true,
@@ -657,7 +657,7 @@
     "description": "",
     "twitter": "https://x.com/X1punksxyz",
     "telegram": "https://t.me/X1Punksbot",
-    "checkedAt": "2026-08-22T14:54:46.420Z"
+    "checkedAt": "2026-08-25T11:53:27.339Z"
   },
   "x1nu-degen-fyi": {
     "ok": true,
@@ -667,7 +667,7 @@
     "description": "Degens + Chaos + 2 Blockchains",
     "twitter": "",
     "telegram": "https://t.me/DGNKANG",
-    "checkedAt": "2026-08-22T14:55:04.702Z"
+    "checkedAt": "2026-08-25T11:49:04.782Z"
   },
   "xenprime-xen-pub": {
     "ok": true,
@@ -687,6 +687,6 @@
     "description": "Track X1 tokens, new pairs, prices, volume, liquidity, wallets, staking, validators, and transactions with X1.Ninja.",
     "twitter": "https://x.com/TreeRootDev",
     "telegram": "https://t.me/TreeCityTrading",
-    "checkedAt": "2026-08-22T14:58:16.061Z"
+    "checkedAt": "2026-08-25T11:52:18.928Z"
   }
 }
