@@ -12,6 +12,13 @@ import { useGLTF } from "@react-three/drei";
 import { mergeVertices } from "three-stdlib";
 import * as THREE from "three";
 import { regions } from "@/lib/regions";
+import {
+  finaleDmgMult,
+  finaleHpMult,
+  finalePower,
+  finaleSpeedMult,
+  shouldRequestFinale,
+} from "@/lib/finale";
 import { monoFont } from "@/lib/canvasFont";
 import { sfx, duckMusic } from "@/lib/sound";
 import Nemesis from "@/components/game/Nemesis";
@@ -385,7 +392,7 @@ const world = {
       spawnAt: 0,
       bossAtBlock: 0,
   bossCount: 0,
-  finalWanted: false, // finale requested (≤5 sites left) — spawn may be retried
+  finalWanted: false, // finale requested — spawn may be retried (see lib/finale.ts)
   finalSpawned: false,
   finalIdx: -1,
       siteIds: [] as string[],
@@ -1528,25 +1535,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       const fb = spawnEnemy("boss");
       if (fb) {
         fb.bossKind = "nemesis";
-        // Scale the finale to the player's POWER, not a flat 2.5×. HP tracks
-        // your damage output so time-to-kill stays a real, dramatic fight
-        // whether you're godlike or barely scraping by — the godlike no
-        // longer facerolls it, the weak don't grind a mismatched wall.
-        // Damage is only lightly bumped (not power-scaled) so it threatens
-        // without being a random-death tax.
-        const power =
-          run.level * 0.09 +
-          run.permAdd.dmg +
-          (run.upgrades.damage ?? 0) * 0.12 +
-          (run.upgrades.multishot ?? 0) * 0.2 +
-          (run.upgrades.firerate ?? 0) * 0.08 +
-          (DIFFICULTIES[run.difficulty].enemyMult - 1) * 0.5;
-        const hpMult = 1.8 + Math.min(3.8, power); // ~3.2× weak → ~5.6× godlike
-        fb.maxHp = fb.hp = Math.round(fb.maxHp * hpMult);
-        // damage and speed scale gently with power so the fight is always
-        // threatening but never a random one-shot check
-        fb.dmg = Math.round(fb.dmg * (1.2 + Math.min(0.35, power * 0.1)));
-        fb.speed *= 1.1 + Math.min(0.2, power * 0.05);
+        // Scale the finale to the player's POWER (lib/finale.ts), not a flat
+        // 2.5×. Damage/speed are only lightly bumped so the fight threatens
+        // without being a random-death tax. Nameplate telegraph only
+        // (COMBAT-01) — never routed through world.pending.
+        const power = finalePower({
+          level: run.level,
+          permDmg: run.permAdd.dmg,
+          damageUpgrades: run.upgrades.damage ?? 0,
+          multishotUpgrades: run.upgrades.multishot ?? 0,
+          firerateUpgrades: run.upgrades.firerate ?? 0,
+          enemyMult: DIFFICULTIES[run.difficulty].enemyMult,
+        });
+        fb.maxHp = fb.hp = Math.round(fb.maxHp * finaleHpMult(power));
+        fb.dmg = Math.round(fb.dmg * finaleDmgMult(power));
+        fb.speed *= finaleSpeedMult(power);
         world.finalIdx = world.enemies.indexOf(fb);
         world.finalSpawned = true;
         run.finalBossAlive = true;
@@ -2077,10 +2080,18 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         run.captured = world.captured.size;
         // tutorial: first capture triggers the celebration step
         if (store.tutorialPhase === "move") store.setTutorialPhase("levelup");
-        // request the FINAL BOSS at 5 sites left; the actual spawn (with
-        // retry on a full pool) happens in the main loop so it can NEVER be
-        // skipped, and victory is gated on it having spawned
-        if (regions.length - world.captured.size <= 5) world.finalWanted = true;
+        // request the FINAL BOSS near the end (sites + soft level gate;
+        // all-captured bypass). Spawn retries in the main loop so it can
+        // NEVER be skipped; victory is gated on it having spawned.
+        if (
+          shouldRequestFinale({
+            remaining: regions.length - world.captured.size,
+            level: run.level,
+            totalSites: regions.length,
+          })
+        ) {
+          world.finalWanted = true;
+        }
         if (world.captured.size >= regions.length && world.finalSpawned && !run.finalBossAlive) {
           store.setActiveSites([]);
           store.win();
