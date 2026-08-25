@@ -39,7 +39,7 @@ export type LandmarkKind =
 export const POWER_LABEL: Record<LandmarkKind, string> = {
   validatorTower: "+5% speed forever",
   chartBeacon: "+6% fire rate forever",
-  dexGate: "+10% damage forever",
+  dexGate: "+9% damage forever",
   explorerFort: "+15 max hp & 8s shield",
   socialBeacon: "heal +35",
   gameArcade: "+10% xp forever",
