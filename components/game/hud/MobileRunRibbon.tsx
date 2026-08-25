@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { useGame, effectiveRunSeconds, type DifficultyId } from "@/lib/gameStore";
 import {
   isMuted,
   isMusicMuted,
+  subscribeMute,
+  subscribeMusicMute,
   toggleMute,
   toggleMusicMute,
 } from "@/lib/sound";
@@ -25,25 +27,20 @@ const DIFF_TAG: Record<DifficultyId, { text: string; color: string }> = {
  * that can expand to show active target chips.
  */
 export function MobileRunRibbon() {
+  const mode = useGame((s) => s.mode);
   const hud = useGame((s) => s.hud);
   const activeSites = useGame((s) => s.activeSites);
   const [expanded, setExpanded] = useState(false);
-  const [muted, setMuted] = useState(() => isMuted());
-  const [musicMuted, setMusicMuted] = useState(() => isMusicMuted());
+  const muted = useSyncExternalStore(subscribeMute, isMuted, () => false);
+  const musicMuted = useSyncExternalStore(subscribeMusicMute, isMusicMuted, () => false);
+
+  // Only during live run chrome — hide on menu / end screens / explore.
+  if (mode !== "play" && mode !== "paused" && mode !== "levelup") return null;
 
   const remaining = Math.max(0, effectiveRunSeconds() - hud.time);
   const clock = `${Math.floor(remaining / 60)}:${String(Math.floor(remaining % 60)).padStart(2, "0")}`;
   const lowTime = remaining <= 30;
   const diff = DIFF_TAG[hud.diff];
-
-  const toggleSfx = () => {
-    toggleMute();
-    setMuted(isMuted());
-  };
-  const toggleMusic = () => {
-    toggleMusicMute();
-    setMusicMuted(isMusicMuted());
-  };
 
   const flashSite = (id: string) => {
     // transient signal consumed by GameLayer to briefly intensify the arrow
@@ -52,7 +49,7 @@ export function MobileRunRibbon() {
   };
 
   return (
-    <div className="pointer-events-auto absolute inset-x-2 top-3 z-40 hidden flex-col gap-1.5 max-md:flex">
+    <div className="pointer-events-auto absolute inset-x-2 top-3 z-40 hidden flex-col gap-1.5 pt-[env(safe-area-inset-top)] max-md:flex">
       {/* main row */}
       <div className="flex items-center justify-between rounded-lg border border-white/10 bg-[rgba(9,13,28,0.88)] px-2 py-1.5 backdrop-blur">
         <div className="flex items-center gap-2.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em]">
@@ -85,7 +82,7 @@ export function MobileRunRibbon() {
             {expanded ? "▲" : "▼"}
           </button>
           <button
-            onClick={toggleSfx}
+            onClick={() => toggleMute()}
             aria-label={muted ? "unmute sfx" : "mute sfx"}
             className={`grid h-11 w-11 place-items-center rounded border text-[9px] transition-colors ${
               muted
@@ -96,7 +93,7 @@ export function MobileRunRibbon() {
             {muted ? "sfx✕" : "sfx♪"}
           </button>
           <button
-            onClick={toggleMusic}
+            onClick={() => toggleMusicMute()}
             aria-label={musicMuted ? "unmute music" : "mute music"}
             className={`grid h-11 w-11 place-items-center rounded border text-[9px] transition-colors ${
               musicMuted
