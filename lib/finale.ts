@@ -2,20 +2,34 @@
  * Finale / final-Nemesis tuning (safe constants + pure helpers).
  *
  * Trigger: soft gate on sites remaining AND run level, with a hard bypass
- * when every site is captured so a weak early run can still finish.
+ * when the win target is met so a weak early run can still finish.
  * HP scales with a compact "power" score — not a flat multiplier — so
  * time-to-kill stays dramatic for both weak and godlike runs.
  *
  * Boss/finale spawns stay nameplate-only (COMBAT-01); no ground-ring
  * telegraph via `world.pending`.
+ *
+ * Win target is frozen (`WIN_TARGET`) so adding ecosystem projects for the
+ * explore globe does not extend the conquest bar / victory condition.
  */
+
+/**
+ * Frozen capture count required to win. Set to the live `regions.length` at
+ * the time of decoupling — bump deliberately if the win bar should move.
+ */
+export const WIN_TARGET = 67;
+
+/** Effective sites needed to win (never more than regions available). */
+export function winTarget(regionCount: number): number {
+  return Math.min(WIN_TARGET, regionCount);
+}
 
 /** Sites remaining at which the finale may open (with level gate). */
 export const FINALE_SITES_LEFT = 5;
 
 /**
  * Soft level gate so lucky early capture streaks don't open the finale
- * while the run is still underpowered. All-sites-captured bypasses this.
+ * while the run is still underpowered. Win-target-met bypasses this.
  */
 export const FINALE_MIN_LEVEL = 8;
 
@@ -42,16 +56,17 @@ export const FINALE_SPEED_POWER_CAP = 0.2;
 export const FINALE_SPEED_POWER_SCALE = 0.05;
 
 export type FinaleTriggerInput = {
-  /** `totalSites - captured` */
+  /** `totalSites - captured` — totalSites is the effective win target */
   remaining: number;
   level: number;
+  /** Effective win target (`winTarget(regions.length)`), not raw region count */
   totalSites: number;
 };
 
 /**
  * Whether the run should request the final Nemesis (`world.finalWanted`).
  * Opens at ≤ FINALE_SITES_LEFT remaining once level ≥ FINALE_MIN_LEVEL,
- * or immediately when every site is captured (finish-line bypass).
+ * or immediately when the win target is met (finish-line bypass).
  */
 export function shouldRequestFinale({
   remaining,

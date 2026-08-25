@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
+import { winTarget } from "@/lib/finale";
 import { effectiveRunSeconds, useGame } from "@/lib/gameStore";
 import { CaptureBeat, CaptureFlash, CaptureToast } from "@/components/game/hud/CaptureFX";
 import { MenuScreen } from "@/components/game/hud/MenuScreen";
@@ -10,7 +11,7 @@ import { DeathScreen, PauseScreen, TimeUpScreen, VictoryScreen } from "@/compone
 import { MobileRunRibbon } from "@/components/game/hud/MobileRunRibbon";
 import { TutorialOverlay } from "@/components/game/hud/TutorialOverlay";
 
-const TOTAL_SITES = regions.length;
+const TOTAL_SITES = winTarget(regions.length);
 
 /**
  * DOM HUD for survival runs: HP/XP bars, run stats, level-up cards, death

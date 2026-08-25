@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { POWER_LABEL, regions } from "@/lib/regions";
+import { winTarget } from "@/lib/finale";
 import { useWorld } from "@/lib/store";
 import { UPGRADES, scoreOf, upgradeView, useGame } from "@/lib/gameStore";
 import ProfileCard from "@/components/ui/ProfileCard";
@@ -14,7 +15,8 @@ function GamePanel() {
   const capturedIds = useGame((s) => s.capturedIds);
   const activeSites = useGame((s) => s.activeSites);
   const owned = Object.entries(hud.upgrades);
-  const total = regions.length;
+  const total = winTarget(regions.length);
+  const regionCount = regions.length;
   const sites = activeSites
     .map((id) => regions.find((r) => r.id === id))
     .filter((r): r is (typeof regions)[number] => Boolean(r));
@@ -146,7 +148,7 @@ function GamePanel() {
               ecosystem grid
             </p>
             <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim/60">
-              {hud.captured} lit · {total - hud.captured} dark
+              {hud.captured} lit · {regionCount - hud.captured} dark
             </span>
           </div>
           <div className="mt-2 grid grid-cols-8 gap-1.5 max-md:grid-cols-6">

@@ -3,11 +3,12 @@
 import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { regions } from "@/lib/regions";
+import { winTarget } from "@/lib/finale";
 import { run, useGame } from "@/lib/gameStore";
 import { getWalletProvider, useProfile } from "@/lib/profile";
 import { explorerTx, inscribeRun } from "@/lib/inscribe";
 
-const TOTAL_SITES = regions.length;
+const TOTAL_SITES = winTarget(regions.length);
 
 // what actually got you — crypto death certificates
 const DEATH_FLAVOR: Record<string, string> = {

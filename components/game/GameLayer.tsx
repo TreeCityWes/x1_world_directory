@@ -18,6 +18,7 @@ import {
   finalePower,
   finaleSpeedMult,
   shouldRequestFinale,
+  winTarget,
 } from "@/lib/finale";
 import { monoFont } from "@/lib/canvasFont";
 import { sfx, duckMusic } from "@/lib/sound";
@@ -2021,7 +2022,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       if (world.finalIdx >= 0 && world.enemies[world.finalIdx] === e) {
         world.finalIdx = -1;
         run.finalBossAlive = false;
-        if (world.captured.size >= regions.length) {
+        if (world.captured.size >= winTarget(regions.length)) {
           useGame.getState().setActiveSites([]);
           useGame.getState().win();
         }
@@ -2080,19 +2081,20 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         run.captured = world.captured.size;
         // tutorial: first capture triggers the celebration step
         if (store.tutorialPhase === "move") store.setTutorialPhase("levelup");
-        // request the FINAL BOSS near the end (sites + soft level gate;
-        // all-captured bypass). Spawn retries in the main loop so it can
-        // NEVER be skipped; victory is gated on it having spawned.
+        // request the FINAL BOSS near the end (win-target remaining + soft
+        // level gate; win-target-met bypass). Spawn retries in the main loop
+        // so it can NEVER be skipped; victory is gated on it having spawned.
+        const target = winTarget(regions.length);
         if (
           shouldRequestFinale({
-            remaining: regions.length - world.captured.size,
+            remaining: target - world.captured.size,
             level: run.level,
-            totalSites: regions.length,
+            totalSites: target,
           })
         ) {
           world.finalWanted = true;
         }
-        if (world.captured.size >= regions.length && world.finalSpawned && !run.finalBossAlive) {
+        if (world.captured.size >= target && world.finalSpawned && !run.finalBossAlive) {
           store.setActiveSites([]);
           store.win();
           return;
