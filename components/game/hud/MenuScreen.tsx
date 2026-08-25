@@ -113,6 +113,9 @@ export function MenuScreen() {
             back to explore
           </button>
         </div>
+        <p className="mt-6 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim/50 max-md:mt-3">
+          unofficial fan experience · not affiliated with x1 foundation
+        </p>
       </div>
       <div
         className="absolute inset-x-0 bottom-0 border-t border-white/15 bg-[rgba(5,8,18,0.96)] px-3 pt-2.5 backdrop-blur-xl md:hidden"

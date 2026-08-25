@@ -145,7 +145,7 @@ export default function Overlay() {
         x1<span className="text-gold">.world</span>
       </h1>
       <p className="absolute bottom-1.5 left-5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim/50 max-md:hidden">
-        unofficial fan project · not affiliated with the x1 foundation
+        unofficial fan experience · not affiliated with x1 foundation
       </p>
 
       {/* discoverability: the E lock is invisible without this */}
