@@ -4,10 +4,23 @@ import {
   FINALE_HP_POWER_CAP,
   FINALE_MIN_LEVEL,
   FINALE_SITES_LEFT,
+  WIN_TARGET,
   finaleHpMult,
   finalePower,
   shouldRequestFinale,
+  winTarget,
 } from "@/lib/finale";
+
+describe("winTarget", () => {
+  it("freezes at WIN_TARGET when more regions exist", () => {
+    expect(winTarget(WIN_TARGET + 10)).toBe(WIN_TARGET);
+  });
+
+  it("clamps down when fewer regions are available", () => {
+    expect(winTarget(WIN_TARGET - 5)).toBe(WIN_TARGET - 5);
+    expect(winTarget(0)).toBe(0);
+  });
+});
 
 describe("shouldRequestFinale", () => {
   const totalSites = 50;
@@ -56,7 +69,7 @@ describe("shouldRequestFinale", () => {
     ).toBe(false);
   });
 
-  it("forces finale when every site is captured (below min level)", () => {
+  it("forces finale when the win target is met (below min level)", () => {
     expect(
       shouldRequestFinale({
         remaining: 0,

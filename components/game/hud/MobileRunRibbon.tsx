@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { regions } from "@/lib/regions";
+import { winTarget } from "@/lib/finale";
 import { useGame, effectiveRunSeconds, type DifficultyId } from "@/lib/gameStore";
 import {
   isMuted,
@@ -13,7 +14,7 @@ import {
   toggleMusicMute,
 } from "@/lib/sound";
 
-const TOTAL_SITES = regions.length;
+const TOTAL_SITES = winTarget(regions.length);
 
 const DIFF_TAG: Record<DifficultyId, { text: string; color: string }> = {
   normal: { text: "N", color: "#7dd3fc" },
