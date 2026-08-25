@@ -97,7 +97,7 @@ export default function Leaderboard() {
           ★ global leaderboard
         </p>
         <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-dim/60">
-          top 25 · {filter === "all" ? "norm rank" : "best run counts"}
+          top 25 · {filter === "all" ? "norm rank · per-diff PBs" : "per-diff personal best"}
         </span>
       </div>
 

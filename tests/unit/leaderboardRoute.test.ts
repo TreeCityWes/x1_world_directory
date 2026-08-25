@@ -198,4 +198,83 @@ describe("leaderboard route", () => {
     );
     expect(removed.status).toBe(200);
   });
+
+  it("keeps separate personal bests per difficulty for the same wallet", async () => {
+    const secret = new Uint8Array(32).fill(11);
+    const wallet = base58.encode(ed25519.getPublicKey(secret));
+
+    async function postDiff(diff: "hard" | "cursed") {
+      const minted = await runRoute.POST(
+        jsonRequest("POST", { difficulty: diff }, "http://localhost/api/leaderboard/run"),
+      );
+      const proof = (await minted.json()) as {
+        token: string;
+        startedAt: number;
+        mutatorId: string;
+      };
+      const mutator = score.mutatorById(proof.mutatorId)!;
+      const stats = {
+        t: 2,
+        kills: diff === "cursed" ? 20 : 5,
+        damage: diff === "cursed" ? 2000 : 400,
+        captured: 1,
+        win: false,
+      };
+      const expected = score.clampBoardScore(
+        score.computeRunScore({
+          ...stats,
+          difficulty: diff,
+          mutatorScoreMult: mutator.scoreMult,
+          timeMult: mutator.timeMult,
+        }),
+      );
+      const ts = String(Date.now());
+      const nonce = nonces.nonceFor(ts);
+      const message = new TextEncoder().encode(
+        msg.runSignMessage({
+          score: expected,
+          diff,
+          stats,
+          startedAt: proof.startedAt,
+          nonce,
+        }),
+      );
+      const sig = base64.encode(ed25519.sign(message, secret));
+      const submitted = await route.POST(
+        jsonRequest("POST", {
+          name: "multi",
+          wallet,
+          score: expected,
+          diff,
+          stats,
+          runToken: proof.token,
+          ts,
+          nonce,
+          sig,
+        }),
+      );
+      expect(submitted.status).toBe(200);
+      return expected;
+    }
+
+    const hardScore = await postDiff("hard");
+    const cursedScore = await postDiff("cursed");
+    expect(cursedScore).toBeGreaterThan(hardScore);
+
+    const all = (await (
+      await route.GET(new Request("http://localhost/api/leaderboard"))
+    ).json()) as { board: { wallet: string; score: number; diff: string }[] };
+    const mine = all.board.filter((e) => e.wallet === wallet);
+    expect(mine).toHaveLength(2);
+    expect(mine.map((e) => e.diff).sort()).toEqual(["cursed", "hard"]);
+
+    const hardOnly = (await (
+      await route.GET(new Request("http://localhost/api/leaderboard?diff=hard"))
+    ).json()) as { board: { wallet: string; diff: string }[] };
+    expect(hardOnly.board.filter((e) => e.wallet === wallet)).toEqual([
+      expect.objectContaining({ wallet, diff: "hard" }),
+    ]);
+
+    expect(route.rankedMember(wallet, "hard")).toBe(`w:${wallet}:hard`);
+  });
 });

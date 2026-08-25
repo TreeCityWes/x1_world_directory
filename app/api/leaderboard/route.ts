@@ -20,6 +20,10 @@ import { runSignMessage } from "@/lib/leaderboardMessage";
  * Table `public.leaderboard` has RLS enabled with no public policies; only
  * this route's service-role key can touch it. Falls back to in-memory when
  * the env vars are absent so local demos still work.
+ *
+ * Ranked identity is per wallet × difficulty (`w:<pubkey>:<diff>`), so a
+ * player keeps separate personal bests on Normal / Hard / Cursed. Legacy
+ * rows keyed `w:<pubkey>` (pre–per-diff) are still wiped on self-serve delete.
  */
 
 const SB_URL =
@@ -46,12 +50,33 @@ function sb(path: string, init?: RequestInit) {
   });
 }
 
-// Ranked identity is the proven wallet. Guest device IDs are retained only so
-// existing guest rows can still be removed by their owners.
+/** Primary key for a ranked PB — one row per wallet per difficulty. */
+export function rankedMember(wallet: string, diff: DifficultyId): string {
+  return `w:${wallet}:${diff}`;
+}
+
+function isWalletMemberKey(key: string, wallet: string): boolean {
+  return key === `w:${wallet}` || key.startsWith(`w:${wallet}:`);
+}
+
+// Guest device IDs are retained only so existing guest rows can still be
+// removed by their owners.
 function deriveMember(wallet: string, deviceId: unknown): string | null {
   if (wallet) return `w:${wallet}`;
   const d = String(deviceId ?? "");
   return /^[\w-]{8,64}$/.test(d) ? `d:${d}` : null;
+}
+
+function clearMemForWallet(wallet: string) {
+  for (const key of [...mem.keys()]) {
+    if (isWalletMemberKey(key, wallet)) mem.delete(key);
+  }
+}
+
+function renameMemForWallet(wallet: string, name: string) {
+  for (const [key, entry] of mem) {
+    if (isWalletMemberKey(key, wallet)) mem.set(key, { ...entry, name });
+  }
 }
 
 export async function GET(request: Request) {
@@ -170,7 +195,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "invalid_wallet_proof" }, { status: 401 });
     }
 
-    const member = `w:${wallet}`;
+    const member = rankedMember(wallet, diff);
     if (SB_URL && SB_KEY) {
       const row = {
         member,
@@ -197,8 +222,8 @@ export async function POST(req: Request) {
       );
       if (!promoted.ok) throw new Error(`sb promote ${promoted.status}`);
 
-      // A lower run may still rename the player's existing row.
-      const renamed = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, {
+      // A lower run may still rename across every difficulty row for this wallet.
+      const renamed = await sb(`leaderboard?wallet=eq.${encodeURIComponent(wallet)}`, {
         method: "PATCH",
         body: JSON.stringify({ name }),
       });
@@ -206,7 +231,7 @@ export async function POST(req: Request) {
     } else {
       const prev = mem.get(member);
       if (!prev || prev.score < score) mem.set(member, { name, wallet, score, diff, at: Date.now(), verified: true });
-      else mem.set(member, { ...prev, name });
+      renameMemForWallet(wallet, name);
     }
     return NextResponse.json({ ok: true });
   } catch {
@@ -232,7 +257,6 @@ export async function DELETE(req: Request) {
       sig?: string;
     };
     const wallet = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(b.wallet ?? "")) ? String(b.wallet) : "";
-    let member: string | null = null;
     if (wallet) {
       if (!(b.ts && b.nonce && b.sig && nonceValid(b.ts, b.nonce))) {
         return NextResponse.json({ ok: false }, { status: 401 });
@@ -245,10 +269,19 @@ export async function DELETE(req: Request) {
         proven = false;
       }
       if (!proven) return NextResponse.json({ ok: false }, { status: 401 });
-      member = `w:${wallet}`;
-    } else {
-      member = deriveMember("", b.deviceId);
+      if (SB_URL && SB_KEY) {
+        // wipe every difficulty (+ any legacy w:<wallet> row) for this address
+        const res = await sb(`leaderboard?wallet=eq.${encodeURIComponent(wallet)}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error(`sb delete ${res.status}`);
+      } else {
+        clearMemForWallet(wallet);
+      }
+      return NextResponse.json({ ok: true });
     }
+
+    const member = deriveMember("", b.deviceId);
     if (!member) return NextResponse.json({ ok: false }, { status: 400 });
     if (SB_URL && SB_KEY) {
       const res = await sb(`leaderboard?member=eq.${encodeURIComponent(member)}`, {
