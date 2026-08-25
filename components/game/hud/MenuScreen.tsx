@@ -22,6 +22,8 @@ export function MenuScreen() {
     useGame.setState({ pb: getPb(character, diff) });
   }, [character, diff]);
 
+  const mutatorTone = mutator.id === "none" ? "rgba(125,211,252,0.35)" : "#7dd3fc";
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -29,11 +31,38 @@ export function MenuScreen() {
       exit={{ opacity: 0 }}
       className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/60 backdrop-blur-sm max-md:fixed"
     >
-      <div className="max-h-full overflow-y-auto py-4 text-center max-md:w-full max-md:pb-36">
+      <div className="max-h-full overflow-y-auto py-4 text-center max-md:w-full max-md:pb-44">
         <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
           select your character
         </p>
         <CharacterSelect />
+
+        {/* weekly mutator — always visible, including Standard Conditions */}
+        <div
+          className="mx-auto mt-4 max-w-md rounded-xl border px-4 py-3 text-left max-md:hidden"
+          style={{
+            borderColor: `${mutatorTone}55`,
+            background: `linear-gradient(135deg, ${mutatorTone}14, transparent 70%)`,
+          }}
+          role="status"
+          aria-label={`Weekly mutator: ${mutator.name}`}
+        >
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-cyan">
+              weekly mutator
+            </p>
+            {mutator.scoreMult !== 1 && (
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-gold">
+                {mutator.scoreMult}× score
+              </p>
+            )}
+          </div>
+          <p className="mt-1 font-display text-lg font-bold tracking-tight text-ink">
+            {mutator.name}
+          </p>
+          <p className="mt-0.5 text-sm leading-snug text-ink-dim">{mutator.desc}</p>
+        </div>
+
         <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.24em] text-gold max-md:hidden">
           choose your run
         </p>
@@ -71,16 +100,6 @@ export function MenuScreen() {
             );
           })}
         </div>
-        {/* weekly mutator chip — the current ISO-week twist */}
-        {mutator.id !== "none" && (
-          <div className="mt-3 hidden rounded-lg border border-cyan/20 bg-cyan/5 px-4 py-2 md:block">
-            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-cyan">
-              weekly mutator
-            </p>
-            <p className="text-sm font-semibold tracking-tight text-ink">{mutator.name}</p>
-            <p className="text-[11px] text-ink-dim">{mutator.desc}</p>
-          </div>
-        )}
         {/* the CTA — the screen finally ends in a button, not a shrug */}
         <p className="mt-4 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-dim max-md:hidden">
           selected: <span className="text-ink">{CHARACTERS[character].name}</span> ·{" "}
@@ -121,6 +140,29 @@ export function MenuScreen() {
         className="absolute inset-x-0 bottom-0 border-t border-white/15 bg-[rgba(5,8,18,0.96)] px-3 pt-2.5 backdrop-blur-xl md:hidden"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
+        {/* weekly mutator above difficulty — always shown on mobile dock */}
+        <div
+          className="mb-2 rounded-md border px-3 py-2 text-left"
+          style={{
+            borderColor: `${mutatorTone}44`,
+            background: `${mutatorTone}12`,
+          }}
+          role="status"
+          aria-label={`Weekly mutator: ${mutator.name}`}
+        >
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-cyan">
+              weekly mutator
+            </p>
+            {mutator.scoreMult !== 1 && (
+              <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-gold">
+                {mutator.scoreMult}× score
+              </p>
+            )}
+          </div>
+          <p className="mt-0.5 text-sm font-semibold leading-tight text-ink">{mutator.name}</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-ink-dim">{mutator.desc}</p>
+        </div>
         <div className="grid grid-cols-3 overflow-hidden rounded-md border border-white/15">
           {(Object.keys(DIFFICULTIES) as DifficultyId[]).map((id) => {
             const selectedDiff = id === diff;
@@ -147,13 +189,6 @@ export function MenuScreen() {
             );
           })}
         </div>
-        {mutator.id !== "none" && (
-          <div className="mt-2 rounded-md border border-cyan/20 bg-cyan/5 px-3 py-1.5 md:hidden">
-            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-cyan">weekly mutator</p>
-            <p className="text-xs font-semibold text-ink">{mutator.name}</p>
-            <p className="text-[10px] text-ink-dim">{mutator.desc}</p>
-          </div>
-        )}
         <div className="mt-2 flex gap-2">
           <button
             type="button"
