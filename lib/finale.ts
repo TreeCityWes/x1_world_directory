@@ -6,8 +6,11 @@
  * HP scales with a compact "power" score — not a flat multiplier — so
  * time-to-kill stays dramatic for both weak and godlike runs.
  *
- * Boss/finale spawns stay nameplate-only (COMBAT-01); no ground-ring
- * telegraph via `world.pending`.
+ * Boss/finale spawns use a dedicated `world.bossPending` ground-ring
+ * telegraph (~1.1s), then the full-screen nameplate on hatch. They are
+ * not routed through mob `world.pending` so a saturated mob telegraph
+ * pool cannot block the finale; hatch still retries until a boss pool
+ * slot frees.
  */
 
 /** Sites remaining at which the finale may open (with level gate). */
