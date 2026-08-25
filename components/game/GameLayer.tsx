@@ -19,6 +19,11 @@ import {
   finaleSpeedMult,
   shouldRequestFinale,
 } from "@/lib/finale";
+import {
+  DEX_GATE_DMG_BASE,
+  DEX_GATE_DMG_SPREAD,
+  siteKindDim,
+} from "@/lib/siteCapture";
 import { monoFont } from "@/lib/canvasFont";
 import { sfx, duckMusic } from "@/lib/sound";
 import Nemesis from "@/components/game/Nemesis";
@@ -760,7 +765,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
     const rng = run.rng ?? Math.random;
     const count = (run.kindCaptures[region.kind] ?? 0) + 1;
     run.kindCaptures[region.kind] = count;
-    const dim = Math.pow(0.82, count - 1);
+    // same-kind DR: 0.72^(n-1); dexGate dmg: 8–10.5% × dim (was 0.82 / 9–12%)
+    const dim = siteKindDim(count);
     switch (region.kind) {
       case "validatorTower":
         run.perm.speed++;
@@ -772,7 +778,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         break;
       case "dexGate":
         run.perm.dmg++;
-        run.permAdd.dmg += (0.09 + rng() * 0.03) * dim;
+        run.permAdd.dmg += (DEX_GATE_DMG_BASE + rng() * DEX_GATE_DMG_SPREAD) * dim;
         break;
       case "explorerFort":
         run.maxHp += 15;
