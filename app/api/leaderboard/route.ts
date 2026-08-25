@@ -3,6 +3,17 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { base58, base64 } from "@scure/base";
 import { nonceValid } from "@/lib/nonce";
 import { rateLimited } from "@/lib/ratelimit";
+import { verifyRunToken } from "@/lib/runToken";
+import {
+  SCORE_BOARD_CAP,
+  clampBoardScore,
+  computeRunScore,
+  mutatorById,
+  statsPlausible,
+  type DifficultyId,
+  type RunStats,
+} from "@/lib/scoreFormula";
+import { runSignMessage } from "@/lib/leaderboardMessage";
 
 /**
  * Global leaderboard, backed by Supabase (PostgREST — no client dependency).
@@ -75,28 +86,83 @@ export async function POST(req: Request) {
     if (rateLimited(req, "post", 12)) {
       return NextResponse.json({ ok: false, error: "rate" }, { status: 429 });
     }
-    const body = (await req.json()) as Partial<Entry>;
+    const body = (await req.json()) as Partial<Entry> & {
+      ts?: string;
+      nonce?: string;
+      sig?: string;
+      runToken?: string;
+      stats?: Partial<RunStats>;
+    };
     const name = String(body.name ?? "")
       .replace(/[^\w \-.✨🥷]/g, "")
       .trim()
       .slice(0, 20);
     const wallet = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(body.wallet ?? "")) ? String(body.wallet) : "";
-    const score = Math.max(0, Math.min(500_000, Math.round(Number(body.score) || 0)));
-    const diff = ["normal", "hard", "cursed"].includes(String(body.diff)) ? String(body.diff) : "normal";
-    if (!name || score <= 0) return NextResponse.json({ ok: false }, { status: 400 });
+    const claimedScore = Math.round(Number(body.score) || 0);
+    const diff = (["normal", "hard", "cursed"].includes(String(body.diff))
+      ? String(body.diff)
+      : "normal") as DifficultyId;
+    if (!name || claimedScore <= 0) return NextResponse.json({ ok: false }, { status: 400 });
 
-    // Ranked submissions require proof of wallet ownership. This prevents
-    // anonymous Sybil flooding; it does not make a client-side run cheat-proof.
-    const b = body as Partial<Entry> & { ts?: string; nonce?: string; sig?: string };
-    if (!(wallet && b.ts && b.nonce && b.sig && nonceValid(b.ts, b.nonce))) {
+    // Ranked submissions require proof of wallet ownership + a server-issued
+    // run token. The signature binds identity; the token + stats recompute
+    // bind the score to a started run (SEC-01). Still not a full server sim.
+    if (!(wallet && body.ts && body.nonce && body.sig && nonceValid(body.ts, body.nonce))) {
       return NextResponse.json({ ok: false, error: "wallet_proof_required" }, { status: 401 });
     }
+
+    const tokenCheck = verifyRunToken(String(body.runToken ?? ""));
+    if (!tokenCheck.claims) {
+      return NextResponse.json({ ok: false, error: tokenCheck.error ?? "run_token_required" }, { status: 401 });
+    }
+    const claims = tokenCheck.claims;
+    if (claims.difficulty !== diff) {
+      return NextResponse.json({ ok: false, error: "difficulty_mismatch" }, { status: 400 });
+    }
+    const mutator = mutatorById(claims.mutatorId);
+    if (!mutator) {
+      return NextResponse.json({ ok: false, error: "invalid_mutator" }, { status: 400 });
+    }
+
+    const stats: RunStats = {
+      t: Number(body.stats?.t) || 0,
+      kills: Math.round(Number(body.stats?.kills) || 0),
+      damage: Number(body.stats?.damage) || 0,
+      captured: Math.round(Number(body.stats?.captured) || 0),
+      win: !!body.stats?.win,
+    };
+    const wallElapsedSec = (Date.now() - claims.startedAt) / 1000;
+    const bad = statsPlausible(stats, { timeMult: mutator.timeMult, wallElapsedSec });
+    if (bad) {
+      return NextResponse.json({ ok: false, error: bad }, { status: 400 });
+    }
+
+    const expected = clampBoardScore(
+      computeRunScore({
+        ...stats,
+        difficulty: diff,
+        mutatorScoreMult: mutator.scoreMult,
+        timeMult: mutator.timeMult,
+      }),
+    );
+    const score = clampBoardScore(claimedScore);
+    // accept only exact formula match (after board clamp) — no inflation
+    if (score !== expected || score > SCORE_BOARD_CAP) {
+      return NextResponse.json({ ok: false, error: "score_mismatch" }, { status: 400 });
+    }
+
     const msg = new TextEncoder().encode(
-      `x1.world run · score:${score} · diff:${diff} · ${b.nonce}`,
+      runSignMessage({
+        score,
+        diff,
+        stats,
+        startedAt: claims.startedAt,
+        nonce: body.nonce,
+      }),
     );
     let verified = false;
     try {
-      verified = ed25519.verify(base64.decode(b.sig), msg, base58.decode(wallet));
+      verified = ed25519.verify(base64.decode(body.sig), msg, base58.decode(wallet));
     } catch {
       verified = false;
     }

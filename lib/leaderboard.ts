@@ -1,6 +1,8 @@
 "use client";
 
 import { getDeviceId, signWithWallet } from "@/lib/profile";
+import { runSignMessage } from "@/lib/leaderboardMessage";
+import { clampBoardScore, type DifficultyId, type RunStats } from "@/lib/scoreFormula";
 
 export type BoardEntry = {
   rank: number;
@@ -10,6 +12,44 @@ export type BoardEntry = {
   diff: string;
   verified?: boolean;
 };
+
+export type RunProof = {
+  token: string;
+  startedAt: number;
+  difficulty: DifficultyId;
+  mutatorId: string;
+};
+
+export { runSignMessage };
+
+/** Mint a server run token when a ranked attempt begins (SEC-01). */
+export async function beginRun(difficulty: DifficultyId): Promise<RunProof | null> {
+  try {
+    const res = await fetch("/api/leaderboard/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ difficulty }),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as {
+      ok?: boolean;
+      token?: string;
+      startedAt?: number;
+      difficulty?: DifficultyId;
+      mutatorId?: string;
+    };
+    if (!j.ok || !j.token || !j.startedAt || !j.difficulty || !j.mutatorId) return null;
+    return {
+      token: j.token,
+      startedAt: j.startedAt,
+      difficulty: j.difficulty,
+      mutatorId: j.mutatorId,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function fetchBoard(diff?: string): Promise<{ board: BoardEntry[]; persistent: boolean }> {
   try {
@@ -23,34 +63,53 @@ export async function fetchBoard(diff?: string): Promise<{ board: BoardEntry[]; 
 }
 
 /**
- * Submit a ranked run. The wallet must sign a server nonce proving control of
- * the address; guests keep local bests but do not write to the global board.
- * The signature proves identity, not that the client-side run is cheat-proof.
+ * Submit a ranked run. Requires a wallet signature AND a server-issued run
+ * token from beginRun(). Guests keep local bests but do not write the board.
  */
 export async function submitScore(payload: {
   name: string;
   wallet: string;
   score: number;
   diff: string;
+  stats: RunStats;
+  runToken: string;
+  startedAt: number;
 }): Promise<boolean> {
   try {
-    if (!payload.wallet) return false;
+    if (!payload.wallet || !payload.runToken) return false;
+    const score = clampBoardScore(payload.score);
+    if (score <= 0) return false;
     const nonceRes = await fetch("/api/leaderboard/nonce", { cache: "no-store" });
     if (!nonceRes.ok) return false;
     const { ts, nonce } = (await nonceRes.json()) as { ts?: string; nonce?: string };
     if (!ts || !nonce) return false;
-    const msg = `x1.world run · score:${payload.score} · diff:${payload.diff} · ${nonce}`;
+    const msg = runSignMessage({
+      score,
+      diff: payload.diff,
+      stats: payload.stats,
+      startedAt: payload.startedAt,
+      nonce,
+    });
     const sig = await signWithWallet(msg);
     if (!sig) return false;
     const res = await fetch("/api/leaderboard", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, ts, nonce, sig }),
+      body: JSON.stringify({
+        name: payload.name,
+        wallet: payload.wallet,
+        score,
+        diff: payload.diff,
+        stats: payload.stats,
+        runToken: payload.runToken,
+        ts,
+        nonce,
+        sig,
+      }),
       keepalive: true,
     });
     return res.ok;
   } catch {
-    // offline — a lost submission must never affect the game
     return false;
   }
 }
@@ -69,7 +128,7 @@ export async function removeMe(wallet: string): Promise<boolean> {
         nonce: string;
       };
       const sig = await signWithWallet(`x1.world · remove my entries · ${nonce}`);
-      if (!sig) return false; // declined the signature — nothing removed
+      if (!sig) return false;
       proof = { ts, nonce, sig };
     }
     const res = await fetch("/api/leaderboard", {

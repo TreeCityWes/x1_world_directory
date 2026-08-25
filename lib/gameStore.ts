@@ -4,9 +4,21 @@ import { create } from "zustand";
 import { sfx } from "@/lib/sound";
 import { preloadCharacterModel } from "@/lib/preloadCharacter";
 import { CHARACTERS, type CharacterId } from "@/lib/characters";
-import { submitScore } from "@/lib/leaderboard";
+import { beginRun, submitScore, type RunProof } from "@/lib/leaderboard";
 import { useProfile } from "@/lib/profile";
 import { moveState } from "@/lib/gameState";
+import {
+  RUN_SECONDS,
+  activeMutator,
+  baseScoreOf,
+  computeRunScore,
+  type DifficultyId,
+  type Mutator,
+  type RunStats,
+} from "@/lib/scoreFormula";
+
+export { RUN_SECONDS, activeMutator };
+export type { DifficultyId, Mutator };
 
 /**
  * X1 Ninja Survivors — game state. Authoritative per-frame numbers live in the
@@ -25,7 +37,6 @@ export type TutorialPhase = "move" | "capture" | "capture-wait" | "levelup" | "d
 // farm the horde forever" — score is bounded by the window, not by how long
 // you can survive. scoreOf() caps its time term at this same value so the
 // two can never drift.
-export const RUN_SECONDS = 420; // 7 minutes
 
 export const DIFFICULTIES = {
   normal: {
@@ -53,7 +64,6 @@ export const DIFFICULTIES = {
     blockSeconds: 30,
   },
 } as const;
-export type DifficultyId = keyof typeof DIFFICULTIES;
 
 // ---- daily seed + weekly mutator (client-side meta) ----
 
@@ -66,14 +76,6 @@ export function dailySeed(d = new Date()): number {
   return (y * 10000 + mo * 100 + da) ^ 0x9e3779b9;
 }
 
-function isoWeek(d = new Date()): number {
-  const tmp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const day = tmp.getUTCDay() || 7;
-  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-  return Math.ceil(((+tmp - +yearStart) / 86400000 + 1) / 7);
-}
-
 /** Mulberry32 — tiny, decent seeded PRNG. */
 function mulberry32(seed: number) {
   return function () {
@@ -82,30 +84,6 @@ function mulberry32(seed: number) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-export type Mutator = {
-  id: string;
-  name: string;
-  desc: string;
-  scoreMult: number;
-  timeMult: number;
-  /** extra starting levels granted by the mutator */
-  startLevel?: number;
-  /** every capture also emits a bridge-portal shockwave */
-  bridgeSurge?: boolean;
-};
-
-const MUTATORS: Mutator[] = [
-  { id: "none", name: "Standard Conditions", desc: "No weekly twist. Pure ninja.", scoreMult: 1, timeMult: 1 },
-  { id: "rush", name: "Half Time, 2× Score", desc: "4-minute runs. All scoring doubled.", scoreMult: 2, timeMult: 0.5 },
-  { id: "bridgeSurge", name: "Bridge Surge", desc: "Every site capture clears nearby enemies.", scoreMult: 1, timeMult: 1, bridgeSurge: true },
-  { id: "cursedStart", name: "Cursed Starts +1 Level", desc: "Cursed runs begin at level 2.", scoreMult: 1, timeMult: 1, startLevel: 1 },
-];
-
-/** The single active mutator for the current ISO week (rotates Monday). */
-export function activeMutator(d = new Date()): Mutator {
-  return MUTATORS[isoWeek(d) % MUTATORS.length] ?? MUTATORS[0];
 }
 
 /** Current run clock, including any weekly time mutator. */
@@ -293,19 +271,44 @@ export function resetRun(diff?: DifficultyId, character?: CharacterId) {
 
 /** Base score before the weekly mutator multiplier is applied. */
 export function scoreOf() {
-  const cap = effectiveRunSeconds();
-  const T = Math.min(cap, run.t); // survival time caps at the run clock
-  // linear time term — the old T² quadratically rewarded circle-running;
-  // kills, damage, and captures are the score now, surviving is the floor
-  const base = (T * 40 + run.kills * 40 + run.damage / 2) / 100 + run.captured * 50;
-  return Math.round(base * DIFFICULTIES[run.difficulty].scoreMult);
+  return baseScoreOf({
+    t: run.t,
+    kills: run.kills,
+    damage: run.damage,
+    captured: run.captured,
+    win: false,
+    difficulty: run.difficulty,
+    mutatorScoreMult: run.scoreMult,
+    timeMult: run.timeMult,
+  });
 }
 
 /** Final score for the current run, including mutator multipliers. */
 export function runScore(win = false): number {
-  const bonus = win ? 1000 : 0;
-  return Math.round((scoreOf() + bonus) * run.scoreMult);
+  return computeRunScore({
+    t: run.t,
+    kills: run.kills,
+    damage: run.damage,
+    captured: run.captured,
+    win,
+    difficulty: run.difficulty,
+    mutatorScoreMult: run.scoreMult,
+    timeMult: run.timeMult,
+  });
 }
+
+function snapshotStats(win: boolean): RunStats {
+  return {
+    t: run.t,
+    kills: run.kills,
+    damage: run.damage,
+    captured: run.captured,
+    win,
+  };
+}
+
+/** Server-issued proof for the active / just-ended ranked run (SEC-01). */
+let runProof: RunProof | null = null;
 
 // derived combat numbers (upgrades + timed powerups)
 export function shurikenDamage() {
@@ -403,6 +406,8 @@ type GameStore = {
   bossCardAt: number;
   /** leaderboard submit status for the end screens */
   scoreSubmit: "" | "sending" | "ok" | "fail";
+  /** stats snapshot for ranked retry (bound to the ended run) */
+  finalStats: RunStats | null;
   /** late ranked submission — a run that ended before name+wallet were set
    *  can still post until the next run starts */
   retrySubmit: () => void;
@@ -492,9 +497,16 @@ export const useGame = create<GameStore>((set, get) => ({
   bossCard: "",
   bossCardAt: 0,
   scoreSubmit: "",
+  finalStats: null,
   deathCause: "",
   start: (diff) => {
     resetRun(diff ?? run.difficulty, get().character);
+    runProof = null;
+    const difficulty = diff ?? run.difficulty;
+    // mint SEC-01 run token in the background — ranked submit needs it
+    void beginRun(difficulty).then((proof) => {
+      if (proof && run.difficulty === proof.difficulty) runProof = proof;
+    });
     // selection bugs are invisible without this — one line per run start
     console.info("[x1:run]", {
       selectedCharacterId: get().character,
@@ -508,7 +520,6 @@ export const useGame = create<GameStore>((set, get) => ({
       typeof window !== "undefined" ? Number(localStorage.getItem(BEST_KEY) ?? 0) : 0;
     const completed = readTutorialCompleted();
     const char = get().character;
-    const difficulty = diff ?? run.difficulty;
     // a new run supersedes the previous unposted score — retrySubmit ends here
     set({
       mode: "play",
@@ -519,6 +530,7 @@ export const useGame = create<GameStore>((set, get) => ({
       best,
       pb: readPb(char, difficulty),
       finalScore: 0,
+      finalStats: null,
       scoreSubmit: "",
       newPb: false,
       tutorialPhase: completed ? "done" : "move",
@@ -545,6 +557,7 @@ export const useGame = create<GameStore>((set, get) => ({
   quit: () => set({ mode: "explore", activeSites: [], capturedIds: [], bossCard: "", bossCardAt: 0 }),
   die: () => {
     const score = runScore();
+    const stats = snapshotStats(false);
     const prevPb = typeof window !== "undefined" ? readPb(run.character, run.difficulty) : 0;
     let best = 0;
     if (typeof window !== "undefined") {
@@ -554,16 +567,23 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.death();
     const pd = useProfile.getState();
-    const ranked = !!pd.name.trim() && !!pd.wallet;
-    if (ranked) {
-      void submitScore({ name: pd.name, wallet: pd.wallet, score, diff: run.difficulty }).then(
-        (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
-      );
+    const ranked = !!pd.name.trim() && !!pd.wallet && !!runProof;
+    if (ranked && runProof) {
+      void submitScore({
+        name: pd.name,
+        wallet: pd.wallet,
+        score,
+        diff: run.difficulty,
+        stats,
+        runToken: runProof.token,
+        startedAt: runProof.startedAt,
+      }).then((ok) => set({ scoreSubmit: ok ? "ok" : "fail" }));
     }
     set({
       mode: "dead",
       finalScore: score,
       finalDiff: run.difficulty,
+      finalStats: stats,
       best,
       pb: readPb(run.character, run.difficulty),
       newPb: score > prevPb,
@@ -577,6 +597,7 @@ export const useGame = create<GameStore>((set, get) => ({
     // bonus — you only get that by actually finishing), but it's the EXPECTED
     // way most runs end, so it gets its own neutral screen, not a death card.
     const score = runScore();
+    const stats = snapshotStats(false);
     const prevPb = typeof window !== "undefined" ? readPb(run.character, run.difficulty) : 0;
     let best = 0;
     if (typeof window !== "undefined") {
@@ -586,16 +607,23 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.win(); // a "you made it to the bell" flourish, not the death sting
     const pt = useProfile.getState();
-    const ranked = !!pt.name.trim() && !!pt.wallet;
-    if (ranked) {
-      void submitScore({ name: pt.name, wallet: pt.wallet, score, diff: run.difficulty }).then(
-        (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
-      );
+    const ranked = !!pt.name.trim() && !!pt.wallet && !!runProof;
+    if (ranked && runProof) {
+      void submitScore({
+        name: pt.name,
+        wallet: pt.wallet,
+        score,
+        diff: run.difficulty,
+        stats,
+        runToken: runProof.token,
+        startedAt: runProof.startedAt,
+      }).then((ok) => set({ scoreSubmit: ok ? "ok" : "fail" }));
     }
     set({
       mode: "timeup",
       finalScore: score,
       finalDiff: run.difficulty,
+      finalStats: stats,
       best,
       pb: readPb(run.character, run.difficulty),
       newPb: score > prevPb,
@@ -605,6 +633,7 @@ export const useGame = create<GameStore>((set, get) => ({
   },
   win: () => {
     const score = runScore(true);
+    const stats = snapshotStats(true);
     const prevPb = typeof window !== "undefined" ? readPb(run.character, run.difficulty) : 0;
     let best = 0;
     if (typeof window !== "undefined") {
@@ -614,16 +643,23 @@ export const useGame = create<GameStore>((set, get) => ({
     }
     sfx.win();
     const pw = useProfile.getState();
-    const ranked = !!pw.name.trim() && !!pw.wallet;
-    if (ranked) {
-      void submitScore({ name: pw.name, wallet: pw.wallet, score, diff: run.difficulty }).then(
-        (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
-      );
+    const ranked = !!pw.name.trim() && !!pw.wallet && !!runProof;
+    if (ranked && runProof) {
+      void submitScore({
+        name: pw.name,
+        wallet: pw.wallet,
+        score,
+        diff: run.difficulty,
+        stats,
+        runToken: runProof.token,
+        startedAt: runProof.startedAt,
+      }).then((ok) => set({ scoreSubmit: ok ? "ok" : "fail" }));
     }
     set({
       mode: "won",
       finalScore: score,
       finalDiff: run.difficulty,
+      finalStats: stats,
       best,
       pb: readPb(run.character, run.difficulty),
       newPb: score > prevPb,
@@ -632,14 +668,20 @@ export const useGame = create<GameStore>((set, get) => ({
     });
   },
   retrySubmit: () => {
-    const { finalScore, finalDiff, scoreSubmit } = get();
+    const { finalScore, finalDiff, finalStats, scoreSubmit } = get();
     if (finalScore <= 0 || scoreSubmit === "ok" || scoreSubmit === "sending") return;
     const p = useProfile.getState();
-    if (!p.name.trim() || !p.wallet) return;
+    if (!p.name.trim() || !p.wallet || !runProof || !finalStats) return;
     set({ scoreSubmit: "sending" });
-    void submitScore({ name: p.name, wallet: p.wallet, score: finalScore, diff: finalDiff }).then(
-      (ok) => set({ scoreSubmit: ok ? "ok" : "fail" }),
-    );
+    void submitScore({
+      name: p.name,
+      wallet: p.wallet,
+      score: finalScore,
+      diff: finalDiff,
+      stats: finalStats,
+      runToken: runProof.token,
+      startedAt: runProof.startedAt,
+    }).then((ok) => set({ scoreSubmit: ok ? "ok" : "fail" }));
   },
   syncHud: () => set({ hud: emptyHud() }),
   offerLevelUp: (choices) => {
