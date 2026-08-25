@@ -25,6 +25,11 @@ import {
   DEX_GATE_DMG_SPREAD,
   siteKindDim,
 } from "@/lib/siteCapture";
+import {
+  BOSS_PENDING_SLOTS,
+  BOSS_SPAWN_TELEGRAPH,
+  MOB_SPAWN_TELEGRAPH,
+} from "@/lib/bossTelegraph";
 import { monoFont } from "@/lib/canvasFont";
 import { sfx, duckMusic } from "@/lib/sound";
 import Nemesis from "@/components/game/Nemesis";
@@ -101,6 +106,8 @@ type Enemy = {
 };
 type Shuriken = { alive: boolean; pos: THREE.Vector3; axis: THREE.Vector3; ttl: number; dmg: number; spin: number; kind: string; pierce: number; evo: boolean; trailAt: number };
 type PendingSpawn = { active: boolean; type: EnemyTypeId; dir: THREE.Vector3; at: number };
+/** Mid-run / finale boss telegraph — same ring language as mob pending, own pool. */
+type BossPending = { active: boolean; dir: THREE.Vector3; at: number; finale: boolean };
 type DmgNum = { alive: boolean; dir: THREE.Vector3; t0: number; val: number; crit: boolean; kill: boolean };
 type CaptureFx = { active: boolean; dir: THREE.Vector3; t0: number };
 type Gem = { alive: boolean; dir: THREE.Vector3; xp: number; t: number };
@@ -386,6 +393,11 @@ const world = {
       // sized to outrun the densest burst (1+floor(block/3)) across the ~3
       // spawn ticks that can be in flight at once → spawns stay telegraphed
       pending: Array.from({ length: 40 }, (): PendingSpawn => ({ active: false, type: "goblin", dir: new THREE.Vector3(), at: 0 })),
+      // separate from mob pending so a saturated telegraph pool cannot block
+      // mid-run bosses or the finale (boss enemy-pool retry still applies on hatch)
+      bossPending: Array.from({ length: BOSS_PENDING_SLOTS }, (): BossPending => ({
+        active: false, dir: new THREE.Vector3(), at: 0, finale: false,
+      })),
       dmgNums: Array.from({ length: 10 }, (): DmgNum => ({ alive: false, dir: new THREE.Vector3(), t0: 0, val: 0, crit: false, kill: false })),
       captureFx: Array.from({ length: 3 }, (): CaptureFx => ({ active: false, dir: new THREE.Vector3(), t0: 0 })),
       gems: Array.from({ length: MAX_GEMS }, (): Gem => ({
@@ -598,6 +610,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
   const shieldRef = useRef<THREE.Mesh | null>(null);
   const markRefs = useRef<(THREE.Mesh | null)[]>([]);
   const warnRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const bossWarnRefs = useRef<(THREE.Mesh | null)[]>([]);
   const dmgRefs = useRef<(THREE.Sprite | null)[]>([]);
   const beamRefs = useRef<(THREE.Group | null)[]>([]);
 
@@ -1112,7 +1125,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         w.visible = p.active && world.started;
         if (w.visible) {
           const remain = Math.max(0, p.at - run.t);
-          const k = 1 - remain / 0.7; // 0 → 1 as it hatches
+          const k = 1 - remain / MOB_SPAWN_TELEGRAPH; // 0 → 1 as it hatches
           const late = remain < 0.2;
           w.position.copy(p.dir).multiplyScalar(R + 0.02);
           w.quaternion.setFromUnitVectors(UP, p.dir);
@@ -1123,6 +1136,27 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           const mat = w.material as THREE.MeshBasicMaterial;
           mat.color.set(late ? THEME.warnLate : THEME.warnEarly);
           mat.opacity = 0.35 + 0.45 * k + Math.sin(run.t * 8) * 0.08;
+        }
+      }
+      // boss / finale spawn warnings — same bloom language, slightly larger
+      for (let i = 0; i < world.bossPending.length; i++) {
+        const w = bossWarnRefs.current[i];
+        const p = world.bossPending[i];
+        if (!w) continue;
+        w.visible = p.active && world.started;
+        if (w.visible) {
+          const remain = Math.max(0, p.at - run.t);
+          const k = 1 - remain / BOSS_SPAWN_TELEGRAPH;
+          const late = remain < 0.25;
+          w.position.copy(p.dir).multiplyScalar(R + 0.025);
+          w.quaternion.setFromUnitVectors(UP, p.dir);
+          w.rotateX(Math.PI / 2);
+          const base = 0.42 - 0.22 * k;
+          const pop = late ? 1 + Math.sin(k * Math.PI) * 0.32 : 1;
+          w.scale.setScalar(base * pop);
+          const mat = w.material as THREE.MeshBasicMaterial;
+          mat.color.set(late ? THEME.warnLate : THEME.warnEarly);
+          mat.opacity = 0.4 + 0.5 * k + Math.sin(run.t * 7) * 0.1;
         }
       }
       // floating damage numbers (crits + bosses only)
@@ -1419,6 +1453,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
       world.scanFxAt = -10;
       for (const b of world.booms) b.alive = false;
       for (const p of world.pending) p.active = false;
+      for (const bp of world.bossPending) bp.active = false;
       for (const d of world.dmgNums) d.alive = false;
       for (const cf of world.captureFx) cf.active = false;
       world.finalWanted = false;
@@ -1502,8 +1537,8 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             break;
           }
         }
-        // telegraph the spawn: a red warning ring pulses for 0.7s first.
-        // If all 40 pending slots are busy the field is already saturated —
+        // telegraph the spawn: a red warning ring pulses for MOB_SPAWN_TELEGRAPH
+        // first. If all 40 pending slots are busy the field is already saturated —
         // defer the rest of this burst (they hatch next tick as rings clear)
         // rather than spawning an untelegraphed enemy.
         const p = world.pending.find((x) => !x.active);
@@ -1511,7 +1546,7 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         p.active = true;
         p.type = type;
         p.dir.copy(randomDirNear(world.pLocal, 0.9, 1.8));
-        p.at = run.t + 0.7;
+        p.at = run.t + MOB_SPAWN_TELEGRAPH;
         sfx.telegraph();
       }
     }
@@ -1522,30 +1557,47 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
         if (spawnEnemy(p.type, p.dir)) p.active = false;
       }
     }
-    // Bear Market boss every 5 blocks — if the pool is full (e.g. the final
-    // Nemesis is hogging a slot), retry next frame instead of skipping forever
+    // Bear Market boss every 5 blocks — queue a ground-ring telegraph first.
+    // Claim the block only once a bossPending slot is reserved; if none free,
+    // retry next frame (same as the old pool-full retry).
     if (run.block > 0 && run.block % 5 === 0 && world.bossAtBlock !== run.block) {
-      const boss = spawnEnemy("boss");
-      if (boss) {
+      const slot = world.bossPending.find((x) => !x.active);
+      if (slot) {
+        slot.active = true;
+        slot.finale = false;
+        slot.dir.copy(randomDirNear(world.pLocal, 0.9, 1.8));
+        slot.at = run.t + BOSS_SPAWN_TELEGRAPH;
         world.bossAtBlock = run.block;
-        sfx.boss();
-        useGame.setState({
-          bossCard: boss.bossKind === "whale" ? "THE WHALE SURFACES" : "YOUR SHADOW ARRIVES",
-          bossCardAt: run.t,
-        });
+        sfx.telegraph();
       }
     }
-    // THE FINAL NEMESIS must always appear — retry until a boss slot frees.
-    // Victory is gated on world.finalSpawned, so a full pool at the last
-    // capture can never let the run end without the finale (COMBAT-01 bypass).
+    // THE FINAL NEMESIS must always appear — telegraph then retry hatch until
+    // a boss pool slot frees. Victory is gated on world.finalSpawned.
     if (world.finalWanted && !world.finalSpawned) {
-      const fb = spawnEnemy("boss");
-      if (fb) {
-        fb.bossKind = "nemesis";
+      const already = world.bossPending.some((x) => x.active && x.finale);
+      if (!already) {
+        const slot = world.bossPending.find((x) => !x.active);
+        if (slot) {
+          slot.active = true;
+          slot.finale = true;
+          slot.dir.copy(randomDirNear(world.pLocal, 0.9, 1.8));
+          slot.at = run.t + BOSS_SPAWN_TELEGRAPH;
+          sfx.telegraph();
+        }
+      }
+    }
+    // boss telegraphs hatch — keep the ring until spawnEnemy succeeds so a
+    // full boss pool never drops the tell (mid-run + finale retry preserved)
+    for (const bp of world.bossPending) {
+      if (!bp.active || run.t < bp.at) continue;
+      const boss = spawnEnemy("boss", bp.dir);
+      if (!boss) continue;
+      bp.active = false;
+      if (bp.finale) {
+        boss.bossKind = "nemesis";
         // Scale the finale to the player's POWER (lib/finale.ts), not a flat
         // 2.5×. Damage/speed are only lightly bumped so the fight threatens
-        // without being a random-death tax. Nameplate telegraph only
-        // (COMBAT-01) — never routed through world.pending.
+        // without being a random-death tax. Nameplate fires on hatch.
         const power = finalePower({
           level: run.level,
           permDmg: run.permAdd.dmg,
@@ -1554,15 +1606,20 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
           firerateUpgrades: run.upgrades.firerate ?? 0,
           enemyMult: DIFFICULTIES[run.difficulty].enemyMult,
         });
-        fb.maxHp = fb.hp = Math.round(fb.maxHp * finaleHpMult(power));
-        fb.dmg = Math.round(fb.dmg * finaleDmgMult(power));
-        fb.speed *= finaleSpeedMult(power);
-        world.finalIdx = world.enemies.indexOf(fb);
+        boss.maxHp = boss.hp = Math.round(boss.maxHp * finaleHpMult(power));
+        boss.dmg = Math.round(boss.dmg * finaleDmgMult(power));
+        boss.speed *= finaleSpeedMult(power);
+        world.finalIdx = world.enemies.indexOf(boss);
         world.finalSpawned = true;
         run.finalBossAlive = true;
         useGame.setState({ bossCard: "THE FINAL NEMESIS AWAKENS", bossCardAt: run.t });
-        sfx.boss();
+      } else {
+        useGame.setState({
+          bossCard: boss.bossKind === "whale" ? "THE WHALE SURFACES" : "YOUR SHADOW ARRIVES",
+          bossCardAt: run.t,
+        });
       }
+      sfx.boss();
     }
 
     // regeneration (Uptime) ticks continuously
@@ -2302,6 +2359,21 @@ export default function GameLayer({ planet }: { planet: React.RefObject<THREE.Gr
             map={getWarnTexture()}
             transparent
             opacity={0.45}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+      {/* boss / finale spawn warnings — dedicated rings (not mob-pending slots) */}
+      {Array.from({ length: BOSS_PENDING_SLOTS }).map((_, i) => (
+        <mesh key={`bwr${i}`} ref={(el) => { bossWarnRefs.current[i] = el; }} visible={false}>
+          <planeGeometry args={[1, 1]} />
+          <meshBasicMaterial
+            map={getWarnTexture()}
+            transparent
+            opacity={0.5}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}
