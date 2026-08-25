@@ -6,9 +6,11 @@ import {
   resetRun,
   rollChoices,
   run,
+  runScore,
   scoreOf,
   upgradeView,
 } from "@/lib/gameStore";
+import { winBonus } from "@/lib/scoreFormula";
 
 /**
  * The score formula and roll rules define the game's fairness design. These
@@ -74,6 +76,16 @@ describe("scoreOf", () => {
     run.kills = 100;
     run.damage = 10_000;
     expect(scoreOf()).toBeGreaterThan(base);
+  });
+
+  it("runScore adds a capture-scaled win bonus", () => {
+    run.t = 100;
+    run.kills = 0;
+    run.damage = 0;
+    run.captured = 40;
+    const base = scoreOf();
+    expect(runScore(false)).toBe(base);
+    expect(runScore(true)).toBe(base + winBonus(40));
   });
 });
 

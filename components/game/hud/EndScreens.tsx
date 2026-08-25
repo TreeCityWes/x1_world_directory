@@ -6,8 +6,10 @@ import { regions } from "@/lib/regions";
 import { run, useGame } from "@/lib/gameStore";
 import { getWalletProvider, useProfile } from "@/lib/profile";
 import { explorerTx, inscribeRun } from "@/lib/inscribe";
+import { winBonus } from "@/lib/scoreFormula";
 
 const TOTAL_SITES = regions.length;
+const FULL_CLEAR_BONUS = winBonus(TOTAL_SITES);
 
 // what actually got you — crypto death certificates
 const DEATH_FLAVOR: Record<string, string> = {
@@ -382,7 +384,7 @@ export function VictoryScreen() {
         tone="gold"
         headline={`ecosystem complete — all ${TOTAL_SITES} projects captured`}
         score={finalScore}
-        scoreLabel="score (incl. 1000 conquest bonus)"
+        scoreLabel={`score (incl. ${FULL_CLEAR_BONUS} conquest bonus)`}
         best={best}
         pb={pb}
         newPb={newPb}
@@ -465,7 +467,9 @@ export function TimeUpScreen() {
       >
         <div className="mt-4 space-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
           <p>{hud.block} blocks · {hud.kills} kills · {hud.captured}/{TOTAL_SITES} sites</p>
-          <p className="text-ink-dim/70">capture every site + slay the boss before the bell for +1000</p>
+          <p className="text-ink-dim/70">
+            capture every site + slay the boss before the bell for +{FULL_CLEAR_BONUS}
+          </p>
         </div>
         <InscribeRow score={finalScore} />
         <EndButtonRow onRunItBack={() => start()} />

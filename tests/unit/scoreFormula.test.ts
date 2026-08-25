@@ -8,6 +8,8 @@ import {
   normalizedScore,
   RUN_SECONDS,
   statsPlausible,
+  WIN_BONUS_SITES,
+  winBonus,
 } from "@/lib/scoreFormula";
 
 describe("scoreFormula", () => {
@@ -26,29 +28,49 @@ describe("scoreFormula", () => {
     ).toBe(270);
   });
 
-  it("applies win bonus and mutator multiplier in computeRunScore", () => {
+  it("scales win bonus with captures (full map ≈ historical +1000)", () => {
+    expect(winBonus(0)).toBe(400);
+    expect(winBonus(WIN_BONUS_SITES)).toBe(1000);
+    expect(winBonus(20)).toBe(Math.round(400 + (600 * 20) / WIN_BONUS_SITES));
+  });
+
+  it("applies scaled win bonus and mutator multiplier in computeRunScore", () => {
+    const captured = 50;
     const base = baseScoreOf({
       t: 100,
       kills: 0,
       damage: 0,
-      captured: 0,
+      captured,
       win: false,
       difficulty: "normal",
       mutatorScoreMult: 1,
       timeMult: 1,
     });
+    const bonus = winBonus(captured);
     expect(
       computeRunScore({
         t: 100,
         kills: 0,
         damage: 0,
-        captured: 0,
+        captured,
         win: true,
         difficulty: "normal",
         mutatorScoreMult: 2,
         timeMult: 1,
       }),
-    ).toBe(Math.round((base + 1000) * 2));
+    ).toBe(Math.round((base + bonus) * 2));
+    expect(
+      computeRunScore({
+        t: 100,
+        kills: 0,
+        damage: 0,
+        captured,
+        win: false,
+        difficulty: "normal",
+        mutatorScoreMult: 2,
+        timeMult: 1,
+      }),
+    ).toBe(Math.round(base * 2));
   });
 
   it("caps board scores at 500k", () => {
