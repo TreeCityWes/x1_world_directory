@@ -4,6 +4,8 @@ import {
   baseScoreOf,
   clampBoardScore,
   computeRunScore,
+  DIFFICULTY_SCORE_MULT,
+  normalizedScore,
   RUN_SECONDS,
   statsPlausible,
 } from "@/lib/scoreFormula";
@@ -78,5 +80,14 @@ describe("scoreFormula", () => {
     const a = activeMutator(new Date("2026-08-24T12:00:00Z"));
     const b = activeMutator(new Date("2026-08-25T12:00:00Z"));
     expect(a.id).toBe(b.id);
+  });
+
+  it("normalizedScore strips difficulty multipliers for mixed boards", () => {
+    expect(normalizedScore(1000, "normal")).toBe(1000);
+    expect(normalizedScore(1500, "hard")).toBe(1500 / DIFFICULTY_SCORE_MULT.hard);
+    expect(normalizedScore(2000, "cursed")).toBe(1000);
+    // a stronger normal run outranks a weaker cursed raw when compared normalized
+    expect(normalizedScore(1200, "normal")).toBeGreaterThan(normalizedScore(2000, "cursed"));
+    expect(normalizedScore(900, "unknown")).toBe(900);
   });
 });

@@ -20,6 +20,16 @@ export const DIFFICULTY_SCORE_MULT = {
 
 export type DifficultyId = keyof typeof DIFFICULTY_SCORE_MULT;
 
+/**
+ * Strip the difficulty multiplier so mixed-diff boards can compare skill,
+ * not just Cursed's 2× raw score. Unknown diffs fall back to 1×.
+ */
+export function normalizedScore(score: number, diff: string): number {
+  const mult = DIFFICULTY_SCORE_MULT[diff as DifficultyId] ?? 1;
+  if (!Number.isFinite(score) || mult <= 0) return score;
+  return score / mult;
+}
+
 export type Mutator = {
   id: string;
   name: string;
