@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { regions } from "@/lib/regions";
 import { winTarget } from "@/lib/finale";
 import { run, useGame } from "@/lib/gameStore";
-import { getWalletProvider, useProfile } from "@/lib/profile";
+import {
+  ensureWalletSession,
+  getWalletProvider,
+  isWalletSessionLive,
+  shortAddr,
+  useProfile,
+  watchWalletProvider,
+} from "@/lib/profile";
 import { explorerTx, inscribeRun } from "@/lib/inscribe";
 import { winBonus } from "@/lib/scoreFormula";
 
@@ -104,9 +111,11 @@ function RunSummaryCard({
   );
 }
 
-/** Run-it-back + explore — identical on every end screen. */
+/** Run-it-back + leave — identical on every end screen.
+ *  "leave" opens the menu (keeps finalScore for claim/inscribe) instead of
+ *  dumping straight into explore where ProfileCard + InscribeRow unmount. */
 function EndButtonRow({ onRunItBack }: { onRunItBack: () => void }) {
-  const quit = useGame((s) => s.quit);
+  const openMenu = useGame((s) => s.openMenu);
 
   return (
     <div className="mt-6 flex justify-center gap-3">
@@ -117,79 +126,102 @@ function EndButtonRow({ onRunItBack }: { onRunItBack: () => void }) {
         run it back
       </button>
       <button
-        onClick={quit}
+        onClick={openMenu}
         className="rounded-md border border-white/15 px-6 py-2.5 font-mono text-xs uppercase tracking-[0.14em] text-ink-dim transition-colors hover:border-cyan/60 hover:text-cyan"
       >
-        explore
+        menu
       </button>
     </div>
   );
 }
 
-/** Inscribe-on-X1 + view-leaderboard row for the end-of-run screens. */
-function InscribeRow({ score }: { score: number }) {
+/** Inscribe-on-X1 + view-leaderboard row for the end-of-run screens.
+ *  Uses a *live* wallet session (injected publicKey), not just the persisted
+ *  address — a stale localStorage wallet used to show "inscribe" with no way
+ *  to reconnect, and "edit profile" / board fallbacks called openMenu() which
+ *  dismissed the score card. */
+export function InscribeRow({ score }: { score: number }) {
   const wallet = useProfile((s) => s.wallet);
   const name = useProfile((s) => s.name);
   const connecting = useProfile((s) => s.connecting);
   const walletError = useProfile((s) => s.walletError);
+  const finalDiff = useGame((s) => s.finalDiff);
+  const finalStats = useGame((s) => s.finalStats);
   const [draftName, setDraftName] = useState(name);
+  const [editingName, setEditingName] = useState(false);
+  const [live, setLive] = useState(false);
   const [st, setSt] = useState<{ k: "idle" | "busy" | "done"; sig?: string; err?: string }>({
     k: "idle",
   });
 
+  useEffect(() => {
+    const sync = () => setLive(isWalletSessionLive());
+    sync();
+    const unwatch = watchWalletProvider();
+    const onFocus = () => sync();
+    window.addEventListener("focus", onFocus);
+    const id = window.setInterval(sync, 1500);
+    return () => {
+      unwatch();
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(id);
+    };
+  }, []);
+
   const applyName = () => {
     const trimmed = draftName.trim().slice(0, 20);
     useProfile.setState({ name: trimmed });
-    if (trimmed && wallet) useGame.getState().retrySubmit();
+    setEditingName(false);
+    if (trimmed && (live || wallet)) useGame.getState().retrySubmit();
+  };
+
+  const doConnect = async () => {
+    setSt((s) => ({ ...s, err: undefined }));
+    const addr = await ensureWalletSession();
+    setLive(isWalletSessionLive());
+    if (addr) useGame.getState().retrySubmit();
   };
 
   const doInscribe = async () => {
     if (st.k !== "idle") return;
     setSt({ k: "busy" });
+    const addr = await ensureWalletSession();
+    setLive(isWalletSessionLive());
+    if (!addr || !isWalletSessionLive()) {
+      setSt({
+        k: "idle",
+        err: getWalletProvider()
+          ? "approve the wallet connection, then try again"
+          : "connect an X1 Wallet (or Backpack) to inscribe — Phantom is not supported on X1",
+      });
+      return;
+    }
+    useGame.getState().retrySubmit();
+    // Prefer the ended-run snapshot — `run` is reset by openMenu().
+    const diff = finalDiff || run.difficulty;
+    const captured = finalStats?.captured ?? run.captured;
     const r = await inscribeRun({
-      name,
+      name: useProfile.getState().name,
       score,
-      diff: run.difficulty,
-      captured: run.captured,
+      diff,
+      captured,
       total: TOTAL_SITES,
     });
     setSt(r.sig ? { k: "done", sig: r.sig } : { k: "idle", err: r.error });
   };
 
-  // Connecting here must also rescue the leaderboard entry: the score was
-  // skipped at run end if no wallet was set (see gameStore.retrySubmit).
-  const doConnect = async () => {
-    await useProfile.getState().connect();
-    useGame.getState().retrySubmit();
-  };
-
   const viewBoard = () => {
-    // Prefer scrolling to the board in place — openMenu() dismisses the
-    // end-screen (and its inscribe flow). Desktop side panel is already on
-    // screen; on mobile GamePanel still mounts #x1-leaderboard below the fold
-    // once the run leaves immersive play.
-    const el = document.getElementById("x1-leaderboard");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-    // Rare fallback when the panel isn't mounted yet.
-    useGame.getState().openMenu();
-    setTimeout(() => {
-      document.getElementById("x1-leaderboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 50);
+    // Never openMenu() from here — that dismisses the end card. Scroll only.
+    document.getElementById("x1-leaderboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  const openProfile = () => {
-    useGame.getState().openMenu();
-    setTimeout(() => {
-      document.getElementById("x1-profile")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 50);
-  };
+  const needsConnect = !live;
+  const needsName = live && !name.trim();
+  const canInscribe = live && !!name.trim();
 
   return (
     <div className="mt-4">
-      {!wallet ? (
+      {needsConnect ? (
         <>
           <div className="flex flex-wrap justify-center gap-2">
             <input
@@ -208,7 +240,11 @@ function InscribeRow({ score }: { score: number }) {
               title="connect to inscribe on x1 and post your score to the board"
               className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
             >
-              {connecting ? "connecting…" : "↯ connect wallet"}
+              {connecting
+                ? "connecting…"
+                : wallet
+                  ? "↯ reconnect wallet"
+                  : "↯ connect wallet"}
             </button>
             <button
               onClick={viewBoard}
@@ -219,11 +255,13 @@ function InscribeRow({ score }: { score: number }) {
           </div>
           {!walletError && (
             <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
-              name + wallet needed to rank · connect to inscribe on x1 mainnet
+              {wallet
+                ? `saved ${shortAddr(wallet)} — reconnect to sign on x1 (phantom not supported)`
+                : "name + wallet needed to rank · connect x1 wallet or backpack to inscribe"}
             </p>
           )}
         </>
-      ) : !name.trim() ? (
+      ) : needsName || editingName ? (
         <>
           <div className="flex flex-wrap justify-center gap-2">
             <input
@@ -234,6 +272,7 @@ function InscribeRow({ score }: { score: number }) {
               onKeyDown={(e) => e.key === "Enter" && applyName()}
               placeholder="ninja name"
               maxLength={20}
+              autoFocus={editingName}
               className="w-40 rounded-md border border-gold/40 bg-gold/5 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-gold placeholder:text-gold/40 focus:border-gold focus:outline-none"
             />
             <button
@@ -262,7 +301,7 @@ function InscribeRow({ score }: { score: number }) {
             ) : (
               <button
                 onClick={() => void doInscribe()}
-                disabled={st.k === "busy"}
+                disabled={st.k === "busy" || !canInscribe}
                 title="write this score to X1 mainnet forever (tiny XNT fee)"
                 className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
               >
@@ -277,14 +316,21 @@ function InscribeRow({ score }: { score: number }) {
             </button>
           </div>
           <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
-            posting as {name} ·{" "}
-            <button onClick={openProfile} className="underline hover:text-gold">
-              edit profile
+            posting as {name}
+            {wallet ? ` · ${shortAddr(wallet)}` : ""} ·{" "}
+            <button
+              onClick={() => {
+                setDraftName(name);
+                setEditingName(true);
+              }}
+              className="underline hover:text-gold"
+            >
+              edit name
             </button>
           </p>
         </>
       )}
-      {walletError && !wallet && (
+      {walletError && !live && (
         <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">
           {!getWalletProvider() ? (
             <>
@@ -297,7 +343,7 @@ function InscribeRow({ score }: { score: number }) {
               >
                 X1 Wallet
               </a>{" "}
-              at wallet.x1.xyz (or Backpack)
+              at wallet.x1.xyz (or Backpack). Phantom does not support X1.
             </>
           ) : (
             walletError

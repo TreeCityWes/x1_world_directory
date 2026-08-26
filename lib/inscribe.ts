@@ -103,7 +103,12 @@ export async function inscribeRun(o: {
   total: number;
 }): Promise<{ sig?: string; error?: string }> {
   const p = getWalletProvider() as TxProvider | null;
-  if (!p?.publicKey) return { error: "connect your wallet to inscribe" };
+  if (!p?.publicKey) {
+    return {
+      error:
+        "connect your wallet to inscribe — use X1 Wallet or Backpack (Phantom is not on X1)",
+    };
+  }
   try {
     const { Connection, PublicKey, Transaction, TransactionInstruction } = await import(
       "@solana/web3.js"

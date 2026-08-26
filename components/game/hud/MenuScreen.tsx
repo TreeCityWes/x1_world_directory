@@ -6,6 +6,7 @@ import { DIFFICULTIES, useGame, getPb, activeMutator, type DifficultyId } from "
 import { CHARACTERS } from "@/lib/characters";
 import { sfx, startMusic } from "@/lib/sound";
 import { CharacterSelect } from "@/components/game/hud/CharacterSelect";
+import { InscribeRow } from "@/components/game/hud/EndScreens";
 
 /** Run menu — pick your character, pick your bet (Normal / Hard / Cursed). */
 export function MenuScreen() {
@@ -13,6 +14,9 @@ export function MenuScreen() {
   const start = useGame((s) => s.start);
   const quit = useGame((s) => s.quit);
   const storePb = useGame((s) => s.pb);
+  const finalScore = useGame((s) => s.finalScore);
+  const finalStats = useGame((s) => s.finalStats);
+  const scoreSubmit = useGame((s) => s.scoreSubmit);
   const mutator = activeMutator();
   // difficulty is a SELECTION now, committed by the big start button
   const [diff, setDiff] = useState<DifficultyId>("normal");
@@ -23,6 +27,8 @@ export function MenuScreen() {
   }, [character, diff]);
 
   const mutatorTone = mutator.id === "none" ? "rgba(125,211,252,0.35)" : "#7dd3fc";
+  // Survives openMenu / explore-tab — cleared only when a new run starts.
+  const pendingClaim = finalScore > 0 && !!finalStats;
 
   return (
     <motion.div
@@ -32,6 +38,26 @@ export function MenuScreen() {
       className="pointer-events-auto absolute inset-0 z-50 grid place-items-center bg-space/60 backdrop-blur-sm max-md:fixed"
     >
       <div className="max-h-full overflow-y-auto py-4 text-center max-md:w-full max-md:pb-44">
+        {pendingClaim && (
+          <div className="mx-auto mb-4 max-w-md rounded-xl border border-gold/50 bg-gradient-to-br from-[#1c1608] to-[#0b1122] px-4 py-3.5 text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
+              last run — still claimable
+            </p>
+            <p className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
+              {finalScore.toLocaleString()}
+            </p>
+            {scoreSubmit === "ok" && (
+              <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
+                ✓ on the leaderboard
+              </p>
+            )}
+            <InscribeRow score={finalScore} />
+            <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/70">
+              starting a new run clears this score
+            </p>
+          </div>
+        )}
+
         <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-gold">
           select your character
         </p>

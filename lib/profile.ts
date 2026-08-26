@@ -34,6 +34,35 @@ export function getWalletProvider() {
   return getProvider();
 }
 
+/** Live session pubkey from the injected provider (not the persisted string). */
+export function getLiveWalletAddress(): string {
+  const p = getProvider();
+  return p?.publicKey?.toString() ?? "";
+}
+
+/**
+ * True when a non-Phantom wallet is injected AND has an unlocked session.
+ * A persisted `wallet` in localStorage is NOT enough to sign — Phantom-only
+ * browsers and locked extensions fail this check.
+ */
+export function isWalletSessionLive(): boolean {
+  return Boolean(getLiveWalletAddress());
+}
+
+/**
+ * Ensure the injected wallet is connected for signing. Syncs the persisted
+ * profile address on success. Returns the live address, or "" on failure.
+ */
+export async function ensureWalletSession(): Promise<string> {
+  const live = getLiveWalletAddress();
+  if (live) {
+    useProfile.setState({ wallet: live, walletError: "" });
+    return live;
+  }
+  await useProfile.getState().connect();
+  return getLiveWalletAddress() || useProfile.getState().wallet;
+}
+
 /** Sign an arbitrary message with the connected wallet → base64, or null. */
 export async function signWithWallet(message: string): Promise<string | null> {
   const p = getProvider();
@@ -95,14 +124,18 @@ export const useProfile = create<ProfileState>()(
       connect: async () => {
         const p = getProvider();
         if (!p) {
-          set({ walletError: "no supported wallet — get X1 Wallet at wallet.x1.xyz (or Backpack)" });
+          set({
+            walletError:
+              "no supported wallet — get X1 Wallet at wallet.x1.xyz (or Backpack). Phantom does not support X1.",
+          });
           return;
         }
         set({ connecting: true, walletError: "" });
         try {
           const res = await p.connect();
-          const key = (res && "publicKey" in res && res.publicKey?.toString()) || p.publicKey?.toString() || "";
-          if (key) set({ wallet: key });
+          const key =
+            (res && "publicKey" in res && res.publicKey?.toString()) || p.publicKey?.toString() || "";
+          if (key) set({ wallet: key, walletError: "" });
           else set({ walletError: "wallet did not return an address" });
         } catch {
           set({ walletError: "connection cancelled" });
@@ -112,7 +145,7 @@ export const useProfile = create<ProfileState>()(
       },
       disconnect: () => {
         void getProvider()?.disconnect?.();
-        set({ wallet: "" });
+        set({ wallet: "", walletError: "" });
       },
     }),
     {
@@ -134,6 +167,9 @@ export function watchWalletProvider() {
   };
   p.on("accountChanged", accountChanged);
   p.on("disconnect", disconnected);
+  // Only sync when a live session exists — do NOT clear a persisted address
+  // here (that would wipe the profile when the extension is locked). Signing
+  // paths must call isWalletSessionLive / ensureWalletSession instead.
   if (p.publicKey) accountChanged(p.publicKey);
   return () => {
     p.off?.("accountChanged", accountChanged);

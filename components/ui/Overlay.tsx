@@ -54,7 +54,10 @@ export default function Overlay() {
           game.pause();
         } else if (game.mode === "paused") {
           game.resume();
-        } else if (game.mode === "menu" || game.mode === "won") {
+        } else if (game.mode === "won" || game.mode === "dead" || game.mode === "timeup") {
+          // keep finalScore claimable on the menu — don't dump to explore
+          game.openMenu();
+        } else if (game.mode === "menu") {
           game.quit();
         } else {
           world.select(null);
@@ -90,9 +93,12 @@ export default function Overlay() {
           onClick={() => {
             const g = useGame.getState();
             // never abandon a LIVE run in one click — pause into the
-            // resume/abandon choice; from any other non-explore state, leave
+            // resume/abandon choice; from end-of-run, keep the score on menu
             if (g.mode === "play") g.pause();
-            else if (g.mode !== "explore") {
+            else if (g.mode === "won" || g.mode === "dead" || g.mode === "timeup") {
+              startMusic();
+              g.openMenu();
+            } else if (g.mode !== "explore") {
               startMusic();
               g.quit();
             }
