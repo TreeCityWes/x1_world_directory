@@ -9,7 +9,6 @@ import {
   ensureWalletSession,
   getWalletProvider,
   isWalletSessionLive,
-  shortAddr,
   useProfile,
   watchWalletProvider,
 } from "@/lib/profile";
@@ -135,11 +134,8 @@ function EndButtonRow({ onRunItBack }: { onRunItBack: () => void }) {
   );
 }
 
-/** Inscribe-on-X1 + view-leaderboard row for the end-of-run screens.
- *  Uses a *live* wallet session (injected publicKey), not just the persisted
- *  address — a stale localStorage wallet used to show "inscribe" with no way
- *  to reconnect, and "edit profile" / board fallbacks called openMenu() which
- *  dismissed the score card. */
+/** Inscribe-on-X1 for end-of-run / pending-claim.
+ *  One step at a time: connect → name → inscribe. Live session only. */
 export function InscribeRow({ score }: { score: number }) {
   const wallet = useProfile((s) => s.wallet);
   const name = useProfile((s) => s.name);
@@ -148,7 +144,6 @@ export function InscribeRow({ score }: { score: number }) {
   const finalDiff = useGame((s) => s.finalDiff);
   const finalStats = useGame((s) => s.finalStats);
   const [draftName, setDraftName] = useState(name);
-  const [editingName, setEditingName] = useState(false);
   const [live, setLive] = useState(false);
   const [st, setSt] = useState<{ k: "idle" | "busy" | "done"; sig?: string; err?: string }>({
     k: "idle",
@@ -171,7 +166,6 @@ export function InscribeRow({ score }: { score: number }) {
   const applyName = () => {
     const trimmed = draftName.trim().slice(0, 20);
     useProfile.setState({ name: trimmed });
-    setEditingName(false);
     if (trimmed && (live || wallet)) useGame.getState().retrySubmit();
   };
 
@@ -192,12 +186,11 @@ export function InscribeRow({ score }: { score: number }) {
         k: "idle",
         err: getWalletProvider()
           ? "approve the wallet connection, then try again"
-          : "connect an X1 Wallet (or Backpack) to inscribe — Phantom is not supported on X1",
+          : "need X1 Wallet or Backpack — Phantom isn’t on X1",
       });
       return;
     }
     useGame.getState().retrySubmit();
-    // Prefer the ended-run snapshot — `run` is reset by openMenu().
     const diff = finalDiff || run.difficulty;
     const captured = finalStats?.captured ?? run.captured;
     const r = await inscribeRun({
@@ -210,150 +203,101 @@ export function InscribeRow({ score }: { score: number }) {
     setSt(r.sig ? { k: "done", sig: r.sig } : { k: "idle", err: r.error });
   };
 
-  const viewBoard = () => {
-    // Never openMenu() from here — that dismisses the end card. Scroll only.
-    document.getElementById("x1-leaderboard")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
+  const err =
+    st.err ||
+    (!live && walletError
+      ? !getWalletProvider()
+        ? "need X1 Wallet or Backpack — Phantom isn’t on X1"
+        : walletError
+      : "");
 
-  const needsConnect = !live;
-  const needsName = live && !name.trim();
-  const canInscribe = live && !!name.trim();
+  // — connect —
+  if (!live) {
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => void doConnect()}
+          disabled={connecting}
+          className="rounded-md border border-gold/60 bg-gold/10 px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45"
+        >
+          {connecting ? "connecting…" : wallet ? "reconnect wallet" : "connect wallet"}
+        </button>
+        {err && (
+          <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">
+            {!getWalletProvider() ? (
+              <>
+                need{" "}
+                <a
+                  href="https://wallet.x1.xyz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-dotted underline-offset-2 hover:text-gold"
+                >
+                  X1 Wallet
+                </a>{" "}
+                or Backpack
+              </>
+            ) : (
+              err
+            )}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // — name —
+  if (!name.trim()) {
+    return (
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <input
+          type="text"
+          value={draftName}
+          onChange={(e) => setDraftName(e.target.value)}
+          onBlur={applyName}
+          onKeyDown={(e) => e.key === "Enter" && applyName()}
+          placeholder="ninja name"
+          maxLength={20}
+          autoFocus
+          className="w-40 rounded-md border border-gold/40 bg-gold/5 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-gold placeholder:text-gold/40 focus:border-gold focus:outline-none"
+        />
+        <button
+          onClick={applyName}
+          className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold"
+        >
+          save
+        </button>
+      </div>
+    );
+  }
+
+  // — inscribe —
+  if (st.k === "done" && st.sig) {
+    return (
+      <div className="mt-4">
+        <a
+          href={explorerTx(st.sig)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[10px] uppercase tracking-[0.14em] text-success underline decoration-dotted underline-offset-2 hover:text-gold"
+        >
+          inscribed on x1 ↗
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4">
-      {needsConnect ? (
-        <>
-          <div className="flex flex-wrap justify-center gap-2">
-            <input
-              type="text"
-              value={draftName}
-              onChange={(e) => setDraftName(e.target.value)}
-              onBlur={applyName}
-              onKeyDown={(e) => e.key === "Enter" && applyName()}
-              placeholder="ninja name"
-              maxLength={20}
-              className="w-32 rounded-md border border-white/15 bg-space/70 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-ink placeholder:text-ink-dim/50 focus:border-gold/60 focus:outline-none"
-            />
-            <button
-              onClick={() => void doConnect()}
-              disabled={connecting}
-              title="connect to inscribe on x1 and post your score to the board"
-              className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
-            >
-              {connecting
-                ? "connecting…"
-                : wallet
-                  ? "↯ reconnect wallet"
-                  : "↯ connect wallet"}
-            </button>
-            <button
-              onClick={viewBoard}
-              className="rounded-md border border-cyan/40 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-cyan transition-colors hover:border-cyan"
-            >
-              ★ view leaderboard
-            </button>
-          </div>
-          {!walletError && (
-            <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
-              {wallet
-                ? `saved ${shortAddr(wallet)} — reconnect to sign on x1 (phantom not supported)`
-                : "name + wallet needed to rank · connect x1 wallet or backpack to inscribe"}
-            </p>
-          )}
-        </>
-      ) : needsName || editingName ? (
-        <>
-          <div className="flex flex-wrap justify-center gap-2">
-            <input
-              type="text"
-              value={draftName}
-              onChange={(e) => setDraftName(e.target.value)}
-              onBlur={applyName}
-              onKeyDown={(e) => e.key === "Enter" && applyName()}
-              placeholder="ninja name"
-              maxLength={20}
-              autoFocus={editingName}
-              className="w-40 rounded-md border border-gold/40 bg-gold/5 px-3 py-2 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-gold placeholder:text-gold/40 focus:border-gold focus:outline-none"
-            />
-            <button
-              onClick={applyName}
-              className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold"
-            >
-              save & post
-            </button>
-          </div>
-          <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
-            set a name to post this score to the global leaderboard
-          </p>
-        </>
-      ) : (
-        <>
-          <div className="flex flex-wrap justify-center gap-2">
-            {st.k === "done" && st.sig ? (
-              <a
-                href={explorerTx(st.sig)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-md border border-success/50 bg-success/10 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-success transition-colors hover:border-success"
-              >
-                inscribed on x1 — view transaction ↗
-              </a>
-            ) : (
-              <button
-                onClick={() => void doInscribe()}
-                disabled={st.k === "busy" || !canInscribe}
-                title="write this score to X1 mainnet forever (tiny XNT fee)"
-                className="rounded-md border border-gold/60 bg-gold/10 px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45 disabled:hover:translate-y-0"
-              >
-                {st.k === "busy" ? "inscribing…" : "inscribe score on x1"}
-              </button>
-            )}
-            <button
-              onClick={viewBoard}
-              className="rounded-md border border-cyan/40 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-cyan transition-colors hover:border-cyan"
-            >
-              ★ view leaderboard
-            </button>
-          </div>
-          <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/60">
-            posting as {name}
-            {wallet ? ` · ${shortAddr(wallet)}` : ""} ·{" "}
-            <button
-              onClick={() => {
-                setDraftName(name);
-                setEditingName(true);
-              }}
-              className="underline hover:text-gold"
-            >
-              edit name
-            </button>
-          </p>
-        </>
-      )}
-      {walletError && !live && (
-        <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">
-          {!getWalletProvider() ? (
-            <>
-              no supported wallet — get{" "}
-              <a
-                href="https://wallet.x1.xyz"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline decoration-dotted underline-offset-2 hover:text-gold"
-              >
-                X1 Wallet
-              </a>{" "}
-              at wallet.x1.xyz (or Backpack). Phantom does not support X1.
-            </>
-          ) : (
-            walletError
-          )}
-        </p>
-      )}
-      {st.err && (
-        <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">
-          {st.err}
-        </p>
+      <button
+        onClick={() => void doInscribe()}
+        disabled={st.k === "busy"}
+        className="rounded-md border border-gold/60 bg-gold/10 px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-gold transition-all hover:-translate-y-px hover:border-gold disabled:opacity-45"
+      >
+        {st.k === "busy" ? "inscribing…" : "inscribe on x1"}
+      </button>
+      {err && (
+        <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">{err}</p>
       )}
     </div>
   );

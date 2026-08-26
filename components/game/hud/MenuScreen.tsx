@@ -39,22 +39,12 @@ export function MenuScreen() {
     >
       <div className="max-h-full overflow-y-auto py-4 text-center max-md:w-full max-md:pb-44">
         {pendingClaim && (
-          <div className="mx-auto mb-4 max-w-md rounded-xl border border-gold/50 bg-gradient-to-br from-[#1c1608] to-[#0b1122] px-4 py-3.5 text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gold">
-              last run — still claimable
+          <div className="mx-auto mb-5 max-w-sm text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-dim">
+              last run · {finalScore.toLocaleString()}
+              {scoreSubmit === "ok" ? " · ranked" : ""}
             </p>
-            <p className="mt-1 font-display text-3xl font-bold tracking-tight text-ink">
-              {finalScore.toLocaleString()}
-            </p>
-            {scoreSubmit === "ok" && (
-              <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
-                ✓ on the leaderboard
-              </p>
-            )}
             <InscribeRow score={finalScore} />
-            <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim/70">
-              starting a new run clears this score
-            </p>
           </div>
         )}
 
