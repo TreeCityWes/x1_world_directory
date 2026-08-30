@@ -1,6 +1,6 @@
 "use client";
 
-import { getWalletProvider } from "@/lib/profile";
+import { getLiveWalletAddress, getWalletProvider } from "@/lib/profile";
 
 /**
  * Inscribe a run on X1 itself: a Memo-program transaction on X1 mainnet
@@ -103,10 +103,10 @@ export async function inscribeRun(o: {
   total: number;
 }): Promise<{ sig?: string; error?: string }> {
   const p = getWalletProvider() as TxProvider | null;
-  if (!p?.publicKey) {
+  const addr = getLiveWalletAddress() || p?.publicKey?.toString() || "";
+  if (!p || !addr) {
     return {
-      error:
-        "connect your wallet to inscribe — use X1 Wallet or Backpack (Phantom is not on X1)",
+      error: "connect your wallet to inscribe, then try again",
     };
   }
   try {
@@ -115,7 +115,7 @@ export async function inscribeRun(o: {
     );
     const { Buffer } = await import("buffer");
     const conn = new Connection(X1_RPC, "confirmed");
-    const payer = new PublicKey(p.publicKey.toString());
+    const payer = new PublicKey(addr);
 
     try {
       const bal = await conn.getBalance(payer, "confirmed");

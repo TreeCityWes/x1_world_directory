@@ -4,46 +4,116 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 /**
- * Ninja profile — display name + connected wallet. X1 Wallet (wallet.x1.xyz)
- * is the primary target, Backpack also works; Phantom is NOT supported on X1
- * and is explicitly skipped. Standard injected connect/publicKey surface — no
- * wallet-adapter dependency needed.
+ * Ninja profile — display name + connected wallet.
+ *
+ * Prefer X1 Wallet / Backpack when present. Phantom (and other Solana
+ * injectors) are accepted as a fallback: we only need `signTransaction`, then
+ * we broadcast the signed bytes ourselves to the X1 RPC (see `lib/inscribe.ts`).
+ * Blocking Phantom made connect impossible for most players.
  */
 
 type InjectedProvider = {
-  connect: () => Promise<{ publicKey?: { toString(): string } } | void>;
+  connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey?: { toString(): string } } | void>;
   disconnect?: () => Promise<void>;
-  publicKey?: { toString(): string };
+  publicKey?: { toString(): string } | null;
   isPhantom?: boolean;
+  isBackpack?: boolean;
+  isX1?: boolean;
+  isX1Wallet?: boolean;
   signMessage?: (
     msg: Uint8Array,
     encoding?: string,
   ) => Promise<{ signature: Uint8Array } | Uint8Array>;
+  signTransaction?: (tx: unknown) => Promise<unknown>;
+  signAndSendTransaction?: (tx: unknown, opts?: unknown) => Promise<unknown>;
   on?: (
-    event: "accountChanged" | "disconnect",
+    event: "accountChanged" | "disconnect" | "connect",
     handler: (key?: { toString(): string } | null) => void,
   ) => void;
   off?: (
-    event: "accountChanged" | "disconnect",
+    event: "accountChanged" | "disconnect" | "connect",
     handler: (key?: { toString(): string } | null) => void,
   ) => void;
 };
+
+/** Address from the last successful `connect()` in this page load. */
+let liveSessionAddress = "";
+
+function setLiveSession(addr: string) {
+  liveSessionAddress = addr;
+}
+
+function clearLiveSession() {
+  liveSessionAddress = "";
+}
+
+function isUsableProvider(p: unknown): p is InjectedProvider {
+  return Boolean(p && typeof (p as InjectedProvider).connect === "function");
+}
+
+function providerRank(p: InjectedProvider): number {
+  // Higher = preferred. Native X1 first, then Backpack, then anything else
+  // (incl. Phantom) — we relay signed txs to X1 ourselves.
+  if (p.isX1 || p.isX1Wallet) return 100;
+  if (p.isBackpack) return 80;
+  if (p.isPhantom) return 10;
+  return 40;
+}
+
+function collectInjectedProviders(): InjectedProvider[] {
+  if (typeof window === "undefined") return [];
+  const w = window as unknown as Record<string, unknown>;
+  const found: InjectedProvider[] = [];
+  const push = (raw: unknown) => {
+    if (!isUsableProvider(raw)) return;
+    if (!found.includes(raw)) found.push(raw);
+  };
+
+  const asBag = (raw: unknown) => {
+    if (!raw || typeof raw !== "object") return;
+    const o = raw as Record<string, unknown>;
+    push(o.solana);
+    push(raw);
+    // Multi-wallet injectors (Phantom + others) expose `.providers`
+    const list = o.providers;
+    if (Array.isArray(list)) for (const item of list) push(item);
+  };
+
+  asBag(w.x1wallet);
+  asBag(w.x1);
+  asBag(w.X1Wallet);
+  asBag(w.x1Wallet);
+  asBag(w.backpack);
+  asBag((w.phantom as { solana?: unknown } | undefined)?.solana);
+  asBag(w.phantom);
+  asBag(w.solana);
+  asBag((w as { solana?: { providers?: unknown[] } }).solana);
+
+  return found;
+}
+
+function getProvider(): InjectedProvider | null {
+  const list = collectInjectedProviders();
+  if (list.length === 0) return null;
+  list.sort((a, b) => providerRank(b) - providerRank(a));
+  return list[0] ?? null;
+}
 
 /** The raw injected provider — for transaction flows (inscribe). */
 export function getWalletProvider() {
   return getProvider();
 }
 
-/** Live session pubkey from the injected provider (not the persisted string). */
+/** Live session pubkey (provider or this-page connect result). */
 export function getLiveWalletAddress(): string {
   const p = getProvider();
-  return p?.publicKey?.toString() ?? "";
+  const fromProvider = p?.publicKey?.toString() ?? "";
+  return fromProvider || liveSessionAddress;
 }
 
 /**
- * True when a non-Phantom wallet is injected AND has an unlocked session.
- * A persisted `wallet` in localStorage is NOT enough to sign — Phantom-only
- * browsers and locked extensions fail this check.
+ * True when we can sign in this page load. A persisted localStorage wallet
+ * alone is NOT enough.
  */
 export function isWalletSessionLive(): boolean {
   return Boolean(getLiveWalletAddress());
@@ -60,7 +130,7 @@ export async function ensureWalletSession(): Promise<string> {
     return live;
   }
   await useProfile.getState().connect();
-  return getLiveWalletAddress() || useProfile.getState().wallet;
+  return getLiveWalletAddress();
 }
 
 /** Sign an arbitrary message with the connected wallet → base64, or null. */
@@ -79,28 +149,6 @@ export async function signWithWallet(message: string): Promise<string | null> {
   }
 }
 
-function getProvider(): InjectedProvider | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as Record<
-    string,
-    ({ solana?: InjectedProvider } & InjectedProvider) | undefined
-  >;
-  const candidates = [
-    // X1 Wallet first — different builds have injected under different names
-    w.x1wallet?.solana ?? (w.x1wallet as InjectedProvider | undefined),
-    w.x1?.solana ?? (w.x1 as InjectedProvider | undefined),
-    w.X1Wallet as InjectedProvider | undefined,
-    // Backpack second
-    w.backpack?.solana,
-    // generic injection last — but never Phantom (X1 doesn't support it)
-    w.solana as InjectedProvider | undefined,
-  ];
-  for (const p of candidates) {
-    if (p && typeof p.connect === "function" && !p.isPhantom) return p;
-  }
-  return null;
-}
-
 type ProfileState = {
   name: string;
   wallet: string; // base58 address, "" = not connected
@@ -111,6 +159,16 @@ type ProfileState = {
   connect: () => Promise<void>;
   disconnect: () => void;
 };
+
+function extractConnectKey(
+  res: { publicKey?: { toString(): string } } | void,
+  p: InjectedProvider,
+): string {
+  const fromRes =
+    res && typeof res === "object" && res.publicKey ? res.publicKey.toString() : "";
+  const fromProvider = p.publicKey?.toString() ?? "";
+  return fromRes || fromProvider;
+}
 
 export const useProfile = create<ProfileState>()(
   persist(
@@ -126,25 +184,54 @@ export const useProfile = create<ProfileState>()(
         if (!p) {
           set({
             walletError:
-              "no supported wallet — get X1 Wallet at wallet.x1.xyz (or Backpack). Phantom does not support X1.",
+              "no wallet detected — install X1 Wallet (wallet.x1.xyz), Backpack, or Phantom, then refresh",
           });
           return;
         }
         set({ connecting: true, walletError: "" });
         try {
+          // Explicit user gesture — never onlyIfTrusted (that silently fails
+          // for first-time / untrusted origins).
           const res = await p.connect();
-          const key =
-            (res && "publicKey" in res && res.publicKey?.toString()) || p.publicKey?.toString() || "";
-          if (key) set({ wallet: key, walletError: "" });
-          else set({ walletError: "wallet did not return an address" });
-        } catch {
-          set({ walletError: "connection cancelled" });
+          const key = extractConnectKey(res, p);
+          if (!key) {
+            set({ walletError: "wallet did not return an address — unlock it and try again" });
+            clearLiveSession();
+            return;
+          }
+          // Some wallets only return the key in the connect() response and
+          // leave `provider.publicKey` unset until a tick later — keep our
+          // own session so the UI can advance to inscribe.
+          setLiveSession(key);
+          if (!p.publicKey && res && typeof res === "object" && res.publicKey) {
+            try {
+              (p as { publicKey?: { toString(): string } }).publicKey = res.publicKey;
+            } catch {
+              // readonly — session string is enough for UI; inscribe re-reads provider
+            }
+          }
+          set({ wallet: key, walletError: "" });
+        } catch (err) {
+          clearLiveSession();
+          const msg =
+            err && typeof err === "object" && "message" in err
+              ? String((err as { message: unknown }).message)
+              : "";
+          const lower = msg.toLowerCase();
+          if (/\b(user reject|rejected|denied|cancelled|canceled|4001)\b/.test(lower)) {
+            set({ walletError: "connection cancelled" });
+          } else if (msg) {
+            set({ walletError: msg.slice(0, 120) });
+          } else {
+            set({ walletError: "connection cancelled" });
+          }
         } finally {
           set({ connecting: false });
         }
       },
       disconnect: () => {
         void getProvider()?.disconnect?.();
+        clearLiveSession();
         set({ wallet: "", walletError: "" });
       },
     }),
@@ -160,16 +247,17 @@ export function watchWalletProvider() {
   const p = getProvider();
   if (!p?.on) return () => undefined;
   const accountChanged = (key?: { toString(): string } | null) => {
-    useProfile.setState({ wallet: key?.toString() ?? "", walletError: "" });
+    const addr = key?.toString() ?? "";
+    if (addr) setLiveSession(addr);
+    else clearLiveSession();
+    useProfile.setState({ wallet: addr, walletError: "" });
   };
   const disconnected = () => {
+    clearLiveSession();
     useProfile.setState({ wallet: "", walletError: "" });
   };
   p.on("accountChanged", accountChanged);
   p.on("disconnect", disconnected);
-  // Only sync when a live session exists — do NOT clear a persisted address
-  // here (that would wipe the profile when the extension is locked). Signing
-  // paths must call isWalletSessionLive / ensureWalletSession instead.
   if (p.publicKey) accountChanged(p.publicKey);
   return () => {
     p.off?.("accountChanged", accountChanged);
@@ -187,3 +275,8 @@ export function getDeviceId(): string {
 }
 
 export const shortAddr = (a: string) => (a.length > 10 ? `${a.slice(0, 4)}…${a.slice(-4)}` : a);
+
+/** Test helper — reset module session between unit tests. */
+export function __resetWalletSessionForTests() {
+  clearLiveSession();
+}

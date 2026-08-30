@@ -186,7 +186,7 @@ export function InscribeRow({ score }: { score: number }) {
         k: "idle",
         err: getWalletProvider()
           ? "approve the wallet connection, then try again"
-          : "need X1 Wallet or Backpack — Phantom isn’t on X1",
+          : "no wallet detected — install X1 Wallet, Backpack, or Phantom, then refresh",
       });
       return;
     }
@@ -207,7 +207,7 @@ export function InscribeRow({ score }: { score: number }) {
     st.err ||
     (!live && walletError
       ? !getWalletProvider()
-        ? "need X1 Wallet or Backpack — Phantom isn’t on X1"
+        ? "no wallet detected — install X1 Wallet, Backpack, or Phantom"
         : walletError
       : "");
 
@@ -223,10 +223,10 @@ export function InscribeRow({ score }: { score: number }) {
           {connecting ? "connecting…" : wallet ? "reconnect wallet" : "connect wallet"}
         </button>
         {err && (
-          <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">
+          <p className="mt-2 max-w-sm mx-auto font-mono text-[9px] uppercase tracking-[0.12em] text-danger-bright">
             {!getWalletProvider() ? (
               <>
-                need{" "}
+                no wallet detected — install{" "}
                 <a
                   href="https://wallet.x1.xyz"
                   target="_blank"
@@ -234,8 +234,8 @@ export function InscribeRow({ score }: { score: number }) {
                   className="underline decoration-dotted underline-offset-2 hover:text-gold"
                 >
                   X1 Wallet
-                </a>{" "}
-                or Backpack
+                </a>
+                , Backpack, or Phantom, then refresh
               </>
             ) : (
               err
